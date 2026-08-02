@@ -1,0 +1,45 @@
+// DJIGUI — gabarit racine. Trois caractères, trois rôles :
+// Archivo 700 pour le mot-écrit, les blocs de groupe et les grands
+// compteurs ; IBM Plex Sans pour l'interface ; IBM Plex Mono pour tout
+// ce qui se lit chiffre par chiffre (numéros, dates, codes de poche).
+import { Archivo, IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
+import ServiceWorker from './composants/ServiceWorker';
+import './globals.css';
+
+const archivo = Archivo({
+  subsets: ['latin'], weight: ['700'], display: 'swap', variable: '--police-archivo'
+});
+const plexSans = IBM_Plex_Sans({
+  subsets: ['latin'], weight: ['400', '500', '600'], display: 'swap', variable: '--police-sans'
+});
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin'], weight: ['400', '500'], display: 'swap', variable: '--police-mono'
+});
+
+export const metadata = {
+  title: { default: 'DJIGUI', template: '%s · DJIGUI' },
+  description:
+    'Quand un centre de transfusion manque de sang de votre groupe, il vous prévient.',
+  manifest: '/manifest.json',
+  applicationName: 'DJIGUI',
+  appleWebApp: { capable: true, title: 'DJIGUI', statusBarStyle: 'default' },
+  icons: { icon: '/icones/icone-192.png', apple: '/icones/icone-192.png' }
+};
+
+export const viewport = {
+  themeColor: '#8C1C2C',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover'
+};
+
+export default function GabaritRacine({ children }) {
+  return (
+    <html lang="fr">
+      <body className={`${archivo.variable} ${plexSans.variable} ${plexMono.variable}`}>
+        <ServiceWorker />
+        {children}
+      </body>
+    </html>
+  );
+}

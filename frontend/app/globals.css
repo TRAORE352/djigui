@@ -1,0 +1,717 @@
+@import "tailwindcss";
+@plugin "daisyui" { themes: false; }
+
+/* =====================================================================
+   DJIGUI — système de mise en page
+   ---------------------------------------------------------------------
+   Tout ce qui suit vient des trois maquettes. Rien n'est décoratif.
+
+   Le reproche fait à la première version était juste : les textes
+   flottaient. La réponse tient en trois disciplines, appliquées sans
+   exception dans tout le produit.
+
+   1. Une échelle d'espacement de base 4. Aucune valeur libre : une
+      marge vaut --e3 ou --e4, jamais 13 px décidés sur le moment.
+   2. Une échelle typographique de neuf tailles. Aucune taille hors
+      échelle.
+   3. Des largeurs de lecture fixées : 430 px sur téléphone, 640 px pour
+      un formulaire de bureau, 1120 px pour un registre. Un texte ne
+      s'étale jamais sur toute la largeur d'un écran de 1440.
+   ===================================================================== */
+
+:root {
+  /* --- Couleurs, noms de la maquette ------------------------------- */
+  --sang: #8C1C2C;          /* action, marque, niveau critique, erreur  */
+  --sang-clair: #F3E7E9;    /* fond d'alerte, jamais un aplat vif       */
+  --encre: #241E1D;         /* texte                                    */
+  --encre-secondaire: #6B5F5C;
+  --seve: #2E6A4F;          /* état acquis, réussite                    */
+  --seve-clair: #E7F0EB;
+  --ocre: #9A6400;          /* attente, délai qui court, prudence       */
+  --ocre-clair: #F7EFE0;
+  --trait: #E5DCD6;         /* filets, bordures                         */
+  --trait-fort: #C9BDB5;
+  --fond: #FBF7F4;
+  --surface: #FFFFFF;
+
+  /* --- Espacement, base 4 ------------------------------------------ */
+  --e1: 4px;   --e2: 8px;   --e3: 12px;  --e4: 16px;  --e5: 20px;
+  --e6: 24px;  --e7: 32px;  --e8: 40px;  --e9: 56px;  --e10: 80px;
+
+  /* --- Typographie -------------------------------------------------- */
+  --t-micro: 12px;   --t-petit: 13px;   --t-appui: 14px;
+  --t-corps: 16px;   --t-lead: 18px;    --t-titre-s: 20px;
+  --t-titre: 24px;   --t-grand: 32px;   --t-enorme: 44px;
+
+  /* --- Largeurs de lecture ------------------------------------------ */
+  --largeur-telephone: 430px;
+  --largeur-formulaire: 640px;
+  --largeur-registre: 1120px;
+  --largeur-rail: 232px;
+
+  /* --- Gestes ------------------------------------------------------- */
+  --cible: 44px;            /* zone tactile minimale                    */
+  --hauteur-action: 56px;   /* bouton principal                         */
+  --duree: 180ms;
+  --courbe: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--fond); -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--encre);
+  font-family: var(--police-sans), system-ui, sans-serif;
+  font-size: var(--t-corps);   /* jamais moins : Safari zoome sous 16 px */
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.archivo { font-family: var(--police-archivo), system-ui, sans-serif; font-weight: 700; }
+.mono    { font-family: var(--police-mono), ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+:focus-visible { outline: 2px solid var(--encre); outline-offset: 3px; }
+::selection { background: var(--sang); color: #fff; }
+
+/* =====================================================================
+   1. GABARITS DE PAGE
+   ===================================================================== */
+
+/* Téléphone : colonne unique, marge constante, place pour la barre. */
+.page-telephone {
+  max-width: var(--largeur-telephone);
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: var(--e6) var(--e5) calc(var(--e10) + var(--e6));
+}
+.page-telephone.sans-barre { padding-bottom: var(--e8); }
+
+/* Bureau : une tâche unique, colonne centrée. E13, E14, E15, E32. */
+.page-tache {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--e8) var(--e5);
+}
+.page-tache > * { width: 100%; max-width: 420px; }
+
+/* Bureau : rail à gauche, contenu à droite. Espaces professionnels. */
+.cadre-pro { display: flex; min-height: 100dvh; }
+.cadre-pro main {
+  flex: 1;
+  min-width: 0;
+  padding: var(--e7) var(--e8) var(--e10);
+}
+.contenu-formulaire { max-width: var(--largeur-formulaire); }
+.contenu-registre   { max-width: var(--largeur-registre); }
+
+/* =====================================================================
+   2. RYTHME VERTICAL
+   Une pile règle l'espace entre ses enfants. Aucune marge n'est posée
+   à la main sur un titre ou un paragraphe : c'est ce qui produisait
+   les textes éparpillés.
+   ===================================================================== */
+.pile   { display: flex; flex-direction: column; gap: var(--e4); }
+.pile-s { display: flex; flex-direction: column; gap: var(--e2); }
+.pile-l { display: flex; flex-direction: column; gap: var(--e6); }
+.pile-xl{ display: flex; flex-direction: column; gap: var(--e8); }
+.rang   { display: flex; align-items: center; gap: var(--e3); }
+.rang-espace { display: flex; align-items: center; justify-content: space-between; gap: var(--e3); }
+
+.filet { border: 0; border-top: 1px solid var(--trait); margin: 0; }
+
+h1, h2, h3, p, ul, ol { margin: 0; }
+
+/* =====================================================================
+   3. TYPOGRAPHIE
+   ===================================================================== */
+.mot-ecrit {
+  font-family: var(--police-archivo), system-ui, sans-serif;
+  font-weight: 700;
+  font-size: var(--t-grand);
+  letter-spacing: 0.01em;
+  border-bottom: 2px solid var(--sang);
+  padding-bottom: var(--e1);
+  display: inline-block;
+  line-height: 1;
+}
+.mot-ecrit.petit { font-size: var(--t-titre-s); border-bottom-width: 2px; }
+
+.titre       { font-size: var(--t-titre); font-weight: 600; line-height: 1.25; }
+.titre-grand { font-size: var(--t-grand); font-weight: 600; line-height: 1.2; }
+.sous-titre  { font-size: var(--t-appui); color: var(--encre-secondaire); }
+.lead        { font-size: var(--t-lead); font-weight: 600; line-height: 1.35; }
+.appui       { font-size: var(--t-appui); color: var(--encre-secondaire); }
+.petit       { font-size: var(--t-petit); color: var(--encre-secondaire); }
+
+/* Étiquette de section : petites capitales, filet pleine largeur. */
+.etiquette {
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--encre-secondaire);
+}
+.section-titre {
+  padding-bottom: var(--e2);
+  border-bottom: 1px solid var(--trait);
+  margin-bottom: var(--e4);
+}
+
+/* En-tête de registre : la ligne d'horodatage des écrans pro. */
+.ligne-registre {
+  font-family: var(--police-mono), ui-monospace, monospace;
+  font-size: var(--t-petit);
+  color: var(--encre-secondaire);
+}
+
+/* =====================================================================
+   4. ACTIONS
+   Un seul bouton principal par écran. Angles droits, jamais d'ombre.
+   ===================================================================== */
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e2);
+  min-height: var(--hauteur-action);
+  padding: 0 var(--e6);
+  border-radius: 0;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--duree) var(--courbe), color var(--duree) var(--courbe);
+}
+.bouton-large { width: 100%; }
+.bouton:disabled { opacity: .4; cursor: not-allowed; }
+
+.bouton-principal { background: var(--sang); color: #fff; }
+.bouton-principal:hover:not(:disabled) { background: #741724; }
+
+.bouton-encre { background: var(--encre); color: #fff; }
+.bouton-encre:hover:not(:disabled) { background: #0f0c0c; }
+
+.bouton-secondaire { background: transparent; color: var(--encre); border-color: var(--encre); }
+.bouton-secondaire:hover:not(:disabled) { background: var(--encre); color: #fff; }
+
+.bouton-discret { background: transparent; color: var(--encre); border-color: var(--trait-fort); }
+.bouton-discret:hover:not(:disabled) { border-color: var(--encre); }
+
+.bouton-compact { min-height: var(--cible); padding: 0 var(--e4); font-size: var(--t-appui); }
+
+.lien {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  min-height: var(--cible);
+  padding: 0;
+  background: none;
+  border: none;
+  font: inherit;
+  color: var(--encre);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+  cursor: pointer;
+}
+.lien:hover { text-decoration-thickness: 2px; }
+.lien-sang { color: var(--sang); }
+
+/* =====================================================================
+   5. CHAMPS
+   Soulignés d'un filet, jamais encadrés : quatre boîtes de suite
+   fabriqueraient un gris que la charte n'autorise pas (maquette E2).
+   Exception : les écrans professionnels de bureau, où le champ encadré
+   rend le focus clavier plus lisible sur un écran mal réglé (E13).
+   ===================================================================== */
+.champ { display: block; }
+.champ-etiquette {
+  display: block;
+  font-size: var(--t-appui);
+  font-weight: 600;
+  margin-bottom: var(--e1);
+}
+.champ-saisie {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--trait);
+  border-radius: 0;
+  background: transparent;
+  padding: var(--e3) 0;
+  font: inherit;
+  color: var(--encre);
+  transition: border-color var(--duree) var(--courbe);
+}
+.champ-saisie:focus { outline: none; border-bottom-color: var(--encre); border-bottom-width: 2px; }
+.champ-saisie::placeholder { color: var(--encre-secondaire); opacity: .65; }
+.champ-saisie:disabled { border-bottom-style: dashed; color: var(--encre-secondaire); }
+.champ-aide { display: block; font-size: var(--t-petit); color: var(--encre-secondaire); margin-top: var(--e1); }
+
+.champ-encadre .champ-saisie {
+  border: 1px solid var(--trait-fort);
+  padding: var(--e3) var(--e4);
+  background: var(--surface);
+}
+.champ-encadre .champ-saisie:focus {
+  border: 1px solid var(--encre);
+  box-shadow: 0 0 0 3px var(--trait);
+}
+
+/* Erreur constatée seulement : jamais sur un champ encore vide. */
+.champ-erreur .champ-saisie { border-color: var(--sang); border-bottom-width: 2px; }
+.champ-erreur.champ-encadre .champ-saisie { border: 2px solid var(--sang); }
+
+.message-erreur {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--e2);
+  color: var(--sang);
+  font-size: var(--t-appui);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.message-erreur svg { flex-shrink: 0; margin-top: 2px; }
+
+.indicatif {
+  font-family: var(--police-mono), ui-monospace, monospace;
+  color: var(--encre-secondaire);
+  padding: var(--e3) 0;
+}
+
+select.champ-saisie { appearance: none; cursor: pointer; }
+
+/* Touches de choix : un geste au lieu de trois (maquette E2). */
+.touche {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e2);
+  min-height: 48px;
+  padding: 0 var(--e4);
+  border: 1px solid var(--trait);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--encre);
+  font: inherit;
+  cursor: pointer;
+  transition: all var(--duree) var(--courbe);
+}
+.touche:hover { border-color: var(--encre); }
+.touche[aria-pressed="true"] { background: var(--encre); border-color: var(--encre); color: #fff; }
+
+.case-a-cocher {
+  width: 24px; height: 24px;
+  accent-color: var(--encre);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+/* =====================================================================
+   6. BLOC GROUPE SANGUIN — l'élément signature
+   Carré à angles droits, bordure 2 px en Sang, Archivo 700, filet
+   d'ancrage dessous. Il ne change jamais de couleur selon l'état :
+   c'est la phrase qui porte la différence (maquette, page 8).
+   ===================================================================== */
+.bloc-groupe {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--sang);
+  background: var(--surface);
+  color: var(--sang);
+  font-family: var(--police-archivo), system-ui, sans-serif;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.bloc-groupe::after {
+  content: "";
+  display: block;
+  width: 44%;
+  height: 2px;
+  background: currentColor;
+  margin-top: .18em;
+}
+.bloc-groupe.taille-xl { width: 120px; height: 120px; font-size: var(--t-enorme); }
+.bloc-groupe.taille-l  { width: 72px;  height: 72px;  font-size: var(--t-titre); }
+.bloc-groupe.taille-m  { width: 48px;  height: 48px;  font-size: var(--t-lead); }
+.bloc-groupe.taille-s  { width: 40px;  height: 40px;  font-size: var(--t-appui); }
+.bloc-groupe.taille-xs { width: 30px;  height: 30px;  font-size: var(--t-micro); }
+
+.grille-groupes { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--e3); }
+.touche-groupe {
+  min-height: var(--hauteur-action);
+  border: 1px solid var(--trait);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--encre);
+  font-family: var(--police-archivo), system-ui, sans-serif;
+  font-weight: 700;
+  font-size: var(--t-lead);
+  cursor: pointer;
+  transition: all var(--duree) var(--courbe);
+}
+.touche-groupe:hover:not(:disabled) { border-color: var(--encre); }
+.touche-groupe[aria-pressed="true"] { border: 2px solid var(--sang); color: var(--sang); }
+.touche-groupe:disabled { opacity: .35; cursor: not-allowed; }
+
+/* =====================================================================
+   7. ÉTATS
+   Toujours une icône ET le mot. Jamais la couleur seule, jamais
+   l'icône seule : un écran mal réglé doit rester lisible.
+   ===================================================================== */
+.etat { display: inline-flex; align-items: center; gap: var(--e2); font-weight: 600; }
+.etat svg { flex-shrink: 0; }
+.etat-seve  { color: var(--seve); }
+.etat-ocre  { color: var(--ocre); }
+.etat-sang  { color: var(--sang); }
+.etat-neutre{ color: var(--encre-secondaire); font-weight: 400; }
+
+/* Encadré d'information, quatre tons. Bordure à gauche, pas d'aplat vif. */
+.encadre {
+  display: flex;
+  gap: var(--e3);
+  padding: var(--e4);
+  border-left: 4px solid var(--trait-fort);
+  background: var(--surface);
+  font-size: var(--t-appui);
+  line-height: 1.45;
+}
+.encadre svg { flex-shrink: 0; margin-top: 2px; }
+.encadre-sang { border-left-color: var(--sang); background: var(--sang-clair); }
+.encadre-seve { border-left-color: var(--seve); background: var(--seve-clair); }
+.encadre-ocre { border-left-color: var(--ocre); background: var(--ocre-clair); }
+
+/* =====================================================================
+   8. REGISTRES ET LISTES
+   Filets de 1 px, aucune zébrure, aucune carte : la lecture reste calme.
+   ===================================================================== */
+.ligne-fait {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--e4);
+  padding: var(--e3) 0;
+  border-top: 1px solid var(--trait);
+}
+.ligne-fait .valeur {
+  font-family: var(--police-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.registre { width: 100%; border-collapse: collapse; font-size: var(--t-appui); }
+.registre th {
+  text-align: left;
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--encre-secondaire);
+  padding: var(--e2) var(--e3);
+  border-bottom: 1px solid var(--trait-fort);
+  white-space: nowrap;
+}
+.registre td {
+  padding: var(--e3);
+  border-bottom: 1px solid var(--trait);
+  vertical-align: middle;
+}
+.registre .nombre { text-align: right; font-family: var(--police-mono), ui-monospace, monospace; }
+.registre tbody tr:hover { background: var(--surface); }
+.registre tr.attenue td { color: var(--encre-secondaire); }
+.registre .actions { display: flex; gap: var(--e3); justify-content: flex-end; }
+.registre tr.cliquable { cursor: pointer; }
+
+/* Filet dans la marge gauche de la ligne : jamais un fond coloré, la
+   ligne reste lisible en noir et blanc (E16). */
+.registre tr.niveau-critique td:first-child { box-shadow: inset 4px 0 0 0 var(--sang); }
+.registre tr.niveau-bas td:first-child { box-shadow: inset 2px 0 0 0 var(--ocre); }
+.registre tr.niveau-modifiee td:first-child { box-shadow: inset 4px 0 0 0 var(--encre); }
+.registre tr.choisie td:first-child { box-shadow: inset 4px 0 0 0 var(--encre); }
+.registre tr.numero-douteux td:first-child { box-shadow: inset 2px 0 0 0 var(--ocre); }
+
+/* Barre de remplissage fine : elle ne fait que doubler le chiffre. */
+.jauge { display: block; height: 4px; width: 100%; max-width: 140px; background: var(--trait); }
+.jauge > span { display: block; height: 100%; }
+.jauge > span.jauge-sang  { background: var(--sang); }
+.jauge > span.jauge-ocre  { background: var(--ocre); }
+.jauge > span.jauge-encre { background: var(--encre); }
+
+/* Ligne réglée de valeurs, séparées par des filets : jamais des cartes
+   détachées (E17). */
+.ligne-valeurs {
+  display: flex;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--trait);
+  border-bottom: 1px solid var(--trait);
+}
+.ligne-valeurs > div { flex: 1 1 160px; padding: var(--e4) var(--e5); }
+.ligne-valeurs > div + div { border-left: 1px solid var(--trait); }
+.ligne-valeurs .mot {
+  font-size: var(--t-micro);
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--encre-secondaire);
+  margin-bottom: var(--e1);
+}
+.ligne-valeurs .valeur {
+  font-family: var(--police-mono), ui-monospace, monospace;
+  font-size: var(--t-titre);
+  font-variant-numeric: tabular-nums;
+}
+
+.carte {
+  background: var(--surface);
+  border: 1px solid var(--trait);
+  padding: var(--e5);
+}
+
+/* Le donneur en cours dans une liste d'appel (E20) : la position dans
+   la série se voit sans couleur, au filet, jamais à un fond. */
+.carte.courante { border-left: 4px solid var(--encre); }
+
+/* Message du centre, entre guillemets : on distingue sa parole de
+   celle de l'application (E7). */
+.citation {
+  border-left: 2px solid var(--trait-fort);
+  padding: var(--e1) 0 var(--e1) var(--e4);
+  font-size: var(--t-lead);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+/* Code de poche : la première information à l'écran, lisible à
+   distance, la poche à la main (E21 confirmation, E23). */
+.code-poche-grand {
+  font-family: var(--police-mono), ui-monospace, monospace;
+  font-size: var(--t-enorme);
+  font-weight: 700;
+  letter-spacing: .02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Champ de recherche d'un code de poche : la taille la plus proche de
+   l'échelle qui reste lisible à bout de bras (E23). */
+.champ-code-large.champ-saisie {
+  font-size: var(--t-titre);
+  font-family: var(--police-mono), ui-monospace, monospace;
+  letter-spacing: .03em;
+}
+
+/* Chronologie verticale du parcours d'une poche (E23, E27 gestion). */
+.chronologie { display: flex; flex-direction: column; }
+.chronologie-etape {
+  position: relative;
+  display: flex;
+  gap: var(--e4);
+  padding: 0 0 var(--e6) var(--e6);
+}
+.chronologie-etape::before {
+  content: "";
+  position: absolute;
+  left: 4px; top: 4px; bottom: 0;
+  width: 1px;
+  background: var(--trait);
+}
+.chronologie-etape:last-child::before { display: none; }
+.chronologie-etape::after {
+  content: "";
+  position: absolute;
+  left: 0; top: 4px;
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  background: var(--encre);
+}
+.chronologie-etape.a-venir::after { background: var(--surface); border: 1px solid var(--trait-fort); }
+.chronologie-etape.a-venir { color: var(--encre-secondaire); }
+
+/* État vide : il annonce ce qui va se passer, il ne constate pas une absence. */
+.etat-vide {
+  border: 1px solid var(--trait);
+  background: var(--surface);
+  padding: var(--e7) var(--e5);
+  text-align: left;
+}
+
+/* =====================================================================
+   9. NAVIGATION
+   ===================================================================== */
+
+/* Donneur : quatre sections, icône au-dessus du mot. */
+.barre-nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--fond);
+  border-top: 1px solid var(--trait);
+  display: flex;
+  z-index: 20;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.barre-nav a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: var(--largeur-nav, 64px);
+  padding: var(--e2) 0;
+  font-size: var(--t-micro);
+  color: var(--encre-secondaire);
+  text-decoration: none;
+  border-top: 2px solid transparent;
+  margin-top: -1px;
+  transition: color var(--duree) var(--courbe);
+}
+.barre-nav a.actif { color: var(--encre); font-weight: 600; border-top-color: var(--encre); }
+
+/* Professionnel : rail vertical, libellés en toutes lettres. */
+.rail {
+  width: var(--largeur-rail);
+  flex-shrink: 0;
+  border-right: 1px solid var(--trait);
+  background: var(--fond);
+  padding: var(--e6) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e5);
+  position: sticky;
+  top: 0;
+  height: 100dvh;
+  overflow-y: auto;
+}
+.rail-entete { padding: 0 var(--e5); }
+.rail-groupe { display: flex; flex-direction: column; }
+.rail-groupe > .etiquette { padding: 0 var(--e5) var(--e2); }
+.rail a {
+  display: flex;
+  align-items: center;
+  gap: var(--e3);
+  padding: var(--e3) var(--e5);
+  font-size: var(--t-appui);
+  color: var(--encre-secondaire);
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  transition: color var(--duree) var(--courbe), background var(--duree) var(--courbe);
+}
+.rail a:hover { color: var(--encre); background: var(--surface); }
+.rail a.actif { color: var(--encre); font-weight: 600; border-left-color: var(--encre); background: var(--surface); }
+.rail a.desactive { opacity: .45; pointer-events: none; }
+.rail-pied { margin-top: auto; padding: var(--e5) var(--e5) 0; border-top: 1px solid var(--trait); }
+
+/* En-tête d'écran professionnel : titre à gauche, action unique à droite. */
+.entete-ecran {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--e5);
+  flex-wrap: wrap;
+  margin-bottom: var(--e6);
+}
+
+/* =====================================================================
+   10. INDICATEUR D'ÉTAPE
+   ===================================================================== */
+.segments { display: flex; gap: var(--e2); }
+.segments span {
+  height: 4px; flex: 1;
+  background: var(--trait);
+  transition: background var(--duree) var(--courbe);
+}
+.segments span.actif { background: var(--encre); }
+
+/* Force du mot de passe : quatre segments, doublés d'un mot. */
+.force { display: flex; gap: var(--e1); }
+.force span { height: 4px; flex: 1; background: var(--trait); }
+.force span.rempli { background: var(--seve); }
+.force span.rempli.faible { background: var(--ocre); }
+
+/* =====================================================================
+   11. SQUELETTE DE CHARGEMENT
+   Il montre la forme de ce qui arrive, et nomme la cause du délai.
+   ===================================================================== */
+.squelette { background: var(--trait); animation: respire 1.4s ease-in-out infinite; }
+@keyframes respire { 0%, 100% { opacity: .45; } 50% { opacity: .9; } }
+
+/* =====================================================================
+   12. FENÊTRE DE CONFIRMATION
+   ===================================================================== */
+.voile {
+  position: fixed; inset: 0;
+  background: rgba(36, 30, 29, .38);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--e5);
+  z-index: 60;
+}
+.fenetre {
+  background: var(--surface);
+  border: 1px solid var(--trait-fort);
+  padding: var(--e6);
+  width: 100%;
+  max-width: 480px;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+/* =====================================================================
+   13. ADAPTATION AUX ÉCRANS
+   Le donneur est pensé pour le téléphone, les espaces professionnels
+   pour un écran de bureau. Sous 900 px, le rail passe en bandeau
+   horizontal défilant plutôt que de disparaître.
+   ===================================================================== */
+@media (max-width: 900px) {
+  .cadre-pro { flex-direction: column; }
+  .rail {
+    width: 100%;
+    height: auto;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid var(--trait);
+    flex-direction: row;
+    align-items: center;
+    gap: var(--e4);
+    padding: var(--e3) var(--e4);
+    overflow-x: auto;
+  }
+  .rail-groupe { flex-direction: row; align-items: center; }
+  .rail-groupe > .etiquette { display: none; }
+  .rail a {
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    padding: var(--e2) var(--e3);
+    white-space: nowrap;
+  }
+  .rail a.actif { border-left: none; border-bottom-color: var(--encre); }
+  .rail-pied { margin-top: 0; padding: 0 0 0 var(--e4); border-top: none; border-left: 1px solid var(--trait); }
+  .cadre-pro main { padding: var(--e6) var(--e5) var(--e9); }
+  .registre-defilant { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .registre-defilant .registre { min-width: 720px; }
+}
+
+@media (max-width: 560px) {
+  .grille-groupes { gap: var(--e2); }
+  .entete-ecran { flex-direction: column; }
+  .entete-ecran .bouton { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media print {
+  .barre-nav, .rail, .bouton { display: none !important; }
+  body { background: #fff; }
+}

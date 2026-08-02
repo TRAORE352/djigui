@@ -1,0 +1,21 @@
+{
+  "name": "djigui-backend",
+  "version": "2.0.0",
+  "description": "DJIGUI — couche de service. SQL ecrit a la main, MariaDB.",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node --watch server.js",
+    "start": "node server.js",
+    "creer-admin": "node scripts/creer-admin.js",
+    "verifier": "node scripts/verifier-installation.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.5"
+  }
+}
