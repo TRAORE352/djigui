@@ -156,7 +156,7 @@ async function ajouterTelephone(requete, reponse) {
     journaliser(requete.utilisateur.id_utilisateur, 'Ajout d\u2019un numéro', numero);
     return reponse.status(201).json({ id_telephone: idTelephone, rang });
   } catch (erreur) {
-    if (erreur.code === 'ER_DUP_ENTRY') {
+    if (erreur.code === '23505') {
       return reponse.status(409).json({ erreur: 'Ce numéro est déjà enregistré.', champ: 'numero' });
     }
     throw erreur;
@@ -206,7 +206,7 @@ async function remplacerPrincipal(requete, reponse) {
       message: 'Numéro principal remplacé. C\u2019est maintenant votre identifiant de connexion.'
     });
   } catch (erreur) {
-    if (erreur.code === 'ER_DUP_ENTRY') {
+    if (erreur.code === '23505') {
       return reponse.status(409).json({
         erreur: 'Ce numéro appartient déjà à un autre compte.', champ: 'nouveau_numero'
       });
