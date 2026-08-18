@@ -9,75 +9,79 @@ const TYPES_LISIBLES = {
 };
 
 async function listerStructures() {
-  const [lignes] = await pool.query(
+  const resultat = await pool.query(
     `SELECT s.*,
             (SELECT COUNT(*) FROM utilisateur u
               WHERE u.id_structure = s.id_structure AND u.statut = 'actif') AS nb_comptes
        FROM structure_sang s
       ORDER BY s.ville, s.nom`);
-  return lignes.map((ligne) => ({ ...ligne, type_lisible: TYPES_LISIBLES[ligne.type] }));
+  // nb_comptes vient d'un COUNT(*) : bigint Postgres, chaîne côté pg par
+  // défaut. Recasté pour garder un nombre en JSON, comme avant.
+  return resultat.rows.map((ligne) => (
+    { ...ligne, nb_comptes: Number(ligne.nb_comptes), type_lisible: TYPES_LISIBLES[ligne.type] }));
 }
 
 async function trouverStructure(idStructure) {
-  const [lignes] = await pool.query(
-    'SELECT * FROM structure_sang WHERE id_structure = ?', [idStructure]);
-  return lignes[0] || null;
+  const resultat = await pool.query(
+    'SELECT * FROM structure_sang WHERE id_structure = $1', [idStructure]);
+  return resultat.rows[0] || null;
 }
 
 // Création d'une structure ET de ses huit seuils, en une transaction
-// (relation R12, règle RG18) : soit tout, soit rien.
+// (relation R12, règle RG18) : soit tout, soit rien. Client dédié.
 async function creerStructureAvecSeuils(donnees) {
-  const connexion = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connexion.beginTransaction();
-    const [resultat] = await connexion.query(
+    await client.query('BEGIN');
+    const resultat = await client.query(
       `INSERT INTO structure_sang (nom, type, ville, adresse, telephone, horaires)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id_structure`,
       [donnees.nom, donnees.type, donnees.ville,
        donnees.adresse || null, donnees.telephone || null, donnees.horaires || null]);
-    const idStructure = resultat.insertId;
+    const idStructure = resultat.rows[0].id_structure;
     for (const groupe of GROUPES) {
-      await connexion.query(
-        'INSERT INTO seuil_stock (id_structure, groupe_sanguin) VALUES (?, ?)',
+      await client.query(
+        'INSERT INTO seuil_stock (id_structure, groupe_sanguin) VALUES ($1, $2)',
         [idStructure, groupe]);
     }
-    await connexion.commit();
+    await client.query('COMMIT');
     return idStructure;
   } catch (erreur) {
-    await connexion.rollback();
+    await client.query('ROLLBACK');
     throw erreur;
   } finally {
-    connexion.release();
+    client.release();
   }
 }
 
 async function modifierStructure(idStructure, donnees) {
   await pool.query(
     `UPDATE structure_sang
-        SET nom = ?, type = ?, ville = ?, adresse = ?, telephone = ?, horaires = ?
-      WHERE id_structure = ?`,
+        SET nom = $1, type = $2, ville = $3, adresse = $4, telephone = $5, horaires = $6
+      WHERE id_structure = $7`,
     [donnees.nom, donnees.type, donnees.ville, donnees.adresse || null,
      donnees.telephone || null, donnees.horaires || null, idStructure]);
 }
 
 async function compterComptesDeStructure(idStructure) {
-  const [lignes] = await pool.query(
-    'SELECT COUNT(*) AS nb FROM utilisateur WHERE id_structure = ?', [idStructure]);
-  return lignes[0].nb;
+  const resultat = await pool.query(
+    'SELECT COUNT(*) AS nb FROM utilisateur WHERE id_structure = $1', [idStructure]);
+  return Number(resultat.rows[0].nb);
 }
 
 async function supprimerStructure(idStructure) {
-  const connexion = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connexion.beginTransaction();
-    await connexion.query('DELETE FROM seuil_stock WHERE id_structure = ?', [idStructure]);
-    await connexion.query('DELETE FROM structure_sang WHERE id_structure = ?', [idStructure]);
-    await connexion.commit();
+    await client.query('BEGIN');
+    await client.query('DELETE FROM seuil_stock WHERE id_structure = $1', [idStructure]);
+    await client.query('DELETE FROM structure_sang WHERE id_structure = $1', [idStructure]);
+    await client.query('COMMIT');
   } catch (erreur) {
-    await connexion.rollback();
+    await client.query('ROLLBACK');
     throw erreur;
   } finally {
-    connexion.release();
+    client.release();
   }
 }
 

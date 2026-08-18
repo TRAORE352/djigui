@@ -26,22 +26,23 @@ async function modifierSeuils(idStructure, liste, idAgent) {
     }
   }
 
-  const connexion = await pool.getConnection();
+  // Transaction : un client dédié, toutes les requêtes dessus.
+  const client = await pool.connect();
   try {
-    await connexion.beginTransaction();
+    await client.query('BEGIN');
     for (const ligne of liste) {
-      await connexion.query(
+      await client.query(
         `UPDATE seuil_stock
-            SET seuil_bas = ?, seuil_critique = ?, modifie_par = ?, date_modification = NOW()
-          WHERE id_structure = ? AND groupe_sanguin = ?`,
+            SET seuil_bas = $1, seuil_critique = $2, modifie_par = $3, date_modification = NOW()
+          WHERE id_structure = $4 AND groupe_sanguin = $5`,
         [Number(ligne.seuil_bas), Number(ligne.seuil_critique), idAgent, idStructure, ligne.groupe_sanguin]);
     }
-    await connexion.commit();
+    await client.query('COMMIT');
   } catch (erreur) {
-    await connexion.rollback();
+    await client.query('ROLLBACK');
     throw erreur;
   } finally {
-    connexion.release();
+    client.release();
   }
 }
 

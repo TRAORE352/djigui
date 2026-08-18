@@ -9,7 +9,9 @@ async function listerZones() {
             (SELECT COUNT(*) FROM donneur d WHERE d.id_zone = z.id_zone) AS nb_donneurs
        FROM zone z
       ORDER BY z.ville, z.nom`);
-  return resultat.rows;
+  // nb_donneurs vient d'un COUNT(*) : bigint Postgres, chaîne côté pg par
+  // défaut. Recasté pour garder un nombre en JSON, comme avant.
+  return resultat.rows.map((ligne) => ({ ...ligne, nb_donneurs: Number(ligne.nb_donneurs) }));
 }
 
 async function creerZone(nom, ville) {
