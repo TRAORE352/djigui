@@ -57,10 +57,28 @@ application.use((requete, reponse) => {
 });
 
 // Erreur imprévue : message neutre à l'écran, détail complet en console.
+// Codes MySQL (ER_...) remplacés par les SQLSTATE PostgreSQL (5
+// caractères). Une violation d'unicité ou de clé étrangère qui remonte
+// jusqu'ici (pas interceptée localement par un contrôleur) reste une
+// erreur du client, pas du service : 409, jamais 500.
+const CODES_RESEAU = new Set(['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT']);
+const estCodePostgres = (code) => typeof code === 'string' && /^[0-9A-Z]{5}$/.test(code);
+
 application.use((erreur, requete, reponse, suite) => {
   console.error(`\n  Erreur sur ${requete.method} ${requete.originalUrl}`);
   console.error(erreur);
-  const message = erreur && erreur.code && String(erreur.code).startsWith('ER_')
+
+  const code = erreur && erreur.code;
+  if (code === '23505') {
+    return reponse.status(409).json({ erreur: 'Cette valeur existe déjà : un doublon a été refusé.' });
+  }
+  if (code === '23503') {
+    return reponse.status(409).json({
+      erreur: 'Cette action fait référence à une donnée qui n’existe pas ou plus.'
+    });
+  }
+
+  const message = code && (CODES_RESEAU.has(code) || estCodePostgres(code))
     ? expliquerPanne(erreur)
     : 'Le service a rencontré un problème. Réessayez.';
   reponse.status(500).json({ erreur: message });
