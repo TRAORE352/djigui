@@ -4,6 +4,12 @@
 //  script est la seule porte d'entrée du premier administrateur.
 //  Le cahier des charges en prévoit deux (règle RG46) : lancez-le deux
 //  fois, avec deux identifiants différents.
+//
+//  LOT 3 (migration Supabase) : converti au pilote pg. Pas de
+//  transaction dans l'original (deux INSERT indépendants via pool.query,
+//  jamais beginTransaction/commit) : aucune n'a été ajoutée ici, le
+//  comportement reste identique — seuls ? → $n, insertId → RETURNING et
+//  le code d'erreur de doublon changent.
 // =====================================================================
 require('dotenv').config();
 const readline = require('node:readline/promises');
@@ -13,7 +19,7 @@ const { verifierMotDePassePro } = require('../src/regles/motdepasse');
 
 async function principal() {
   const lecteur = readline.createInterface({ input: process.stdin, output: process.stdout });
-  console.log('\n  DJIGUI — création d\u2019un compte administrateur\n');
+  console.log('\n  DJIGUI — création d’un compte administrateur\n');
 
   const prenom = (await lecteur.question('  Prénom : ')).trim();
   const nom = (await lecteur.question('  Nom : ')).trim();
@@ -38,26 +44,28 @@ async function principal() {
 
   try {
     const condensat = await bcrypt.hash(motDePasse, 10);
-    const [resultat] = await pool.query(
+    const resultat = await pool.query(
       `INSERT INTO utilisateur (identifiant, mot_de_passe, role, nom, prenom,
                                 fonction, doit_changer_mot_de_passe)
-       VALUES (?, ?, 'admin', ?, ?, 'Administrateur du centre', 0)`,
+       VALUES ($1, $2, 'admin', $3, $4, 'Administrateur du centre', FALSE)
+       RETURNING id_utilisateur`,
       [identifiant, condensat, nom, prenom]);
+    const idUtilisateur = resultat.rows[0].id_utilisateur;
     await pool.query(
       `INSERT INTO journal_activite (id_utilisateur, action, cible)
-       VALUES (?, 'Création d\u2019un compte administrateur', ?)`,
-      [resultat.insertId, identifiant]);
+       VALUES ($1, 'Création d’un compte administrateur', $2)`,
+      [idUtilisateur, identifiant]);
 
-    const [total] = await pool.query(
+    const total = await pool.query(
       "SELECT COUNT(*) AS nb FROM utilisateur WHERE role = 'admin' AND statut = 'actif'");
     console.log(`\n  Compte créé. Identifiant : ${identifiant}`);
-    if (total[0].nb < 2) {
+    if (Number(total.rows[0].nb) < 2) {
       console.log('  Le cahier des charges en prévoit deux : relancez ce script pour le second.\n');
     } else {
       console.log('  Deux administrateurs sont en place, comme prévu.\n');
     }
   } catch (erreur) {
-    if (erreur.code === 'ER_DUP_ENTRY') {
+    if (erreur.code === '23505') {
       console.error('\n  Refusé : cet identifiant existe déjà.\n');
     } else {
       console.error(`\n  Échec : ${expliquerPanne(erreur)}\n`);

@@ -10,15 +10,23 @@
 //  LOT 2 (migration Supabase) : pilote mysql2 → pg. Le pool ci-dessous
 //  parle PostgreSQL. L'interface exportée ({ pool, diagnostiquer,
 //  expliquerPanne }) ne change pas, pour ne pas casser les fichiers qui
-//  l'importent par déstructuration — mais le CONTENU de diagnostiquer()
-//  n'a PAS été touché dans ce lot (hors périmètre : il lit des tables
-//  métier — zone, structure_sang, utilisateur, parametre — avec la
-//  syntaxe mysql2 pool.getConnection()/connexion.query(), qui n'existe
-//  pas sur un Pool pg). Il sera converti avec les autres requêtes des
-//  lots suivants. En attendant, verifierConnexion() ci-dessous sert de
-//  test de connexion isolé, indépendant de diagnostiquer().
+//  l'importent par déstructuration.
+//  LOT 3 : diagnostiquer() converti au pilote pg (aucune transaction ici,
+//  de simples lectures : pool.query() suffit, pas besoin de sortir un
+//  client dédié).
 // =====================================================================
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
+
+// Contrat de l'API préservé : la migration ne doit rien changer aux
+// réponses JSON. Par défaut, le pilote pg convertit DATE/TIMESTAMP/
+// TIMESTAMPTZ en objets Date JS (Express les sérialise alors en ISO
+// 8601), alors que l'ancien pool mysql2 était configuré dateStrings:true
+// et renvoyait des chaînes. On force ces trois types à rester des
+// chaînes brutes, telles que Postgres les renvoie sur le fil — le plus
+// proche du comportement d'avant.
+types.setTypeParser(1114, (v) => v); // timestamp sans fuseau
+types.setTypeParser(1082, (v) => v); // date
+types.setTypeParser(1184, (v) => v); // timestamptz
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -67,33 +75,32 @@ function expliquerPanne(erreur) {
 
 // Vérifie la connexion et l'état des tables. Sert au démarrage et à
 // la route /api/sante.
-// NON CONVERTI dans ce lot (hors périmètre strict : requêtes métier,
-// syntaxe mysql2 encore présente) — voir la note en tête de fichier.
+// PostgreSQL n'a pas de notion de « base courante » comme table_schema :
+// nos tables vivent dans le schéma public de la base pointée par
+// DATABASE_URL. DB_NOM (variable MySQL, retirée au lot 2) est remplacé
+// par le nom de schéma fixe 'public'. COUNT(*) revient en bigint côté
+// Postgres, donc en chaîne côté pg — Number(...) partout pour garder des
+// entiers JS, comme le reste du projet.
 async function diagnostiquer() {
-  const connexion = await pool.getConnection();
-  try {
-    const [tables] = await connexion.query(
-      `SELECT COUNT(*) AS nb FROM information_schema.tables
-        WHERE table_schema = ?`, [process.env.DB_NOM || 'djigui']);
-    const [zones] = await connexion.query('SELECT COUNT(*) AS nb FROM zone');
-    const [structures] = await connexion.query('SELECT COUNT(*) AS nb FROM structure_sang');
-    const [comptes] = await connexion.query(
-      `SELECT role, COUNT(*) AS nb FROM utilisateur
-        WHERE statut = 'actif' GROUP BY role`);
-    const [parametres] = await connexion.query('SELECT COUNT(*) AS nb FROM parametre');
-    const repartition = { donneur: 0, gestionnaire: 0, admin: 0 };
-    for (const ligne of comptes) repartition[ligne.role] = ligne.nb;
-    return {
-      base_connectee: true,
-      nb_tables: tables[0].nb,
-      nb_parametres: parametres[0].nb,
-      nb_zones: zones[0].nb,
-      nb_structures: structures[0].nb,
-      comptes_actifs: repartition
-    };
-  } finally {
-    connexion.release();
-  }
+  const tables = await pool.query(
+    `SELECT COUNT(*) AS nb FROM information_schema.tables
+      WHERE table_schema = 'public'`);
+  const zones = await pool.query('SELECT COUNT(*) AS nb FROM zone');
+  const structures = await pool.query('SELECT COUNT(*) AS nb FROM structure_sang');
+  const comptes = await pool.query(
+    `SELECT role, COUNT(*) AS nb FROM utilisateur
+      WHERE statut = 'actif' GROUP BY role`);
+  const parametres = await pool.query('SELECT COUNT(*) AS nb FROM parametre');
+  const repartition = { donneur: 0, gestionnaire: 0, admin: 0 };
+  for (const ligne of comptes.rows) repartition[ligne.role] = Number(ligne.nb);
+  return {
+    base_connectee: true,
+    nb_tables: Number(tables.rows[0].nb),
+    nb_parametres: Number(parametres.rows[0].nb),
+    nb_zones: Number(zones.rows[0].nb),
+    nb_structures: Number(structures.rows[0].nb),
+    comptes_actifs: repartition
+  };
 }
 
 // Test de connexion isolé pour ce lot : une seule requête, sans toucher

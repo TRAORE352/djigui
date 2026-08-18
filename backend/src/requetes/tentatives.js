@@ -3,17 +3,17 @@
 const { pool } = require('../db');
 
 async function compterDerniereHeure(identifiant) {
-  const [lignes] = await pool.query(
+  const resultat = await pool.query(
     `SELECT COUNT(*) AS nb FROM tentative_recuperation
-      WHERE identifiant = ?
-        AND date_tentative >= DATE_SUB(NOW(), INTERVAL 1 HOUR)`, [identifiant]);
-  return lignes[0].nb;
+      WHERE identifiant = $1
+        AND date_tentative >= NOW() - INTERVAL '1 hour'`, [identifiant]);
+  return Number(resultat.rows[0].nb);
 }
 
 async function enregistrerTentative(identifiant, succes) {
   await pool.query(
-    'INSERT INTO tentative_recuperation (identifiant, succes) VALUES (?, ?)',
-    [identifiant, succes ? 1 : 0]);
+    'INSERT INTO tentative_recuperation (identifiant, succes) VALUES ($1, $2)',
+    [identifiant, succes]);
 }
 
 module.exports = { compterDerniereHeure, enregistrerTentative };
