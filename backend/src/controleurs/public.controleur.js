@@ -19,7 +19,7 @@ async function sante(requete, reponse) {
   try {
     const etat = await diagnostiquer();
     const alertes = [];
-    if (etat.nb_tables < 18) {
+    if (etat.nb_tables < 17) {
       alertes.push('Toutes les tables ne sont pas créées. Importez sql/01-creation.sql.');
     }
     if (etat.nb_parametres === 0) {

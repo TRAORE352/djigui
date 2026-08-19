@@ -12,24 +12,27 @@
 // =====================================================================
 const { pool } = require('../db');
 const { lireParametres } = require('./parametres');
-const { construireFiltres, valeursEligible, EXPR_ELIGIBLE, DEPUIS } = require('./registre-donneurs');
+const { construireFiltres, exprEligible, DEPUIS } = require('./registre-donneurs');
 const { groupesCompatibles, sansSubstitut } = require('../regles/compatibilite');
 
 // Construit la base commune à compterCibles et candidatsFinaux : le
 // groupe (élargi ou non aux compatibles, annexe D) et les zones cochées.
+// Ne construit plus le SQL ici (contrairement à l'original) : exprEligible
+// et construireFiltres doivent être appelés dans l'ordre exact où leurs
+// $n apparaîtront dans le texte final, qui diffère selon l'appelant —
+// voir compterCibles et candidatsFinaux.
 async function baseCiblage(ciblage) {
   const parametres = await lireParametres();
   const groupes = ciblage.elargir_compatibles
     ? groupesCompatibles(ciblage.groupe)
     : [ciblage.groupe];
-  const { ou, valeurs } = construireFiltres({ groupes, zones: ciblage.zones || [] }, parametres);
-  return { parametres, groupes, ou, valeurs };
+  return { parametres, groupes, filtres: { groupes, zones: ciblage.zones || [] } };
 }
 
 // Un donneur est retenu s'il a AU MOINS UN numéro qui n'est pas signalé
 // injoignable. La joignabilité ORDONNE la liste d'appel (E20) ; elle ne
 // FILTRE jamais les destinataires. Un numéro « jamais vérifié » reste un
-// numéro qu'on peut appeler.
+// numéro qu'on peut appeler. Aucun placeholder ici : reste une constante.
 const EXPR_A_UN_NUMERO_UTILISABLE = `EXISTS (
   SELECT 1 FROM telephone_donneur tx
    WHERE tx.id_donneur = d.id_donneur AND tx.statut_joignabilite <> 'injoignable'
@@ -42,20 +45,28 @@ const EXPR_A_UN_NUMERO_UTILISABLE = `EXISTS (
 //   - dont pouvant donner aujourd'hui (RG5)
 //   - recevront l'appel = éligibles ET ayant au moins un numéro non
 //     injoignable — le seul nombre qui compte vraiment.
+// SUM(condition) → SUM(CASE WHEN condition THEN 1 ELSE 0 END). Ordre de
+// construction de `valeurs` = ordre d'apparition dans le texte : les deux
+// exprEligible() du SELECT d'abord, puis construireFiltres() du WHERE.
 async function compterCibles(idStructure, ciblage) {
-  const { parametres, groupes, ou, valeurs } = await baseCiblage(ciblage);
+  const { parametres, groupes, filtres } = await baseCiblage(ciblage);
 
-  const [lignes] = await pool.query(
+  const valeurs = [];
+  const exprPeuvent = exprEligible(valeurs, parametres);
+  const exprRecevront = `${exprEligible(valeurs, parametres)} AND ${EXPR_A_UN_NUMERO_UTILISABLE}`;
+  const ou = construireFiltres(filtres, parametres, valeurs);
+
+  const resultat = await pool.query(
     `SELECT
         COUNT(*) AS total,
-        SUM(p.statut_joignabilite = 'confirme') AS confirmes,
-        SUM(${EXPR_ELIGIBLE}) AS peuvent_donner_aujourdhui,
-        SUM(${EXPR_ELIGIBLE} AND ${EXPR_A_UN_NUMERO_UTILISABLE}) AS recevront
+        SUM(CASE WHEN p.statut_joignabilite = 'confirme' THEN 1 ELSE 0 END) AS confirmes,
+        SUM(CASE WHEN ${exprPeuvent} THEN 1 ELSE 0 END) AS peuvent_donner_aujourdhui,
+        SUM(CASE WHEN ${exprRecevront} THEN 1 ELSE 0 END) AS recevront
        ${DEPUIS}
       WHERE ${ou}`,
-    [...valeursEligible(parametres), ...valeursEligible(parametres), ...valeurs]);
+    valeurs);
 
-  const ligne = lignes[0];
+  const ligne = resultat.rows[0];
   const peuventDonner = Number(ligne.peuvent_donner_aujourdhui) || 0;
   const recevront = Number(ligne.recevront) || 0;
   return {
@@ -74,98 +85,110 @@ async function compterCibles(idStructure, ciblage) {
 // Les destinataires réels, au moment de l'envoi : éligibles aujourd'hui
 // et ayant au moins un numéro non injoignable — exactement le dernier
 // nombre de compterCibles. Jamais de LIMIT : un appel ne se tronque pas.
+// Ordre de construction de `valeurs` : construireFiltres (WHERE) avant
+// exprEligible (AND qui suit), comme dans le texte.
 async function candidatsFinaux(ciblage) {
-  const { parametres, ou, valeurs } = await baseCiblage(ciblage);
-  const [lignes] = await pool.query(
+  const { parametres, filtres } = await baseCiblage(ciblage);
+  const valeurs = [];
+  const ou = construireFiltres(filtres, parametres, valeurs);
+  const exprElig = exprEligible(valeurs, parametres);
+
+  const resultat = await pool.query(
     `SELECT d.id_donneur, p.numero AS numero_principal, d.accepte_messagerie, d.accepte_sms
        ${DEPUIS}
       WHERE ${ou}
-        AND ${EXPR_ELIGIBLE}
+        AND ${exprElig}
         AND ${EXPR_A_UN_NUMERO_UTILISABLE}`,
-    [...valeurs, ...valeursEligible(parametres)]);
-  return lignes;
+    valeurs);
+  return resultat.rows;
 }
 
 // Le dernier appel envoyé pour ce groupe, pour que l'agent règle son
 // ciblage avec l'expérience passée (E18).
 async function dernierAppelDuGroupe(idStructure, groupe) {
-  const [lignes] = await pool.query(
+  const resultat = await pool.query(
     `SELECT a.id_alerte, a.date_envoi, a.nb_destinataires,
             (SELECT COUNT(*) FROM reponse_alerte r
-              WHERE r.id_alerte = a.id_alerte AND r.presente = 1) AS donneurs_venus
+              WHERE r.id_alerte = a.id_alerte AND r.presente = TRUE) AS donneurs_venus
        FROM alerte a
-      WHERE a.id_structure = ? AND a.groupe_cible = ? AND a.statut IN ('envoyee', 'cloturee')
+      WHERE a.id_structure = $1 AND a.groupe_cible = $2 AND a.statut IN ('envoyee', 'cloturee')
       ORDER BY a.date_envoi DESC
       LIMIT 1`,
     [idStructure, groupe]);
-  return lignes[0] || null;
+  const ligne = resultat.rows[0];
+  if (!ligne) return null;
+  return { ...ligne, donneurs_venus: Number(ligne.donneurs_venus) };
 }
 
 // E18 — création en brouillon, modifiable tant qu'elle n'est pas envoyée.
+// Transaction sur un client dédié.
 async function creerAlerte(donnees, idAgent) {
-  const connexion = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connexion.beginTransaction();
-    const [resultat] = await connexion.query(
+    await client.query('BEGIN');
+    const resultat = await client.query(
       `INSERT INTO alerte (id_structure, cree_par, groupe_cible, elargi_compatibles, message,
                             canaux, date_limite, heure_limite, statut)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'brouillon')`,
-      [donnees.idStructure, idAgent, donnees.groupe, donnees.elargirCompatibles ? 1 : 0,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'brouillon')
+       RETURNING id_alerte`,
+      [donnees.idStructure, idAgent, donnees.groupe, Boolean(donnees.elargirCompatibles),
        donnees.message, donnees.canaux, donnees.dateLimite, donnees.heureLimite]);
-    const idAlerte = resultat.insertId;
+    const idAlerte = resultat.rows[0].id_alerte;
     for (const idZone of donnees.zones) {
-      await connexion.query('INSERT INTO alerte_zone (id_alerte, id_zone) VALUES (?, ?)', [idAlerte, idZone]);
+      await client.query('INSERT INTO alerte_zone (id_alerte, id_zone) VALUES ($1, $2)', [idAlerte, idZone]);
     }
-    await connexion.commit();
+    await client.query('COMMIT');
     return idAlerte;
   } catch (erreur) {
-    await connexion.rollback();
+    await client.query('ROLLBACK');
     throw erreur;
   } finally {
-    connexion.release();
+    client.release();
   }
 }
 
 // Modification d'un brouillon : refusée si l'appel est déjà parti.
 async function modifierAlerte(idAlerte, idStructure, donnees) {
-  const [lignes] = await pool.query(
-    'SELECT statut FROM alerte WHERE id_alerte = ? AND id_structure = ?', [idAlerte, idStructure]);
-  if (!lignes[0]) throw new Error('Cet appel n’existe pas.');
-  if (lignes[0].statut !== 'brouillon') throw new Error('Cet appel a déjà été envoyé, il ne peut plus être modifié.');
+  const lectureResultat = await pool.query(
+    'SELECT statut FROM alerte WHERE id_alerte = $1 AND id_structure = $2', [idAlerte, idStructure]);
+  if (!lectureResultat.rows[0]) throw new Error('Cet appel n’existe pas.');
+  if (lectureResultat.rows[0].statut !== 'brouillon') {
+    throw new Error('Cet appel a déjà été envoyé, il ne peut plus être modifié.');
+  }
 
-  const connexion = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connexion.beginTransaction();
-    await connexion.query(
+    await client.query('BEGIN');
+    await client.query(
       `UPDATE alerte
-          SET groupe_cible = ?, elargi_compatibles = ?, message = ?, canaux = ?,
-              date_limite = ?, heure_limite = ?
-        WHERE id_alerte = ?`,
-      [donnees.groupe, donnees.elargirCompatibles ? 1 : 0, donnees.message, donnees.canaux,
+          SET groupe_cible = $1, elargi_compatibles = $2, message = $3, canaux = $4,
+              date_limite = $5, heure_limite = $6
+        WHERE id_alerte = $7`,
+      [donnees.groupe, Boolean(donnees.elargirCompatibles), donnees.message, donnees.canaux,
        donnees.dateLimite, donnees.heureLimite, idAlerte]);
-    await connexion.query('DELETE FROM alerte_zone WHERE id_alerte = ?', [idAlerte]);
+    await client.query('DELETE FROM alerte_zone WHERE id_alerte = $1', [idAlerte]);
     for (const idZone of donnees.zones) {
-      await connexion.query('INSERT INTO alerte_zone (id_alerte, id_zone) VALUES (?, ?)', [idAlerte, idZone]);
+      await client.query('INSERT INTO alerte_zone (id_alerte, id_zone) VALUES ($1, $2)', [idAlerte, idZone]);
     }
-    await connexion.commit();
+    await client.query('COMMIT');
   } catch (erreur) {
-    await connexion.rollback();
+    await client.query('ROLLBACK');
     throw erreur;
   } finally {
-    connexion.release();
+    client.release();
   }
 }
 
 // E18 — LE MOMENT CRITIQUE : la liste est figée ici, définitivement.
 async function envoyerAlerte(idAlerte, idStructure, idAgent) {
-  const [lignes] = await pool.query(
-    'SELECT * FROM alerte WHERE id_alerte = ? AND id_structure = ?', [idAlerte, idStructure]);
-  const alerte = lignes[0];
+  const lectureResultat = await pool.query(
+    'SELECT * FROM alerte WHERE id_alerte = $1 AND id_structure = $2', [idAlerte, idStructure]);
+  const alerte = lectureResultat.rows[0];
   if (!alerte) throw new Error('Cet appel n’existe pas.');
   if (alerte.statut !== 'brouillon') throw new Error('Cet appel a déjà été envoyé.');
 
-  const [zonesLignes] = await pool.query('SELECT id_zone FROM alerte_zone WHERE id_alerte = ?', [idAlerte]);
-  const zones = zonesLignes.map((ligne) => ligne.id_zone);
+  const zonesResultat = await pool.query('SELECT id_zone FROM alerte_zone WHERE id_alerte = $1', [idAlerte]);
+  const zones = zonesResultat.rows.map((ligne) => ligne.id_zone);
 
   const candidats = await candidatsFinaux({
     groupe: alerte.groupe_cible, elargir_compatibles: Boolean(alerte.elargi_compatibles), zones
@@ -175,24 +198,24 @@ async function envoyerAlerte(idAlerte, idStructure, idAgent) {
       'Aucun donneur ne correspond à ce ciblage aujourd’hui. Élargissez les zones ou les groupes compatibles avant d’envoyer.');
   }
 
-  const connexion = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connexion.beginTransaction();
+    await client.query('BEGIN');
     for (const candidat of candidats) {
-      await connexion.query(
+      await client.query(
         `INSERT INTO alerte_destinataire (id_alerte, id_donneur, canal_envoi, date_envoi, statut_envoi)
-         VALUES (?, ?, 'application', NOW(), 'envoye')`,
+         VALUES ($1, $2, 'application', NOW(), 'envoye')`,
         [idAlerte, candidat.id_donneur]);
     }
-    await connexion.query(
-      `UPDATE alerte SET statut = 'envoyee', date_envoi = NOW(), nb_destinataires = ? WHERE id_alerte = ?`,
+    await client.query(
+      `UPDATE alerte SET statut = 'envoyee', date_envoi = NOW(), nb_destinataires = $1 WHERE id_alerte = $2`,
       [candidats.length, idAlerte]);
-    await connexion.commit();
+    await client.query('COMMIT');
   } catch (erreur) {
-    await connexion.rollback();
+    await client.query('ROLLBACK');
     throw erreur;
   } finally {
-    connexion.release();
+    client.release();
   }
 
   return { id_alerte: idAlerte, nb_destinataires: candidats.length, message: alerte.message, destinataires: candidats };
@@ -200,7 +223,7 @@ async function envoyerAlerte(idAlerte, idStructure, idAgent) {
 
 // Une alerte dont la date et l'heure limites sont passées est close à la
 // lecture, sans tâche planifiée — même principe que la péremption des
-// poches (basculerPochesPerimees).
+// poches (basculerPochesPerimees). Pure JS, aucun changement.
 function limiteDepassee(alerte) {
   if (!alerte.date_limite) return false;
   const limite = alerte.heure_limite
@@ -211,51 +234,55 @@ function limiteDepassee(alerte) {
 
 async function basculerSiCloturee(alerte) {
   if (alerte.statut !== 'envoyee' || !limiteDepassee(alerte)) return alerte;
-  await pool.query("UPDATE alerte SET statut = 'cloturee' WHERE id_alerte = ?", [alerte.id_alerte]);
+  await pool.query("UPDATE alerte SET statut = 'cloturee' WHERE id_alerte = $1", [alerte.id_alerte]);
   alerte.statut = 'cloturee';
   return alerte;
 }
 
 async function basculerAlertesCloturees(idStructure) {
-  const [candidates] = await pool.query(
+  const resultat = await pool.query(
     `SELECT id_alerte, date_limite, heure_limite FROM alerte
-      WHERE id_structure = ? AND statut = 'envoyee' AND date_limite IS NOT NULL`, [idStructure]);
-  for (const alerte of candidates) {
+      WHERE id_structure = $1 AND statut = 'envoyee' AND date_limite IS NOT NULL`, [idStructure]);
+  for (const alerte of resultat.rows) {
     if (limiteDepassee(alerte)) {
-      await pool.query("UPDATE alerte SET statut = 'cloturee' WHERE id_alerte = ?", [alerte.id_alerte]);
+      await pool.query("UPDATE alerte SET statut = 'cloturee' WHERE id_alerte = $1", [alerte.id_alerte]);
     }
   }
 }
 
 // E19 — quatre compteurs, le détail des donneurs qui viennent avec leur
 // fiche de disponibilité, et les refus comptés par motif.
+// GROUP_CONCAT(DISTINCT ... ORDER BY ... SEPARATOR ', ') → STRING_AGG,
+// DISTINCT à l'intérieur, ORDER BY après le séparateur. Le second
+// GROUP_CONCAT (sans SEPARATOR explicite en MySQL = ',' par défaut)
+// agrège un entier : cast ::text requis, string_agg n'accepte pas int.
 async function suiviAlerte(idAlerte, idStructure) {
-  const [lignes] = await pool.query(
+  const resultat = await pool.query(
     `SELECT a.*,
-            GROUP_CONCAT(DISTINCT z.nom ORDER BY z.nom SEPARATOR ', ') AS zones_noms,
-            GROUP_CONCAT(DISTINCT az.id_zone) AS id_zones
+            STRING_AGG(DISTINCT z.nom, ', ' ORDER BY z.nom) AS zones_noms,
+            STRING_AGG(DISTINCT az.id_zone::text, ',') AS id_zones
        FROM alerte a
        LEFT JOIN alerte_zone az ON az.id_alerte = a.id_alerte
        LEFT JOIN zone z ON z.id_zone = az.id_zone
-      WHERE a.id_alerte = ? AND a.id_structure = ?
+      WHERE a.id_alerte = $1 AND a.id_structure = $2
       GROUP BY a.id_alerte`,
     [idAlerte, idStructure]);
-  const alerte = lignes[0];
+  const alerte = resultat.rows[0];
   if (!alerte) return null;
   await basculerSiCloturee(alerte);
 
-  const [compteurs] = await pool.query(
+  const compteursResultat = await pool.query(
     `SELECT
         COUNT(*) AS destinataires,
-        SUM(r.reponse = 'je_viens') AS viennent,
-        SUM(r.reponse = 'je_ne_peux_pas') AS ne_peuvent_pas,
-        SUM(r.id_reponse IS NULL) AS sans_reponse
+        SUM(CASE WHEN r.reponse = 'je_viens' THEN 1 ELSE 0 END) AS viennent,
+        SUM(CASE WHEN r.reponse = 'je_ne_peux_pas' THEN 1 ELSE 0 END) AS ne_peuvent_pas,
+        SUM(CASE WHEN r.id_reponse IS NULL THEN 1 ELSE 0 END) AS sans_reponse
        FROM alerte_destinataire ad
        LEFT JOIN reponse_alerte r ON r.id_alerte = ad.id_alerte AND r.id_donneur = ad.id_donneur
-      WHERE ad.id_alerte = ?`,
+      WHERE ad.id_alerte = $1`,
     [idAlerte]);
 
-  const [viennent] = await pool.query(
+  const viennentResultat = await pool.query(
     `SELECT d.id_donneur, d.nom, d.prenom, r.date_reponse,
             f.repere_position, f.moyen_deplacement, f.besoin_aide_transport, f.aide_satisfaite,
             f.creneau_prefere, f.commentaire,
@@ -264,61 +291,66 @@ async function suiviAlerte(idAlerte, idStructure) {
        JOIN donneur d ON d.id_donneur = r.id_donneur
        LEFT JOIN fiche_disponibilite f ON f.id_reponse = r.id_reponse
        LEFT JOIN telephone_donneur p ON p.id_donneur = d.id_donneur AND p.rang = 1
-      WHERE r.id_alerte = ? AND r.reponse = 'je_viens'
+      WHERE r.id_alerte = $1 AND r.reponse = 'je_viens'
       ORDER BY r.date_reponse ASC`,
     [idAlerte]);
 
-  const [refus] = await pool.query(
+  const refusResultat = await pool.query(
     `SELECT motif_refus, COUNT(*) AS nb
        FROM reponse_alerte
-      WHERE id_alerte = ? AND reponse = 'je_ne_peux_pas'
+      WHERE id_alerte = $1 AND reponse = 'je_ne_peux_pas'
       GROUP BY motif_refus`,
     [idAlerte]);
 
-  const [destinataires] = await pool.query(
+  const destinatairesResultat = await pool.query(
     `SELECT d.id_donneur, d.nom, d.prenom, d.accepte_messagerie, p.numero AS numero_principal
        FROM alerte_destinataire ad
        JOIN donneur d ON d.id_donneur = ad.id_donneur
        LEFT JOIN telephone_donneur p ON p.id_donneur = d.id_donneur AND p.rang = 1
-      WHERE ad.id_alerte = ?`,
+      WHERE ad.id_alerte = $1`,
     [idAlerte]);
 
+  const compteurs = compteursResultat.rows[0];
   return {
     alerte,
     compteurs: {
-      destinataires: compteurs[0].destinataires,
-      viennent: Number(compteurs[0].viennent) || 0,
-      ne_peuvent_pas: Number(compteurs[0].ne_peuvent_pas) || 0,
-      sans_reponse: Number(compteurs[0].sans_reponse) || 0
+      destinataires: Number(compteurs.destinataires),
+      viennent: Number(compteurs.viennent) || 0,
+      ne_peuvent_pas: Number(compteurs.ne_peuvent_pas) || 0,
+      sans_reponse: Number(compteurs.sans_reponse) || 0
     },
-    viennent,
-    refus_par_motif: refus,
-    destinataires
+    viennent: viennentResultat.rows,
+    refus_par_motif: refusResultat.rows.map((ligne) => ({ ...ligne, nb: Number(ligne.nb) })),
+    destinataires: destinatairesResultat.rows
   };
 }
 
 // E20 — les donneurs sans réponse, classés par ordre d'appel : numéros
 // confirmés d'abord, jamais vérifiés ensuite, signalés injoignables en
 // dernier. Avec tous leurs numéros, dans leur ordre de rang.
+// FIELD(colonne,'a','b','c') → CASE WHEN.
 async function listeAppel(idAlerte) {
-  const [donneurs] = await pool.query(
+  const resultat = await pool.query(
     `SELECT d.id_donneur, d.nom, d.prenom, p.statut_joignabilite AS statut_principal
        FROM alerte_destinataire ad
        JOIN donneur d ON d.id_donneur = ad.id_donneur
        LEFT JOIN reponse_alerte r ON r.id_alerte = ad.id_alerte AND r.id_donneur = ad.id_donneur
        LEFT JOIN telephone_donneur p ON p.id_donneur = d.id_donneur AND p.rang = 1
-      WHERE ad.id_alerte = ? AND r.id_reponse IS NULL
-      ORDER BY FIELD(p.statut_joignabilite, 'confirme', 'non_verifie', 'injoignable'), d.nom, d.prenom`,
+      WHERE ad.id_alerte = $1 AND r.id_reponse IS NULL
+      ORDER BY CASE p.statut_joignabilite
+                 WHEN 'confirme' THEN 1 WHEN 'non_verifie' THEN 2 WHEN 'injoignable' THEN 3 ELSE 4
+               END, d.nom, d.prenom`,
     [idAlerte]);
 
+  const donneurs = resultat.rows;
   for (const donneur of donneurs) {
-    const [telephones] = await pool.query(
+    const telephonesResultat = await pool.query(
       `SELECT id_telephone, numero, rang, statut_joignabilite, date_dernier_controle
          FROM telephone_donneur
-        WHERE id_donneur = ?
+        WHERE id_donneur = $1
         ORDER BY rang`,
       [donneur.id_donneur]);
-    donneur.telephones = telephones;
+    donneur.telephones = telephonesResultat.rows;
   }
   return donneurs;
 }
@@ -327,52 +359,52 @@ async function listeAppel(idAlerte) {
 // des réponses de vrais donneurs : l'effacer effacerait ces réponses et
 // fausserait les statistiques. Seule la clôture reste possible alors.
 async function supprimerAlerte(idAlerte, idStructure) {
-  const [lignes] = await pool.query(
-    'SELECT statut FROM alerte WHERE id_alerte = ? AND id_structure = ?', [idAlerte, idStructure]);
-  if (!lignes[0]) throw new Error('Cet appel n’existe pas.');
-  if (lignes[0].statut !== 'brouillon') {
+  const lectureResultat = await pool.query(
+    'SELECT statut FROM alerte WHERE id_alerte = $1 AND id_structure = $2', [idAlerte, idStructure]);
+  if (!lectureResultat.rows[0]) throw new Error('Cet appel n’existe pas.');
+  if (lectureResultat.rows[0].statut !== 'brouillon') {
     throw new Error(
       'Cet appel a déjà été envoyé. Il ne peut pas être supprimé, seulement clôturé : les réponses des donneurs doivent rester au registre.');
   }
 
-  const connexion = await pool.getConnection();
+  const client = await pool.connect();
   try {
-    await connexion.beginTransaction();
-    await connexion.query('DELETE FROM alerte_zone WHERE id_alerte = ?', [idAlerte]);
-    await connexion.query('DELETE FROM alerte WHERE id_alerte = ?', [idAlerte]);
-    await connexion.commit();
+    await client.query('BEGIN');
+    await client.query('DELETE FROM alerte_zone WHERE id_alerte = $1', [idAlerte]);
+    await client.query('DELETE FROM alerte WHERE id_alerte = $1', [idAlerte]);
+    await client.query('COMMIT');
   } catch (erreur) {
-    await connexion.rollback();
+    await client.query('ROLLBACK');
     throw erreur;
   } finally {
-    connexion.release();
+    client.release();
   }
 }
 
 async function cloturerAlerte(idAlerte, idStructure) {
-  const [lignes] = await pool.query(
-    'SELECT statut FROM alerte WHERE id_alerte = ? AND id_structure = ?', [idAlerte, idStructure]);
-  if (!lignes[0]) throw new Error('Cet appel n’existe pas.');
-  if (lignes[0].statut !== 'envoyee') throw new Error('Seul un appel envoyé peut être clôturé.');
-  await pool.query("UPDATE alerte SET statut = 'cloturee' WHERE id_alerte = ?", [idAlerte]);
+  const resultat = await pool.query(
+    'SELECT statut FROM alerte WHERE id_alerte = $1 AND id_structure = $2', [idAlerte, idStructure]);
+  if (!resultat.rows[0]) throw new Error('Cet appel n’existe pas.');
+  if (resultat.rows[0].statut !== 'envoyee') throw new Error('Seul un appel envoyé peut être clôturé.');
+  await pool.query("UPDATE alerte SET statut = 'cloturee' WHERE id_alerte = $1", [idAlerte]);
 }
 
 async function appartientAStructure(idAlerte, idStructure) {
-  const [lignes] = await pool.query(
-    'SELECT 1 FROM alerte WHERE id_alerte = ? AND id_structure = ?', [idAlerte, idStructure]);
-  return Boolean(lignes[0]);
+  const resultat = await pool.query(
+    'SELECT 1 FROM alerte WHERE id_alerte = $1 AND id_structure = $2', [idAlerte, idStructure]);
+  return Boolean(resultat.rows[0]);
 }
 
 async function listerAlertes(idStructure) {
   await basculerAlertesCloturees(idStructure);
-  const [lignes] = await pool.query(
+  const resultat = await pool.query(
     `SELECT id_alerte, groupe_cible, elargi_compatibles, statut, date_creation, date_envoi,
             date_limite, heure_limite, nb_destinataires
        FROM alerte
-      WHERE id_structure = ?
+      WHERE id_structure = $1
       ORDER BY date_creation DESC`,
     [idStructure]);
-  return lignes;
+  return resultat.rows;
 }
 
 async function alertesEnCours(idStructure) {

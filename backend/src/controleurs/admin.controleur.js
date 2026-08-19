@@ -160,11 +160,12 @@ async function creerCompte(requete, reponse) {
 
   try {
     const { pool } = require('../db');
-    const [resultat] = await pool.query(
+    const resultat = await pool.query(
       `INSERT INTO utilisateur
          (identifiant, mot_de_passe, role, nom, prenom, fonction, id_structure,
           doit_changer_mot_de_passe, provisoire_expire_le)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, DATE_ADD(NOW(), INTERVAL ? HOUR))`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, NOW() + make_interval(hours => $8))
+       RETURNING id_utilisateur`,
       [identifiant, condensat, role, nom, prenom,
        String(corps.fonction || '').trim() || null, idStructure,
        valeurs.validite_provisoire_heures]);
@@ -175,7 +176,7 @@ async function creerCompte(requete, reponse) {
 
     const structure = idStructure ? await structures.trouverStructure(idStructure) : null;
     return reponse.status(201).json({
-      id_utilisateur: resultat.insertId,
+      id_utilisateur: resultat.rows[0].id_utilisateur,
       identifiant,
       nom, prenom, role,
       structure_nom: structure ? structure.nom : null,
@@ -183,7 +184,7 @@ async function creerCompte(requete, reponse) {
       validite_heures: valeurs.validite_provisoire_heures
     });
   } catch (erreur) {
-    if (erreur.code === 'ER_DUP_ENTRY') {
+    if (erreur.code === '23505') {
       return reponse.status(409).json({
         erreur: 'Cet identifiant est déjà utilisé. Choisissez-en un autre.', champ: 'identifiant'
       });
@@ -337,7 +338,7 @@ async function creerZone(requete, reponse) {
     journaliser(requete.utilisateur.id_utilisateur, 'Création d\u2019une zone', `${nom} (${ville})`);
     return reponse.status(201).json({ id_zone: idZone });
   } catch (erreur) {
-    if (erreur.code === 'ER_DUP_ENTRY') {
+    if (erreur.code === '23505') {
       return reponse.status(409).json({ erreur: 'Cette zone existe déjà dans cette ville.', champ: 'nom' });
     }
     throw erreur;

@@ -136,27 +136,34 @@ async function inscription(requete, reponse) {
   const condensatMotDePasse = await bcrypt.hash(motDePasse, 10);
   const condensatReponse = await bcrypt.hash(reponseSecurite, 10);
 
-  const connexion = await pool.getConnection();
+  // Transaction pg : un client dédié sorti du pool, BEGIN/COMMIT/ROLLBACK
+  // et TOUTES les requêtes de la transaction sur CE client — jamais sur
+  // pool directement, sinon chaque requête prendrait une connexion
+  // différente et la transaction ne protégerait plus rien.
+  const client = await pool.connect();
   try {
-    await connexion.beginTransaction();
+    await client.query('BEGIN');
 
-    const [resUtilisateur] = await connexion.query(
+    // insertId n'existe pas en pg : RETURNING + lecture de rows[0].
+    const resUtilisateur = await client.query(
       `INSERT INTO utilisateur (identifiant, mot_de_passe, role, nom, prenom)
-       VALUES (?, ?, 'donneur', ?, ?)`,
+       VALUES ($1, $2, 'donneur', $3, $4)
+       RETURNING id_utilisateur`,
       [numero, condensatMotDePasse, nom, prenom]);
-    const idUtilisateur = resUtilisateur.insertId;
+    const idUtilisateur = resUtilisateur.rows[0].id_utilisateur;
 
-    const [resDonneur] = await connexion.query(
+    const resDonneur = await client.query(
       `INSERT INTO donneur
          (id_utilisateur, nom, prenom, sexe, date_naissance, groupe_sanguin,
           poids_declare, id_zone, question_securite, reponse_securite,
           accepte_sms, accepte_messagerie, date_consentement)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
+       RETURNING id_donneur`,
       [idUtilisateur, nom, prenom, corps.sexe, corps.date_naissance, groupe,
        poids, idZone, question, condensatReponse,
-       corps.accepte_sms === false ? 0 : 1,
-       corps.accepte_messagerie === true ? 1 : 0]);
-    const idDonneur = resDonneur.insertId;
+       corps.accepte_sms !== false,
+       corps.accepte_messagerie === true]);
+    const idDonneur = resDonneur.rows[0].id_donneur;
 
     // Le numéro principal existe à deux endroits, écrits ensemble
     // (principe 3 du chapitre 9.4). Il part confirmé : le donneur l'a
@@ -165,17 +172,17 @@ async function inscription(requete, reponse) {
     // traiter comme douteux n'a aucun sens. Les numéros secondaires,
     // eux, n'ont subi aucune double saisie : ils gardent le défaut
     // 'non_verifie' de la colonne.
-    await connexion.query(
+    await client.query(
       `INSERT INTO telephone_donneur (id_donneur, numero, rang, statut_joignabilite, date_dernier_controle)
-       VALUES (?, ?, 1, 'confirme', CURDATE())`,
+       VALUES ($1, $2, 1, 'confirme', CURRENT_DATE)`,
       [idDonneur, numero]);
     for (let indice = 0; indice < secondaires.length; indice += 1) {
-      await connexion.query(
-        'INSERT INTO telephone_donneur (id_donneur, numero, rang) VALUES (?, ?, ?)',
+      await client.query(
+        'INSERT INTO telephone_donneur (id_donneur, numero, rang) VALUES ($1, $2, $3)',
         [idDonneur, secondaires[indice], indice + 2]);
     }
 
-    await connexion.commit();
+    await client.query('COMMIT');
 
     journaliser(idUtilisateur, 'Inscription d\u2019un donneur', numero);
     const jeton = await signerJeton({
@@ -183,9 +190,11 @@ async function inscription(requete, reponse) {
     });
     return reponse.status(201).json({ jeton, role: 'donneur', espace: '/carte' });
   } catch (erreur) {
-    await connexion.rollback();
-    if (erreur && erreur.code === 'ER_DUP_ENTRY') {
+    await client.query('ROLLBACK');
+    if (erreur && erreur.code === '23505') {
       // Règle RG23 : un numéro n'appartient qu'à un seul donneur.
+      // 23505 = violation de contrainte d'unicité, code PostgreSQL
+      // (remplace ER_DUP_ENTRY de MySQL).
       return reponse.status(409).json({
         erreur: 'Ce numéro est déjà inscrit. Connectez-vous, ou utilisez « Retrouver mon compte ».',
         champ: 'numero_principal'
@@ -193,7 +202,7 @@ async function inscription(requete, reponse) {
     }
     throw erreur;
   } finally {
-    connexion.release();
+    client.release();
   }
 }
 

@@ -19,29 +19,32 @@ let dateCache = 0;
 
 async function lireParametres() {
   if (cache && Date.now() - dateCache < 60000) return cache;
-  const [lignes] = await pool.query('SELECT cle, valeur FROM parametre');
+  const resultat = await pool.query('SELECT cle, valeur FROM parametre');
   const valeurs = { ...DEFAUTS };
-  for (const ligne of lignes) valeurs[ligne.cle] = Number(ligne.valeur);
+  for (const ligne of resultat.rows) valeurs[ligne.cle] = Number(ligne.valeur);
   cache = valeurs;
   dateCache = Date.now();
   return valeurs;
 }
 
 // Liste complète pour l'écran E30, avec libellés et conséquences.
+// FIELD(colonne,'a','b','c') n'existe pas en PostgreSQL → CASE WHEN.
 async function listerParametresDetailles() {
-  const [lignes] = await pool.query(
+  const resultat = await pool.query(
     `SELECT p.cle, p.valeur, p.libelle, p.consequence, p.unite, p.categorie,
             p.date_modification, u.identifiant AS modifie_par
        FROM parametre p
        LEFT JOIN utilisateur u ON u.id_utilisateur = p.modifie_par
-      ORDER BY FIELD(p.categorie,'medical','conservation','securite'), p.cle`);
-  return lignes;
+      ORDER BY CASE p.categorie
+                 WHEN 'medical' THEN 1 WHEN 'conservation' THEN 2 WHEN 'securite' THEN 3 ELSE 4
+               END, p.cle`);
+  return resultat.rows;
 }
 
 async function modifierParametre(cle, valeur, idUtilisateur) {
   await pool.query(
-    `UPDATE parametre SET valeur = ?, modifie_par = ?, date_modification = NOW()
-      WHERE cle = ?`, [String(valeur), idUtilisateur, cle]);
+    `UPDATE parametre SET valeur = $1, modifie_par = $2, date_modification = NOW()
+      WHERE cle = $3`, [String(valeur), idUtilisateur, cle]);
   cache = null;
 }
 

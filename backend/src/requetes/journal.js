@@ -9,7 +9,7 @@ async function journaliser(idUtilisateur, action, cible, resultat = 'reussie') {
   try {
     await pool.query(
       `INSERT INTO journal_activite (id_utilisateur, action, cible, resultat)
-       VALUES (?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4)`,
       [idUtilisateur || null, action, cible || null, resultat]);
   } catch (erreur) {
     console.error('Journal indisponible :', erreur.message);
@@ -22,18 +22,23 @@ async function journaliser(idUtilisateur, action, cible, resultat = 'reussie') {
 // répétitions qui ne disent rien. Ne s'applique qu'aux consultations :
 // toute action qui modifie quelque chose continue de passer par
 // `journaliser`, une fois par geste, sans exception.
+//
+// <=> (égalité NULL-safe MySQL) → IS NOT DISTINCT FROM, l'équivalent
+// PostgreSQL exact : NULL <=> NULL valait 1 en MySQL, id_utilisateur
+// IS NOT DISTINCT FROM NULL vaut TRUE en Postgres, même résultat pour
+// une consultation faite sans agent connecté.
 async function journaliserConsultation(idUtilisateur, action, cible) {
   try {
-    const [recentes] = await pool.query(
+    const recentes = await pool.query(
       `SELECT 1 FROM journal_activite
-        WHERE id_utilisateur <=> ? AND action = ?
-          AND date_action >= (NOW() - INTERVAL 15 MINUTE)
+        WHERE id_utilisateur IS NOT DISTINCT FROM $1 AND action = $2
+          AND date_action >= (NOW() - INTERVAL '15 minutes')
         LIMIT 1`,
       [idUtilisateur || null, action]);
-    if (recentes.length > 0) return;
+    if (recentes.rows.length > 0) return;
     await pool.query(
       `INSERT INTO journal_activite (id_utilisateur, action, cible, resultat)
-       VALUES (?, ?, ?, 'reussie')`,
+       VALUES ($1, $2, $3, 'reussie')`,
       [idUtilisateur || null, action, cible || null]);
   } catch (erreur) {
     console.error('Journal indisponible :', erreur.message);
@@ -89,6 +94,15 @@ const ACTIONS_PAR_CATEGORIE = {
   ]
 };
 
+// Empile une valeur et renvoie son marqueur $n, dans l'ordre — nécessaire
+// ici car le nombre de conditions (et donc de placeholders) varie selon
+// les filtres réellement posés, y compris un IN (...) de taille variable
+// pour type_action.
+function ajouter(valeurs, valeur) {
+  valeurs.push(valeur);
+  return `$${valeurs.length}`;
+}
+
 // Lecture pour l'écran E31, filtrable, en lecture seule. L'auteur d'un
 // compte donneur n'est jamais renvoyé en clair (numéro de téléphone) :
 // le rôle et les colonnes nécessaires à un code donneur (D-XXXX) sont
@@ -98,31 +112,27 @@ async function listerJournal(filtres = {}) {
   const conditions = [];
   const valeurs = [];
   if (filtres.id_utilisateur) {
-    conditions.push('j.id_utilisateur = ?');
-    valeurs.push(filtres.id_utilisateur);
+    conditions.push(`j.id_utilisateur = ${ajouter(valeurs, filtres.id_utilisateur)}`);
   }
   if (filtres.resultat) {
-    conditions.push('j.resultat = ?');
-    valeurs.push(filtres.resultat);
+    conditions.push(`j.resultat = ${ajouter(valeurs, filtres.resultat)}`);
   }
   if (filtres.type_action && ACTIONS_PAR_CATEGORIE[filtres.type_action]) {
     const liste = ACTIONS_PAR_CATEGORIE[filtres.type_action];
-    conditions.push(`j.action IN (${liste.map(() => '?').join(',')})`);
-    valeurs.push(...liste);
+    const marqueurs = liste.map((action) => ajouter(valeurs, action));
+    conditions.push(`j.action IN (${marqueurs.join(',')})`);
   }
   if (filtres.depuis) {
-    conditions.push('j.date_action >= ?');
-    valeurs.push(filtres.depuis);
+    conditions.push(`j.date_action >= ${ajouter(valeurs, filtres.depuis)}`);
   }
   if (filtres.jusqu_a) {
-    conditions.push('j.date_action <= ?');
-    valeurs.push(`${filtres.jusqu_a} 23:59:59`);
+    conditions.push(`j.date_action <= ${ajouter(valeurs, `${filtres.jusqu_a} 23:59:59`)}`);
   }
   const ou = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const limite = Math.min(Number(filtres.limite) || 50, 200);
   const depart = Math.max(Number(filtres.depart) || 0, 0);
 
-  const [lignes] = await pool.query(
+  const resultat = await pool.query(
     `SELECT j.id_journal, j.date_action, j.action, j.cible, j.resultat,
             u.identifiant AS auteur_identifiant, u.role AS auteur_role,
             dn.id_donneur AS auteur_id_donneur, z.ville AS auteur_ville
@@ -132,12 +142,13 @@ async function listerJournal(filtres = {}) {
        LEFT JOIN zone z ON z.id_zone = dn.id_zone
        ${ou}
       ORDER BY j.date_action DESC
-      LIMIT ? OFFSET ?`, [...valeurs, limite, depart]);
+      LIMIT $${valeurs.length + 1} OFFSET $${valeurs.length + 2}`,
+    [...valeurs, limite, depart]);
 
-  const [total] = await pool.query(
+  const total = await pool.query(
     `SELECT COUNT(*) AS nb FROM journal_activite j ${ou}`, valeurs);
 
-  return { lignes, total: total[0].nb, limite, depart };
+  return { lignes: resultat.rows, total: Number(total.rows[0].nb), limite, depart };
 }
 
 module.exports = { journaliser, journaliserConsultation, listerJournal, ACTIONS_PAR_CATEGORIE };
