@@ -742,6 +742,7 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   justify-content: center;
   overflow: hidden;
   padding: var(--e7) var(--e5) var(--e8);
+  padding-top: calc(var(--e7) + env(safe-area-inset-top));
   background: linear-gradient(160deg, var(--sang) 0%, #741724 100%);
 }
 .heros-pastille {
@@ -1075,6 +1076,7 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   position: relative;
   overflow: hidden;
   padding: var(--e6) var(--e5) var(--e9);
+  padding-top: calc(var(--e6) + env(safe-area-inset-top));
   background: linear-gradient(160deg, var(--sang) 0%, #741724 100%);
   color: #fff;
 }

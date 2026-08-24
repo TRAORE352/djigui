@@ -23,7 +23,12 @@ export const metadata = {
   manifest: '/manifest.json',
   applicationName: 'DJIGUI',
   appleWebApp: { capable: true, title: 'DJIGUI', statusBarStyle: 'default' },
-  icons: { icon: '/icones/icone-192.png', apple: '/icones/icone-192.png' }
+  icons: { icon: '/icones/icone-192.png', apple: '/icones/icone-180.png' },
+  // Next.js n'émet que la balise standard "mobile-web-app-capable" à partir
+  // de appleWebApp.capable — pas la variante "apple-" que Safari iOS lit
+  // pour lancer l'app en mode standalone. On la force explicitement ;
+  // "other" ajoute une balise sans retirer celle déjà émise plus haut.
+  other: { 'apple-mobile-web-app-capable': 'yes' }
 };
 
 export const viewport = {
