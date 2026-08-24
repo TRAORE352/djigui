@@ -1175,3 +1175,7 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   color: var(--sang);
   line-height: 1;
 }
+
+/* Alerte close (E6, historique) : un fait passé, jamais une action —
+   la carte s'efface un peu plutôt que de garder l'éclat des actives. */
+.carte-attenuee { opacity: .6; }
