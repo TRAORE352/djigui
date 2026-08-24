@@ -5,6 +5,14 @@
 // =====================================================================
 const { diagnostiquer, expliquerPanne } = require('../db');
 const { listerZones } = require('../requetes/zones');
+const { configure: pushConfigure, clePublique } = require('../push');
+
+// GET /api/config — réglages publics dont le frontend a besoin avant
+// toute connexion. Seule la clé PUBLIQUE VAPID sort d'ici : la privée
+// ne quitte jamais push.js.
+async function configPublique(requete, reponse) {
+  return reponse.json({ notifications_push_disponibles: pushConfigure, vapid_public_key: clePublique });
+}
 
 async function zonesPubliques(requete, reponse) {
   const zones = await listerZones();
@@ -91,4 +99,4 @@ ${corps}
 </main></body></html>`);
 }
 
-module.exports = { zonesPubliques, sante, pageAccueil };
+module.exports = { configPublique, zonesPubliques, sante, pageAccueil };

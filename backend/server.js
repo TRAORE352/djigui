@@ -9,6 +9,7 @@ const cors = require('cors');
 const { rateLimit } = require('express-rate-limit');
 const { diagnostiquer, expliquerPanne } = require('./src/db');
 const { pageAccueil } = require('./src/controleurs/public.controleur');
+const { configure: pushConfigure } = require('./src/push');
 
 const application = express();
 
@@ -100,6 +101,9 @@ async function demarrer() {
       if (etat.nb_zones === 0) {
         console.log('  Aucune zone : personne ne pourra s\u2019inscrire tant qu\u2019il n\u2019y en a pas.');
       }
+      console.log(pushConfigure
+        ? '  Notifications push : cl\u00e9s VAPID charg\u00e9es (setVapidDetails effectu\u00e9 sans erreur).'
+        : '  Notifications push : d\u00e9sactiv\u00e9es (VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY absents du .env).');
       console.log(`  Diagnostic complet : http://localhost:${port}\n`);
     });
   } catch (erreur) {
