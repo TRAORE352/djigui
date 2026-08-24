@@ -557,6 +557,7 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   padding-bottom: env(safe-area-inset-bottom);
 }
 .barre-nav a {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -568,11 +569,15 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   font-size: var(--t-micro);
   color: var(--encre-secondaire);
   text-decoration: none;
-  border-top: 2px solid transparent;
-  margin-top: -1px;
   transition: color var(--duree) var(--courbe);
 }
-.barre-nav a.actif { color: var(--encre); font-weight: 600; border-top-color: var(--encre); }
+.barre-nav a.actif { color: var(--sang); font-weight: 600; }
+.barre-nav-indicateur {
+  position: absolute;
+  top: -1px; left: var(--e3); right: var(--e3);
+  height: 2px;
+  background: var(--sang);
+}
 
 /* Professionnel : rail vertical, libellés en toutes lettres. */
 .rail {
@@ -1056,4 +1061,117 @@ select.champ-saisie { appearance: none; cursor: pointer; }
     padding: var(--e6) var(--e7) var(--e7);
   }
   .panneau-poignee { display: none; }
+}
+
+/* =====================================================================
+   17. CARTE DE DONNEUR (E5)
+   Traitement « carte de membre » : en-tête dégradé à courbe, carte
+   blanche posée à cheval dessus. Ombre et chevauchement sont un
+   deuxième one-off assumé (comme .bouton-heros) : le reste du produit
+   reste plat et carré, cet écran-vitrine seul en sort.
+   ===================================================================== */
+.carte-entete {
+  position: relative;
+  overflow: hidden;
+  padding: var(--e6) var(--e5) var(--e9);
+  background: linear-gradient(160deg, var(--sang) 0%, #741724 100%);
+  color: #fff;
+}
+.carte-entete-etiquette { color: rgba(255,255,255,.72); }
+.carte-entete-code {
+  font-family: var(--police-mono), ui-monospace, monospace;
+  font-size: var(--t-titre);
+  font-weight: 700;
+  letter-spacing: .03em;
+  margin-top: var(--e2);
+}
+.carte-entete-instruction { color: rgba(255,255,255,.72); font-size: var(--t-petit); margin-top: var(--e1); }
+.carte-entete-identite { margin-top: var(--e6); }
+.carte-entete-nom { font-size: var(--t-titre); font-weight: 600; line-height: 1.2; }
+.carte-entete-zone { color: rgba(255,255,255,.8); font-size: var(--t-appui); margin-top: var(--e1); }
+.carte-entete-courbe {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  width: 100%;
+  height: 40px;
+  display: block;
+}
+
+.carte-page-corps {
+  max-width: var(--largeur-telephone);
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--e5) var(--e6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e6);
+}
+.carte-principale {
+  position: relative;
+  z-index: 1;
+  margin-top: calc(-1 * var(--e8));
+  background: var(--surface);
+  border: 1px solid var(--trait);
+  box-shadow: 0 18px 34px -18px rgba(36,14,10,.35);
+  padding: var(--e6) var(--e5);
+}
+.carte-groupe-ligne { display: flex; align-items: center; gap: var(--e5); }
+.carte-groupe-colonne { display: flex; flex-direction: column; gap: var(--e2); flex: 1; min-width: 0; }
+
+.puce-a-preciser {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e1);
+  align-self: flex-start;
+  padding: var(--e1) var(--e3);
+  border: 1px dashed var(--trait-fort);
+  border-radius: 999px;
+  color: var(--encre-secondaire);
+  font-size: var(--t-petit);
+  font-weight: 600;
+}
+
+.pastille-etat {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e2);
+  align-self: flex-start;
+  padding: var(--e2) var(--e3);
+  border-radius: 999px;
+  font-size: var(--t-appui);
+  font-weight: 600;
+}
+.pastille-etat .point { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.pastille-etat.ton-seve { background: var(--seve-clair); color: var(--seve); }
+.pastille-etat.ton-seve .point { background: var(--seve); }
+.pastille-etat.ton-ocre { background: var(--ocre-clair); color: var(--ocre); }
+.pastille-etat.ton-ocre .point { background: var(--ocre); }
+
+/* Pulse réservé au seul état « éligible aujourd'hui » : jamais sur une
+   attente ou une décision sur place, pour ne pas laisser croire à une
+   urgence qui n'existe pas. */
+.pastille-etat.respire .point { animation: pastille-respire 1.8s ease-in-out infinite; }
+@keyframes pastille-respire {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46,106,79,.45); }
+  50% { box-shadow: 0 0 0 5px rgba(46,106,79,0); }
+}
+
+.cartes-secondaires { display: flex; flex-direction: column; gap: var(--e4); }
+.carte-secondaire {
+  background: var(--surface);
+  border: 1px solid var(--trait);
+  padding: var(--e5);
+  transition: transform var(--duree) var(--courbe), box-shadow var(--duree) var(--courbe);
+}
+.carte-secondaire:hover, .carte-secondaire:active {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px -16px rgba(36,14,10,.3);
+}
+.carte-secondaire-compteur {
+  font-family: var(--police-mono), ui-monospace, monospace;
+  font-size: var(--t-enorme);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--sang);
+  line-height: 1;
 }

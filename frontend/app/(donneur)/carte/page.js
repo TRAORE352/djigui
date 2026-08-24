@@ -3,7 +3,9 @@
 //  E5 · Carte de donneur.
 //  L'écran que le donneur montre à un agent. Il dit une seule chose :
 //  si l'on peut donner, et à partir de quand. Le bloc groupe ne change
-//  jamais : c'est la phrase d'état qui porte la différence.
+//  jamais : c'est la phrase d'état et la pastille de couleur qui
+//  portent la différence — jamais un pulse hors du cas « éligible
+//  aujourd'hui », pour ne jamais laisser croire à une urgence absente.
 // =====================================================================
 import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
@@ -11,7 +13,6 @@ import { CalendarPlus } from 'lucide-react';
 import { monProfil, telechargerRappel } from '@/lib/api';
 import { dateLongue, pluriel } from '@/lib/format';
 import BlocGroupe from '../../composants/BlocGroupe';
-import Etat from '../../composants/Etat';
 import Bouton from '../../composants/Bouton';
 import { MessageErreur } from '../../composants/Message';
 import { CarteEnAttente } from '../../composants/Squelette';
@@ -62,7 +63,7 @@ export default function CarteDonneur() {
     const depart = performance.now();
     let image;
     const avancer = (instant) => {
-      const part = Math.min((instant - depart) / 400, 1);
+      const part = Math.min((instant - depart) / 500, 1);
       setCompteur(Math.round(part * profil.nb_dons));
       if (part < 1) image = requestAnimationFrame(avancer);
     };
@@ -90,115 +91,133 @@ export default function CarteDonneur() {
 
   const { eligibilite } = profil;
   const groupeConnu = Boolean(profil.groupe_sanguin);
+  const decisionSurPlace = !eligibilite.eligible && eligibilite.jours_restants <= 0
+    && eligibilite.raisons.length > 0;
+
+  const entree = (rang) => mouvementReduit ? {} : {
+    initial: { opacity: 0, y: 14 },
+    animate: { opacity: 1, y: 0 },
+    transition: { delay: 0.08 * rang, duration: 0.4, ease: 'easeOut' }
+  };
 
   return (
-    <motion.main
-      className="page-telephone pile-l"
-      initial={mouvementReduit ? false : { opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-    >
-      {/* En-tête de pièce, pas d'application. */}
-      <div className="rang-espace">
-        <span className="etiquette">Carte de donneur</span>
-        <span className="mono" style={{ fontSize: 'var(--t-appui)' }}>{profil.code_donneur}</span>
-      </div>
-      <p className="petit" style={{ textAlign: 'right' }}>
-        Montrez ce numéro à l&rsquo;agent du centre lors de votre passage.
-      </p>
+    <main className="pile-l" style={{ paddingBottom: 'var(--e10)' }}>
+      <motion.div className="carte-entete" {...entree(0)}>
+        <span className="etiquette carte-entete-etiquette">Carte de donneur</span>
+        <p className="carte-entete-code mono">{profil.code_donneur}</p>
+        <p className="carte-entete-instruction">
+          Montrez ce numéro à l&rsquo;agent du centre lors de votre passage.
+        </p>
+        <div className="carte-entete-identite">
+          <p className="carte-entete-nom">{profil.prenom} {profil.nom}</p>
+          <p className="carte-entete-zone">{profil.zone}, {profil.ville}</p>
+        </div>
+        <svg className="carte-entete-courbe" viewBox="0 0 1440 100" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0,40 C 360,110 1080,-30 1440,40 L1440,100 L0,100 Z" fill="var(--fond)" />
+        </svg>
+      </motion.div>
 
-      <div className="carte pile-l">
-        <div className="rang" style={{ gap: 'var(--e5)' }}>
-          <BlocGroupe groupe={profil.groupe_sanguin} taille="xl" />
+      <div className="carte-page-corps">
+        <motion.div className="carte-principale pile-l" {...entree(1)}>
+          <div className="carte-groupe-ligne">
+            <motion.div
+              initial={mouvementReduit ? false : { opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.4, ease: 'easeOut' }}
+            >
+              <BlocGroupe groupe={profil.groupe_sanguin} taille="xl" />
+            </motion.div>
+
+            <div className="carte-groupe-colonne">
+              {!groupeConnu && (
+                <span className="puce-a-preciser">À préciser au centre</span>
+              )}
+
+              {eligibilite.eligible ? (
+                <span className="pastille-etat ton-seve respire">
+                  <span className="point" aria-hidden="true" />
+                  Vous pouvez donner dès aujourd&rsquo;hui
+                </span>
+              ) : eligibilite.jours_restants > 0 ? (
+                <span className="pastille-etat ton-ocre">
+                  <span className="point" aria-hidden="true" />
+                  Dès le {dateLongue(profil.date_prochaine_eligibilite)}
+                </span>
+              ) : (
+                <span className="pastille-etat ton-ocre">
+                  <span className="point" aria-hidden="true" />
+                  Décision sur place
+                </span>
+              )}
+            </div>
+          </div>
+
+          <hr className="filet" />
+
           <div className="pile-s">
-            <p className="titre" style={{ lineHeight: 1.15 }}>
-              {profil.prenom}<br />{profil.nom}
-            </p>
-            <p className="appui">{profil.zone}, {profil.ville}</p>
-          </div>
-        </div>
-
-        <hr className="filet" />
-
-        {/* La phrase d'état porte la différence. */}
-        <div className="pile-s">
-          {!groupeConnu && (
-            <p className="appui">
-              Votre groupe sanguin sera précisé par le centre lors de votre
-              prochaine visite.
-            </p>
-          )}
-
-          {eligibilite.eligible ? (
-            <>
-              <Etat ton="seve">Vous pouvez donner dès aujourd&rsquo;hui.</Etat>
-              {groupeConnu && (
-                <p className="appui">
-                  Si un centre appelle pour le groupe {profil.groupe_sanguin},
-                  vous recevrez l&rsquo;alerte.
-                </p>
-              )}
-            </>
-          ) : eligibilite.jours_restants > 0 ? (
-            <>
-              <Etat ton="ocre">
-                Vous pourrez donner à partir du {dateLongue(profil.date_prochaine_eligibilite)}.
-              </Etat>
+            {!groupeConnu && (
               <p className="appui">
-                Dans {pluriel(eligibilite.jours_restants, 'jour')}.
+                Votre groupe sanguin sera précisé par le centre lors de votre
+                prochaine visite.
               </p>
-              {profil.date_dernier_don && (
-                <p className="appui">
-                  {phraseDelai(moisEntreLesDeuxDates(profil.date_dernier_don, profil.date_prochaine_eligibilite))}
-                </p>
-              )}
-            </>
-          ) : (
-            <>
-              <Etat ton="ocre">Le centre décidera sur place si vous pouvez donner.</Etat>
-              {eligibilite.raisons.length > 0 && (
-                <p className="appui">{raisonPrincipale(eligibilite.raisons)}</p>
-              )}
-            </>
-          )}
-        </div>
+            )}
 
-        <div>
-          {profil.date_dernier_don ? (
-            <div className="ligne-fait">
-              <span className="appui">Dernier don</span>
-              <span className="valeur">{dateLongue(profil.date_dernier_don)}</span>
-            </div>
-          ) : (
-            <div className="ligne-fait">
-              <span className="appui">Votre premier don s&rsquo;inscrira ici.</span>
-            </div>
-          )}
-          {profil.date_prochaine_eligibilite && (
-            <div className="ligne-fait">
-              <span className="appui">Vous pourrez donner à partir du</span>
-              <span className="valeur">{dateLongue(profil.date_prochaine_eligibilite)}</span>
-            </div>
-          )}
-          <div className="ligne-fait">
-            <span className="appui">Dons enregistrés</span>
-            <span className="valeur">{compteur}</span>
+            {eligibilite.eligible ? null : eligibilite.jours_restants > 0 ? (
+              <>
+                <p className="appui">Dans {pluriel(eligibilite.jours_restants, 'jour')}.</p>
+                {profil.date_dernier_don && (
+                  <p className="appui">
+                    {phraseDelai(moisEntreLesDeuxDates(profil.date_dernier_don, profil.date_prochaine_eligibilite))}
+                  </p>
+                )}
+              </>
+            ) : decisionSurPlace ? (
+              <p className="appui">{raisonPrincipale(eligibilite.raisons)}</p>
+            ) : null}
           </div>
-        </div>
+
+          {profil.date_prochaine_eligibilite && (
+            <Bouton variante="principal" large enfantIcone={CalendarPlus} onClick={ajouterRappel}>
+              Ajouter le rappel à mon agenda
+            </Bouton>
+          )}
+          <MessageErreur>{messageRappel}</MessageErreur>
+        </motion.div>
+
+        <motion.div className="cartes-secondaires" {...entree(2)}>
+          <div className="carte-secondaire pile-s">
+            <span className="etiquette">Dons enregistrés</span>
+            <span className="carte-secondaire-compteur">{compteur}</span>
+          </div>
+
+          <div className="carte-secondaire pile-s">
+            <span className="etiquette">Dernier don</span>
+            {profil.date_dernier_don ? (
+              <span className="titre-s" style={{ fontWeight: 600 }}>
+                {dateLongue(profil.date_dernier_don)}
+              </span>
+            ) : (
+              <p className="appui">Votre premier don s&rsquo;inscrira ici.</p>
+            )}
+          </div>
+
+          {eligibilite.eligible && groupeConnu && (
+            <div className="carte-secondaire pile-s">
+              <span className="etiquette">Mécanique d&rsquo;alerte</span>
+              <p className="appui">
+                Si un centre appelle pour le groupe {profil.groupe_sanguin},
+                vous recevrez l&rsquo;alerte.
+              </p>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Mention permanente de responsabilité médicale (règle RG6). */}
+        <p className="petit">
+          Cette information est indicative. La décision de prélever appartient au
+          personnel médical du centre, après examen sur place.
+        </p>
       </div>
-
-      {profil.date_prochaine_eligibilite && (
-        <Bouton variante="principal" large enfantIcone={CalendarPlus} onClick={ajouterRappel}>
-          Ajouter le rappel à mon agenda
-        </Bouton>
-      )}
-      <MessageErreur>{messageRappel}</MessageErreur>
-
-      {/* Mention permanente de responsabilité médicale (règle RG6). */}
-      <p className="petit">
-        Cette information est indicative. La décision de prélever appartient au
-        personnel médical du centre, après examen sur place.
-      </p>
-    </motion.main>
+    </main>
   );
 }
