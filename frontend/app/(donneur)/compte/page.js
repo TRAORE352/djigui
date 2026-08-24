@@ -1,20 +1,24 @@
 'use client';
 // =====================================================================
 //  E10 · Mon compte.
-//  Cinq sections en petites capitales, séparées par des filets pleine
-//  largeur plutôt que par des cartes : on repère un sujet sans lire.
-//  La désactivation est traitée comme les autres sections, sans
-//  dramatisation, avec ses conséquences dites avant le geste.
+//  Page de paramètres : la hiérarchie visuelle suit la sensibilité de
+//  chaque action, pas seulement le thème. Lecture seule vs modifiable
+//  est immédiatement visible ; la zone dangereuse ne partage jamais le
+//  poids visuel d'« Enregistrer » ou « Me déconnecter ». Le changement
+//  de mot de passe prévient avant (sessions fermées) et ramène
+//  proprement vers la connexion après, plutôt que de laisser une
+//  session dont le jeton n'a plus cours.
 // =====================================================================
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, useReducedMotion } from 'motion/react';
 import {
-  Phone, MessageSquare, MessageCircle, Plus, X, Eye, EyeOff, Check, LogOut
+  Phone, MessageSquare, MessageCircle, X, Eye, EyeOff, LogOut, Lock
 } from 'lucide-react';
 import {
   monProfil, modifierProfil, changerQuestionSecurite, mesTelephones,
   ajouterTelephone, retirerTelephone, remplacerNumeroPrincipal,
-  desactiverMonCompte, changerMotDePasse, deconnexion, effacerJeton, enregistrerJeton
+  desactiverMonCompte, changerMotDePasse, deconnexion, effacerJeton
 } from '@/lib/api';
 import { dateCourte, numeroLisible } from '@/lib/format';
 import ChampZone from '../../composants/ChampZone';
@@ -37,6 +41,7 @@ function useConfirmation() {
 
 export default function MonCompte() {
   const routeur = useRouter();
+  const mouvementReduit = useReducedMotion();
   const [profil, setProfil] = useState(null);
   const [telephones, setTelephones] = useState([]);
   const [maximum, setMaximum] = useState(4);
@@ -51,17 +56,27 @@ export default function MonCompte() {
   // Numéros
   const [nouveauNumero, setNouveauNumero] = useState('');
   const [ajoutOuvert, setAjoutOuvert] = useState(false);
+  const [ajoutEnCours, setAjoutEnCours] = useState(false);
   const [aRetirer, setARetirer] = useState(null);
+  const [retraitEnCours, setRetraitEnCours] = useState(null);
   const [remplacement, setRemplacement] = useState({ numero: '', confirmation: '', conserver: true });
+  const [remplacementEnCours, setRemplacementEnCours] = useState(false);
+
+  // Canaux
+  const [canalEnCours, setCanalEnCours] = useState(null);
 
   // Question de sécurité
   const [question, setQuestion] = useState('');
   const [reponse, setReponse] = useState('');
+  const [questionEnCours, setQuestionEnCours] = useState(false);
+  const [questionConfirmOuverte, setQuestionConfirmOuverte] = useState(false);
 
   // Mot de passe
   const [ancien, setAncien] = useState('');
   const [nouveau, setNouveau] = useState('');
   const [montrer, setMontrer] = useState(false);
+  const [motDePasseEnCours, setMotDePasseEnCours] = useState(false);
+  const [motDePasseConfirmOuverte, setMotDePasseConfirmOuverte] = useState(false);
 
   // Désactivation
   const [desactivationOuverte, setDesactivationOuverte] = useState(false);
@@ -97,6 +112,30 @@ export default function MonCompte() {
     routeur.replace('/');
   }
 
+  async function confirmerChangementMotDePasse() {
+    setMotDePasseEnCours(true);
+    setErreur('');
+    try {
+      await changerMotDePasse({ ancien_mot_de_passe: ancien, mot_de_passe: nouveau });
+      setMotDePasseConfirmOuverte(false);
+      setAncien(''); setNouveau('');
+      // Le service referme les autres sessions (règle RG31). Plutôt que de
+      // garder cet onglet ouvert avec un jeton dont la portée vient de
+      // changer, on ramène le donneur se reconnecter avec le mot de passe
+      // qu'il vient de choisir — jamais d'appel silencieux voué à échouer.
+      setReussite('Mot de passe changé. Reconnexion avec votre nouveau mot de passe…');
+      // Le bandeau de succès vit en haut de la page : sur cet écran dense,
+      // le donneur peut très bien être descendu jusqu'à la carte Sécurité.
+      // Sans remonter, il serait redirigé sans jamais l'avoir vu.
+      window.scrollTo({ top: 0, behavior: mouvementReduit ? 'auto' : 'smooth' });
+      effacerJeton();
+      setTimeout(() => routeur.replace('/connexion'), 1800);
+    } catch (probleme) {
+      setErreur(probleme.message);
+      setMotDePasseEnCours(false);
+    }
+  }
+
   if (!profil) {
     return <main className="page-telephone pile-l"><LignesEnAttente nombre={5} /></main>;
   }
@@ -107,6 +146,15 @@ export default function MonCompte() {
     { cle: 'accepte_messagerie', mot: 'WhatsApp', Icone: MessageCircle, actif: profil.accepte_messagerie }
   ];
 
+  const infosModifiees = poids !== String(profil.poids_declare) || idZone !== profil.id_zone;
+  const infosValides = infosModifiees && Number(poids) > 0 && idZone;
+
+  const entree = (rang) => mouvementReduit ? {} : {
+    initial: { opacity: 0, y: 14 },
+    animate: { opacity: 1, y: 0 },
+    transition: { delay: 0.06 * rang, duration: 0.35, ease: 'easeOut' }
+  };
+
   return (
     <main className="page-telephone pile-xl">
       <h1 className="titre">Mon compte</h1>
@@ -114,26 +162,30 @@ export default function MonCompte() {
       <MessageReussite>{reussite}</MessageReussite>
 
       {/* ---------------- Mes informations ---------------- */}
-      <section className="pile">
+      <motion.section className="carte-secondaire pile" {...entree(0)}>
         <div className="section-titre"><span className="etiquette">Mes informations</span></div>
+
+        <div className="pile-s">
+          <div className="ligne-fait" style={{ borderTop: 'none', paddingTop: 0 }}>
+            <span style={{ fontWeight: 600 }}>{profil.prenom} {profil.nom}</span>
+            <span className="valeur">{dateCourte(profil.date_naissance)}</span>
+          </div>
+          <div className="ligne-fait">
+            <span className="appui">Groupe sanguin</span>
+            <span className="valeur">{profil.groupe_sanguin || 'à préciser au centre'}</span>
+          </div>
+          <p className="petit rang" style={{ gap: 'var(--e2)' }}>
+            <Lock size={14} strokeWidth={1.75} aria-hidden="true" />
+            Modifiable au centre uniquement, avec une pièce d&rsquo;identité.
+          </p>
+        </div>
+
+        <hr className="filet" />
+
         <p className="petit">
           Votre zone sert à savoir quel centre peut vous appeler. Tenez-la à jour si vous
           déménagez.
         </p>
-
-        <div className="ligne-fait" style={{ borderTop: 'none', paddingTop: 0 }}>
-          <span style={{ fontWeight: 600 }}>{profil.prenom} {profil.nom}</span>
-          <span className="valeur">{dateCourte(profil.date_naissance)}</span>
-        </div>
-        <div className="ligne-fait">
-          <span className="appui">Groupe sanguin</span>
-          <span className="valeur">{profil.groupe_sanguin || 'à préciser au centre'}</span>
-        </div>
-        <p className="petit">
-          Pour corriger votre nom, votre date de naissance ou votre groupe,
-          adressez-vous à votre centre avec une pièce d&rsquo;identité.
-        </p>
-
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--e5)' }}>
           <label className="champ">
             <span className="champ-etiquette">Poids</span>
@@ -147,8 +199,8 @@ export default function MonCompte() {
           <ChampZone valeur={idZone} surChoix={setIdZone} />
         </div>
 
-        <Bouton variante="secondaire" enCours={enregistrement}
-                disabled={!idZone || !Number(poids)}
+        <Bouton variante="principal" enCours={enregistrement}
+                disabled={!infosValides}
                 onClick={async () => {
                   setEnregistrement(true);
                   await agir(() => modifierProfil({
@@ -158,10 +210,10 @@ export default function MonCompte() {
                 }}>
           Enregistrer
         </Bouton>
-      </section>
+      </motion.section>
 
       {/* ---------------- Mes numéros ---------------- */}
-      <section className="pile">
+      <motion.section className="carte-secondaire pile" {...entree(1)}>
         <div className="section-titre">
           <span className="etiquette">Mes numéros, dans l&rsquo;ordre d&rsquo;appel</span>
         </div>
@@ -171,7 +223,7 @@ export default function MonCompte() {
         </p>
 
         {telephones.map((telephone) => (
-          <div key={telephone.id_telephone} className="ligne-fait" style={{ minHeight: 44 }}>
+          <div key={telephone.id_telephone} className="ligne-fait" style={{ minHeight: 44, alignItems: 'center' }}>
             <span className="rang" style={{ gap: 'var(--e3)' }}>
               <span className="mono petit">{telephone.rang}</span>
               <span className="mono">+226 {numeroLisible(telephone.numero)}</span>
@@ -179,14 +231,18 @@ export default function MonCompte() {
             {telephone.rang === 1 ? (
               <span className="petit">principal</span>
             ) : aRetirer === telephone.id_telephone ? (
-              <button type="button" className="lien lien-sang"
-                      onClick={() => agir(
-                        () => retirerTelephone(telephone.id_telephone), 'Numéro retiré.')}>
+              <Bouton variante="danger" compact enCours={retraitEnCours === telephone.id_telephone}
+                      motEnCours="Retrait"
+                      onClick={async () => {
+                        setRetraitEnCours(telephone.id_telephone);
+                        await agir(() => retirerTelephone(telephone.id_telephone), 'Numéro retiré.');
+                        setRetraitEnCours(null);
+                        setARetirer(null);
+                      }}>
                 Confirmer le retrait
-              </button>
+              </Bouton>
             ) : (
-              <button type="button" className="lien"
-                      onClick={() => setARetirer(telephone.id_telephone)}>
+              <button type="button" className="bouton-fantome" onClick={() => setARetirer(telephone.id_telephone)}>
                 <X size={16} strokeWidth={1.75} />Retirer
               </button>
             )}
@@ -194,7 +250,11 @@ export default function MonCompte() {
         ))}
 
         {telephones.length < maximum && (
-          ajoutOuvert ? (
+          <Repliable
+            titre="Ajouter un numéro"
+            apercu="Un numéro de secours, pour rester joignable."
+            ouvert={ajoutOuvert}
+            surBascule={setAjoutOuvert}>
             <div className="pile-s">
               <span className="rang" style={{ gap: 'var(--e2)' }}>
                 <span className="indicatif">+226</span>
@@ -202,26 +262,18 @@ export default function MonCompte() {
                        value={nouveauNumero}
                        onChange={(e) => setNouveauNumero(e.target.value)} />
               </span>
-              <div className="rang" style={{ gap: 'var(--e3)' }}>
-                <Bouton variante="secondaire" compact
-                        onClick={async () => {
-                          const fait = await agir(
-                            () => ajouterTelephone(nouveauNumero), 'Numéro ajouté.');
-                          if (fait) { setNouveauNumero(''); setAjoutOuvert(false); }
-                        }}>
-                  Ajouter ce numéro
-                </Bouton>
-                <button type="button" className="lien"
-                        onClick={() => { setAjoutOuvert(false); setNouveauNumero(''); }}>
-                  Revenir en arrière
-                </button>
-              </div>
+              <Bouton variante="secondaire" className="bouton-souleve" compact enCours={ajoutEnCours}
+                      motEnCours="Ajout" disabled={!nouveauNumero.trim()}
+                      onClick={async () => {
+                        setAjoutEnCours(true);
+                        const fait = await agir(() => ajouterTelephone(nouveauNumero), 'Numéro ajouté.');
+                        setAjoutEnCours(false);
+                        if (fait) { setNouveauNumero(''); setAjoutOuvert(false); }
+                      }}>
+                Ajouter ce numéro
+              </Bouton>
             </div>
-          ) : (
-            <button type="button" className="lien" onClick={() => setAjoutOuvert(true)}>
-              <Plus size={18} strokeWidth={1.75} />Ajouter un numéro
-            </button>
-          )
+          </Repliable>
         )}
 
         <Repliable titre="Remplacer mon numéro principal"
@@ -256,23 +308,27 @@ export default function MonCompte() {
             <p className="petit">
               Ce nouveau numéro deviendra votre identifiant de connexion.
             </p>
-            <Bouton variante="secondaire"
+            <Bouton variante="secondaire" className="bouton-souleve" enCours={remplacementEnCours}
+                    motEnCours="Remplacement"
+                    disabled={!remplacement.numero.trim() || !remplacement.confirmation.trim()}
                     onClick={async () => {
+                      setRemplacementEnCours(true);
                       const fait = await agir(() => remplacerNumeroPrincipal({
                         nouveau_numero: remplacement.numero,
                         confirmation: remplacement.confirmation,
                         conserver_ancien: remplacement.conserver
                       }), 'Numéro principal remplacé.');
+                      setRemplacementEnCours(false);
                       if (fait) setRemplacement({ numero: '', confirmation: '', conserver: true });
                     }}>
               Remplacer le numéro principal
             </Bouton>
           </div>
         </Repliable>
-      </section>
+      </motion.section>
 
       {/* ---------------- Canaux ---------------- */}
-      <section className="pile">
+      <motion.section className="carte-secondaire pile" {...entree(2)}>
         <div className="section-titre">
           <span className="etiquette">Comment le centre me contacte</span>
         </div>
@@ -282,9 +338,13 @@ export default function MonCompte() {
         </p>
         <div className="rang" style={{ gap: 'var(--e3)', flexWrap: 'wrap' }}>
           {canaux.map(({ cle, mot, Icone, actif, fige }) => (
-            <button key={cle} type="button" className="touche" aria-pressed={actif}
-                    disabled={fige}
-                    onClick={() => agir(() => modifierProfil({ [cle]: !actif }), 'Enregistré.')}>
+            <button key={cle} type="button" className="touche touche-canal" aria-pressed={actif}
+                    disabled={fige || canalEnCours === cle}
+                    onClick={async () => {
+                      setCanalEnCours(cle);
+                      await agir(() => modifierProfil({ [cle]: !actif }), 'Enregistré.');
+                      setCanalEnCours(null);
+                    }}>
               <Icone size={18} strokeWidth={1.75} aria-hidden="true" />{mot}
             </button>
           ))}
@@ -292,16 +352,24 @@ export default function MonCompte() {
         <p className="petit">
           L&rsquo;appel reste toujours possible : c&rsquo;est à cela que servent vos numéros.
         </p>
-      </section>
+      </motion.section>
 
-      {/* ---------------- Question de sécurité ---------------- */}
-      <section className="pile">
-        <div className="section-titre">
-          <span className="etiquette">Ma question de sécurité</span>
+      {/* ---------------- Sécurité ---------------- */}
+      <motion.section className="carte-secondaire pile" {...entree(3)}>
+        <div className="section-titre"><span className="etiquette">Sécurité</span></div>
+        <div className="encadre encadre-ocre">
+          <Lock size={18} strokeWidth={1.75} aria-hidden="true" />
+          <span>
+            Votre question de sécurité est le <strong>seul</strong> moyen de retrouver votre
+            compte si vous oubliez votre mot de passe. Choisissez-la avec soin.
+          </span>
         </div>
-        <p style={{ fontWeight: 600, fontSize: 'var(--t-appui)' }}>{profil.question_securite}</p>
-        <Repliable titre="Changer ma question"
-                   apercu="C&rsquo;est le seul moyen de retrouver votre compte.">
+
+        <div className="pile-s">
+          <span className="champ-etiquette">Ma question de sécurité</span>
+          <p style={{ fontWeight: 600, fontSize: 'var(--t-appui)' }}>{profil.question_securite}</p>
+        </div>
+        <Repliable titre="Changer ma question" apercu="Nouvelle question, nouvelle réponse.">
           <div className="pile">
             <label className="champ">
               <span className="champ-etiquette">Nouvelle question</span>
@@ -313,22 +381,16 @@ export default function MonCompte() {
               <input className="champ-saisie" value={reponse} autoComplete="off"
                      onChange={(e) => setReponse(e.target.value)} />
             </label>
-            <Bouton variante="secondaire"
-                    onClick={async () => {
-                      const fait = await agir(() => changerQuestionSecurite({
-                        question_securite: question, reponse_securite: reponse
-                      }), 'Question enregistrée.');
-                      if (fait) { setQuestion(''); setReponse(''); }
-                    }}>
+            <Bouton variante="secondaire" className="bouton-souleve"
+                    disabled={!question.trim() || !reponse.trim()}
+                    onClick={() => setQuestionConfirmOuverte(true)}>
               Enregistrer la question
             </Bouton>
           </div>
         </Repliable>
-      </section>
 
-      {/* ---------------- Mot de passe ---------------- */}
-      <section className="pile">
-        <div className="section-titre"><span className="etiquette">Mon mot de passe</span></div>
+        <hr className="filet" />
+
         <Repliable titre="Changer mon mot de passe">
           <div className="pile">
             <label className="champ">
@@ -337,60 +399,53 @@ export default function MonCompte() {
                      value={ancien} onChange={(e) => setAncien(e.target.value)} />
             </label>
             <label className="champ">
-              <span className="champ-etiquette rang-espace">
-                Nouveau mot de passe
-                <button type="button" className="lien"
-                        style={{ minHeight: 0, fontWeight: 400, fontSize: 'var(--t-appui)' }}
-                        onClick={() => setMontrer(!montrer)}>
+              <span className="champ-etiquette">Nouveau mot de passe</span>
+              <span className="champ-saisie-groupe">
+                <input className="champ-saisie-nue" type={montrer ? 'text' : 'password'}
+                       autoComplete="new-password" value={nouveau}
+                       onChange={(e) => setNouveau(e.target.value)} />
+                <button type="button" className="champ-bouton-interne" onClick={() => setMontrer(!montrer)}>
                   {montrer ? <><EyeOff size={16} strokeWidth={1.75} />Masquer</>
                            : <><Eye size={16} strokeWidth={1.75} />Montrer</>}
                 </button>
               </span>
-              <input className="champ-saisie" type={montrer ? 'text' : 'password'}
-                     autoComplete="new-password" value={nouveau}
-                     onChange={(e) => setNouveau(e.target.value)} />
               <span className="champ-aide">Huit caractères au moins.</span>
             </label>
-            <Bouton variante="secondaire"
-                    onClick={async () => {
-                      setErreur('');
-                      try {
-                        const resultat = await changerMotDePasse({
-                          ancien_mot_de_passe: ancien, mot_de_passe: nouveau
-                        });
-                        enregistrerJeton(resultat.jeton);
-                        setAncien(''); setNouveau('');
-                        setReussite('Mot de passe changé. Vos autres sessions sont fermées.');
-                      } catch (probleme) { setErreur(probleme.message); }
-                    }}>
+            <Bouton variante="secondaire" className="bouton-souleve"
+                    disabled={!ancien || nouveau.length < 8}
+                    onClick={() => setMotDePasseConfirmOuverte(true)}>
               Changer le mot de passe
             </Bouton>
           </div>
         </Repliable>
-      </section>
+      </motion.section>
 
-      {/* ---------------- Quitter ---------------- */}
-      <section className="pile">
-        <div className="section-titre"><span className="etiquette">Quitter DJIGUI</span></div>
+      {/* ---------------- Zone sensible ---------------- */}
+      <motion.section className="carte-zone-sensible pile" {...entree(4)} style={{ marginTop: 'var(--e4)' }}>
+        <span className="etiquette" style={{ color: 'var(--sang)' }}>Zone sensible</span>
+
         <p className="appui">
           Vous ne recevrez plus aucun appel au don. Vos dons enregistrés restent
           au centre. Vous pouvez réactiver le compte en vous reconnectant.
         </p>
-        <button type="button" className="lien" onClick={() => setDesactivationOuverte(true)}>
+        <Bouton variante="danger" style={{ alignSelf: 'flex-start' }}
+                onClick={() => setDesactivationOuverte(true)}>
           Désactiver mon compte
-        </button>
+        </Bouton>
+
         <hr className="filet" />
-        <button type="button" className="lien" onClick={fermerSession}>
+
+        <Bouton variante="discret" style={{ alignSelf: 'flex-start' }} onClick={fermerSession}>
           <LogOut size={18} strokeWidth={1.75} />Me déconnecter
-        </button>
-      </section>
+        </Bouton>
+      </motion.section>
 
       <Confirmation
         ouverte={desactivationOuverte}
         titre="Désactiver votre compte ?"
         motAction="Désactiver mon compte"
         motRetour="Garder mon compte"
-        varianteAction="principal"
+        varianteAction="danger"
         enCours={desactivationEnCours}
         surAnnuler={() => setDesactivationOuverte(false)}
         surConfirmer={async () => {
@@ -414,6 +469,46 @@ export default function MonCompte() {
         </p>
         <p className="appui">
           Vous pouvez réactiver le compte à tout moment en vous reconnectant.
+        </p>
+      </Confirmation>
+
+      <Confirmation
+        ouverte={questionConfirmOuverte}
+        titre="Changer votre question de sécurité ?"
+        motAction="Confirmer le changement"
+        motRetour="Revenir en arrière"
+        varianteAction="secondaire"
+        enCours={questionEnCours}
+        surAnnuler={() => setQuestionConfirmOuverte(false)}
+        surConfirmer={async () => {
+          setQuestionEnCours(true);
+          const fait = await agir(() => changerQuestionSecurite({
+            question_securite: question, reponse_securite: reponse
+          }), 'Question enregistrée.');
+          setQuestionEnCours(false);
+          setQuestionConfirmOuverte(false);
+          if (fait) { setQuestion(''); setReponse(''); }
+        }}
+      >
+        <p className="appui">
+          C&rsquo;est le seul moyen de retrouver votre compte en cas d&rsquo;oubli du mot de
+          passe. Assurez-vous de vous souvenir de la réponse.
+        </p>
+      </Confirmation>
+
+      <Confirmation
+        ouverte={motDePasseConfirmOuverte}
+        titre="Changer votre mot de passe ?"
+        motAction="Confirmer le changement"
+        motRetour="Revenir en arrière"
+        varianteAction="secondaire"
+        enCours={motDePasseEnCours}
+        surAnnuler={() => setMotDePasseConfirmOuverte(false)}
+        surConfirmer={confirmerChangementMotDePasse}
+      >
+        <p className="appui">
+          Après ce changement, vous devrez vous reconnecter avec votre nouveau mot de passe :
+          vos autres sessions se ferment aussitôt.
         </p>
       </Confirmation>
     </main>

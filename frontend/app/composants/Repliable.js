@@ -5,16 +5,27 @@ import { useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
 
-export default function Repliable({ titre, apercu, children, ouvertParDefaut = false }) {
-  const [ouvert, setOuvert] = useState(ouvertParDefaut);
+export default function Repliable({
+  titre, apercu, children, ouvertParDefaut = false,
+  ouvert: ouvertControle, surBascule
+}) {
+  const [ouvertInterne, setOuvertInterne] = useState(ouvertParDefaut);
   const mouvementReduit = useReducedMotion();
+  // Contrôlable de l'extérieur (ex. se refermer après un envoi réussi) tout
+  // en restant autonome par défaut pour les appelants qui ne s'en soucient pas.
+  const ouvert = ouvertControle !== undefined ? ouvertControle : ouvertInterne;
+  const basculer = () => {
+    const suivant = !ouvert;
+    if (surBascule) surBascule(suivant);
+    if (ouvertControle === undefined) setOuvertInterne(suivant);
+  };
 
   return (
     <div>
       <button
         type="button"
         className="rang-espace"
-        onClick={() => setOuvert(!ouvert)}
+        onClick={basculer}
         aria-expanded={ouvert}
         style={{
           width: '100%', background: 'none', border: 'none', font: 'inherit',

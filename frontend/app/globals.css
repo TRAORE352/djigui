@@ -1285,3 +1285,23 @@ select.champ-saisie { appearance: none; cursor: pointer; }
    ===================================================================== */
 .bloc-adresse { display: flex; gap: var(--e3); align-items: flex-start; }
 .bloc-adresse svg { flex-shrink: 0; margin-top: 2px; color: var(--encre-secondaire); }
+
+/* =====================================================================
+   22. MON COMPTE (E10)
+   Cartes par thème, avec une quatrième force de bouton réservée aux
+   actions graves : .bouton-danger, contour Sang, symétrique de
+   .bouton-secondaire (même hover plein). La zone sensible n'emprunte
+   jamais l'ombre/élévation des cartes « sûres » : un accent Sang à
+   gauche suffit à la mettre à part, sans dramatiser.
+   ===================================================================== */
+.bouton-danger { background: transparent; color: var(--sang); border-color: var(--sang); }
+.bouton-danger:hover:not(:disabled) { background: var(--sang); color: #fff; }
+
+.touche-canal[aria-pressed="true"] { background: var(--sang); border-color: var(--sang); color: #fff; }
+
+.carte-zone-sensible {
+  background: var(--surface);
+  border: 1px solid var(--trait);
+  border-left: 4px solid var(--sang);
+  padding: var(--e5);
+}
