@@ -715,3 +715,345 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   .barre-nav, .rail, .bouton { display: none !important; }
   body { background: #fff; }
 }
+
+/* =====================================================================
+   14. HÉRO D'ACCUEIL (E1)
+   Seul écran du produit à sortir du gabarit carré/plat : un dégradé
+   Sang → bordeaux (le bordeaux reprend #741724, déjà la teinte de
+   survol de .bouton-principal — aucune couleur neuve) et un bouton
+   arrondi, en écho à une identité de marque plus chaleureuse pour le
+   tout premier écran vu par un donneur. Ne pas reprendre .bouton-heros
+   ailleurs : le reste du produit reste angles droits, sans ombre.
+   ===================================================================== */
+.accueil-cadre { min-height: 100dvh; display: flex; flex-direction: column; }
+
+.heros {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 42dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: var(--e7) var(--e5) var(--e8);
+  background: linear-gradient(160deg, var(--sang) 0%, #741724 100%);
+}
+.heros-pastille {
+  position: absolute;
+  top: var(--e5);
+  right: var(--e5);
+  z-index: 2;
+  width: var(--cible);
+  height: var(--cible);
+  border-radius: 50%;
+  border: none;
+  background: var(--surface);
+  color: var(--sang);
+  font-family: var(--police-archivo), system-ui, sans-serif;
+  font-weight: 700;
+  font-size: var(--t-lead);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 6px 16px -6px rgba(36,14,10,.4);
+}
+.heros-pastille:hover { background: var(--sang-clair); }
+.heros-halo {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.32) 0%, rgba(255,255,255,0) 70%);
+}
+.heros-logo { position: relative; z-index: 1; }
+.heros-logo-image {
+  display: block;
+  width: 176px;
+  height: 176px;
+  filter: drop-shadow(0 10px 26px rgba(36,14,10,.35));
+}
+.heros-courbe {
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  width: 100%;
+  height: 72px;
+  display: block;
+}
+
+.heros-bas {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--e6);
+  max-width: var(--largeur-telephone);
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--e7) var(--e5) var(--e6);
+}
+
+.heros-titre {
+  font-size: var(--t-grand);
+  font-weight: 700;
+  line-height: 1.18;
+  color: var(--encre);
+  text-align: center;
+}
+.heros-titre-accent { color: var(--sang); }
+
+.heros-sous-titre {
+  font-size: var(--t-lead);
+  color: var(--encre-secondaire);
+  line-height: 1.4;
+  text-align: center;
+}
+
+.bouton-heros {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e2);
+  width: 100%;
+  min-height: var(--hauteur-action);
+  padding: var(--e3) var(--e6);
+  border-radius: 999px;
+  border: none;
+  background: var(--sang);
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  font-size: var(--t-corps);
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 12px 26px -10px rgba(140,28,44,.6), 0 0 0 0 rgba(140,28,44,.4);
+  animation: bouton-heros-respire 2.8s ease-in-out infinite;
+  transition: transform var(--duree) var(--courbe),
+              box-shadow var(--duree) var(--courbe),
+              background var(--duree) var(--courbe);
+}
+.bouton-heros-mot { min-width: 0; }
+.bouton-heros svg { flex-shrink: 0; }
+.bouton-heros:hover {
+  background: #741724;
+  transform: translateY(-2px);
+  animation-play-state: paused;
+  box-shadow: 0 16px 32px -10px rgba(116,23,36,.65);
+}
+.bouton-heros:active {
+  transform: translateY(0);
+  animation-play-state: paused;
+  box-shadow: 0 6px 16px -8px rgba(116,23,36,.55);
+}
+.bouton-heros:focus-visible { animation-play-state: paused; }
+
+/* Halo qui respire pour attirer l'œil vers l'action principale, jamais
+   un clignotement : une seule bague qui grandit et s'efface, en boucle
+   lente. Neutralisée par la règle prefers-reduced-motion globale. */
+@keyframes bouton-heros-respire {
+  0%, 100% {
+    box-shadow: 0 12px 26px -10px rgba(140,28,44,.6), 0 0 0 0 rgba(140,28,44,.4);
+  }
+  50% {
+    box-shadow: 0 12px 26px -10px rgba(140,28,44,.6), 0 0 0 12px rgba(140,28,44,0);
+  }
+}
+
+/* Invitation à s'inscrire, sous le bouton : l'amorce en gris, l'action
+   en Sang souligné — pour ressortir sans concurrencer le bouton. */
+.heros-invite {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0 4px;
+  min-height: var(--cible);
+  padding: var(--e2) var(--e3);
+  font-size: var(--t-appui);
+  text-decoration: none;
+  text-align: center;
+}
+.heros-invite-intro { color: var(--encre-secondaire); }
+.heros-invite-accent {
+  color: var(--sang);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.heros-invite:hover .heros-invite-accent { text-decoration-thickness: 2px; }
+
+@media (min-width: 560px) {
+  .heros-logo-image { width: 208px; height: 208px; }
+}
+
+/* Feedback temps réel sur un champ déjà valide, jamais une erreur —
+   même vert que .etat-seve, jamais une couleur neuve. */
+.champ-valide .champ-saisie { border-bottom-color: var(--seve); }
+.champ-coche { display: flex; align-items: center; flex-shrink: 0; }
+
+/* Champ à zone de saisie composée : préfixe et/ou bouton DANS la même
+   ligne que le texte, un seul filet sous l'ensemble — au lieu d'un
+   filet posé sur le seul <input>, qui laissait le préfixe « flotter »
+   à côté sans bordure (/connexion). */
+.champ-saisie-groupe {
+  display: flex;
+  align-items: center;
+  gap: var(--e2);
+  width: 100%;
+  min-height: var(--cible);
+  border-bottom: 1px solid var(--trait);
+  transition: border-color var(--duree) var(--courbe);
+}
+.champ-saisie-groupe:focus-within { border-bottom-color: var(--encre); border-bottom-width: 2px; }
+.champ-erreur .champ-saisie-groupe { border-color: var(--sang); border-bottom-width: 2px; }
+.champ-valide .champ-saisie-groupe { border-bottom-color: var(--seve); }
+
+.champ-prefixe {
+  font-family: var(--police-mono), ui-monospace, monospace;
+  color: var(--encre-secondaire);
+  flex-shrink: 0;
+}
+.champ-saisie-nue {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: var(--encre);
+}
+.champ-saisie-nue:focus { outline: none; }
+
+.champ-bouton-interne {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--e1);
+  min-height: var(--cible);
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--encre-secondaire);
+  font: inherit;
+  font-size: var(--t-petit);
+  cursor: pointer;
+}
+.champ-bouton-interne:hover { color: var(--encre); }
+
+/* =====================================================================
+   16. ÉCRANS D'AUTHENTIFICATION ÉPURÉS (/connexion, /inscription)
+   Pas de bandeau dégradé ici : fond clair, marque réduite à son mark,
+   contenu centré verticalement quand l'écran a la place. Même largeur
+   de lecture que le reste du donneur (--largeur-telephone).
+   ===================================================================== */
+.auth-cadre {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--e6) var(--e5);
+}
+.auth-corps {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--e8);
+  max-width: var(--largeur-telephone);
+  width: 100%;
+  margin: 0 auto;
+  padding: var(--e6) 0;
+}
+.auth-entete { display: flex; flex-direction: column; align-items: center; gap: var(--e3); text-align: center; }
+.auth-entete .titre-grand,
+.auth-entete .appui { text-align: center; }
+
+/* =====================================================================
+   15. PANNEAU D'ACCUEIL
+   Feuille du bas sur téléphone, fenêtre centrée à partir de 640 px :
+   même composant, seule la position change. Déclenché par la pastille
+   du héro — c'est l'unique aide dépliable de l'espace donneur (E1).
+   ===================================================================== */
+.panneau-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(36, 30, 29, .45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.panneau-feuille {
+  width: 100%;
+  max-width: var(--largeur-telephone);
+  max-height: 86dvh;
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: var(--e5) var(--e5) 0 0;
+  padding: var(--e3) var(--e5) var(--e8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e6);
+}
+.panneau-poignee {
+  display: block;
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--trait-fort);
+  margin: var(--e2) auto 0;
+  flex-shrink: 0;
+}
+.panneau-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e4);
+}
+.panneau-titre { font-size: var(--t-titre); font-weight: 600; line-height: 1.25; }
+.panneau-fermer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cible);
+  height: var(--cible);
+  flex-shrink: 0;
+  border: none;
+  background: var(--fond);
+  color: var(--encre);
+  border-radius: 50%;
+  cursor: pointer;
+}
+.panneau-fermer:hover { background: var(--trait); }
+.panneau-corps { padding-bottom: env(safe-area-inset-bottom); }
+
+.panneau-etape-centree { justify-content: center; text-align: center; }
+.panneau-texte-justifie { text-align: justify; }
+
+.pastille-etape {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--sang);
+  color: #fff;
+  font-family: var(--police-archivo), system-ui, sans-serif;
+  font-weight: 700;
+  font-size: var(--t-appui);
+}
+
+@media (min-width: 640px) {
+  .panneau-voile { align-items: center; padding: var(--e5); }
+  .panneau-feuille {
+    max-height: 80dvh;
+    border-radius: var(--e3);
+    padding: var(--e6) var(--e7) var(--e7);
+  }
+  .panneau-poignee { display: none; }
+}
