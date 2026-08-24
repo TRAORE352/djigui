@@ -210,13 +210,13 @@ function CarteAlerte({ alerte, mouvementReduit, onReponse }) {
                           motEnCours="Envoi" onClick={() => envoyer('je_viens', null)}>
                     Je viens
                   </Bouton>
-                  <Bouton variante="secondaire" style={{ flex: 1 }} disabled={enCours}
+                  <Bouton variante="secondaire" className="bouton-souleve" style={{ flex: 1 }} disabled={enCours}
                           onClick={() => setMotifOuvert(true)}>
                     Je ne peux pas
                   </Bouton>
                 </div>
                 {modifier && (
-                  <button type="button" className="lien" style={{ fontSize: 'var(--t-petit)' }}
+                  <button type="button" className="bouton-fantome" style={{ alignSelf: 'flex-start' }}
                           onClick={() => setModifier(false)}>
                     Annuler
                   </button>
@@ -233,7 +233,7 @@ function CarteAlerte({ alerte, mouvementReduit, onReponse }) {
                     </button>
                   ))}
                 </div>
-                <button type="button" className="lien" style={{ fontSize: 'var(--t-petit)' }}
+                <button type="button" className="bouton-fantome" style={{ alignSelf: 'flex-start' }}
                         disabled={enCours} onClick={() => setMotifOuvert(false)}>
                   Retour
                 </button>
@@ -263,23 +263,27 @@ function CarteAlerte({ alerte, mouvementReduit, onReponse }) {
             </span>
 
             {alerte.reponse === 'je_viens' && (
-              <p className="appui">
-                {alerte.creneau_prefere
-                  ? `Créneau choisi : ${alerte.creneau_prefere}.`
-                  : 'Merci — votre venue compte.'}{' '}
+              <div className="pile-s">
+                <p className="appui">
+                  {alerte.creneau_prefere
+                    ? `Créneau choisi : ${alerte.creneau_prefere}.`
+                    : 'Merci — votre venue compte.'}
+                </p>
                 {!alerte.creneau_prefere && active && (
-                  <Link href={`/alertes/${alerte.id_alerte}/disponibilite`} className="lien">
+                  <Link href={`/alertes/${alerte.id_alerte}/disponibilite`}
+                        className="bouton bouton-secondaire bouton-compact bouton-souleve"
+                        style={{ alignSelf: 'flex-start' }}>
                     Indiquer ma disponibilité
                   </Link>
                 )}
-              </p>
+              </div>
             )}
             {alerte.reponse === 'je_ne_peux_pas' && (
               <p className="appui">Merci de nous prévenir, ce sera pour une prochaine fois.</p>
             )}
 
             {active && alerte.reponse && (
-              <button type="button" className="lien" style={{ fontSize: 'var(--t-petit)' }}
+              <button type="button" className="bouton-fantome" style={{ alignSelf: 'flex-start' }}
                       onClick={() => setModifier(true)}>
                 Changer ma réponse
               </button>
@@ -288,7 +292,9 @@ function CarteAlerte({ alerte, mouvementReduit, onReponse }) {
         )}
       </AnimatePresence>
 
-      <Link href={`/alertes/${alerte.id_alerte}`} className="lien" style={{ fontSize: 'var(--t-petit)' }}>
+      <Link href={`/alertes/${alerte.id_alerte}`}
+            className="bouton bouton-secondaire bouton-compact bouton-souleve"
+            style={{ alignSelf: 'flex-start' }}>
         Voir le message du centre
         <ArrowRight size={14} strokeWidth={1.75} aria-hidden="true" />
       </Link>

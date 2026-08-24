@@ -8,12 +8,12 @@ import { Loader2 } from 'lucide-react';
 
 export default function Bouton({
   variante = 'principal', large = false, compact = false,
-  enCours = false, motEnCours, enfantIcone: Icone, children, ...reste
+  enCours = false, motEnCours, enfantIcone: Icone, children, className, ...reste
 }) {
   const mouvementReduit = useReducedMotion();
   const classes = [
     'bouton', `bouton-${variante}`,
-    large ? 'bouton-large' : '', compact ? 'bouton-compact' : ''
+    large ? 'bouton-large' : '', compact ? 'bouton-compact' : '', className || ''
   ].filter(Boolean).join(' ');
 
   return (

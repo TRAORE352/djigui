@@ -1179,3 +1179,109 @@ select.champ-saisie { appearance: none; cursor: pointer; }
 /* Alerte close (E6, historique) : un fait passé, jamais une action —
    la carte s'efface un peu plutôt que de garder l'éclat des actives. */
 .carte-attenuee { opacity: .6; }
+
+/* =====================================================================
+   18. HIÉRARCHIE DE BOUTONS (E6, E7)
+   Trois forces : .bouton-principal / .bouton-secondaire existent déjà et
+   restent tels quels (utilisés partout, on n'y touche pas). Deux ajouts
+   scopés à ces deux écrans : une élévation optionnelle pour les liens
+   habillés en bouton secondaire, et un vrai bouton tertiaire — jusqu'ici
+   ces actions discrètes n'étaient qu'un <button class="lien">.
+   ===================================================================== */
+.bouton-souleve {
+  transition: transform var(--duree) var(--courbe), box-shadow var(--duree) var(--courbe);
+}
+.bouton-souleve:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -12px rgba(36,14,10,.35);
+}
+.bouton-souleve:active:not(:disabled) { transform: translateY(0); }
+
+.bouton-fantome {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--e1);
+  min-height: var(--cible);
+  padding: 0 var(--e3);
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  color: var(--encre-secondaire);
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--t-petit);
+  cursor: pointer;
+  transition: background var(--duree) var(--courbe), color var(--duree) var(--courbe),
+              transform var(--duree) var(--courbe);
+}
+.bouton-fantome:hover:not(:disabled) { background: rgba(36,30,29,.06); color: var(--encre); }
+.bouton-fantome:active:not(:disabled) { transform: scale(.96); background: rgba(36,30,29,.1); }
+.bouton-fantome:disabled { opacity: .5; cursor: not-allowed; }
+
+/* =====================================================================
+   19. MESSAGE DU CENTRE EN BULLE (E7)
+   ===================================================================== */
+.bulle-message {
+  position: relative;
+  background: var(--sang-clair);
+  border: 1px solid var(--trait);
+  border-radius: var(--e3) var(--e3) var(--e3) var(--e1);
+  padding: var(--e5);
+  box-shadow: 0 10px 24px -18px rgba(36,14,10,.4);
+}
+.bulle-message::before {
+  content: "";
+  position: absolute;
+  left: var(--e5);
+  bottom: -7px;
+  width: 14px;
+  height: 14px;
+  background: var(--sang-clair);
+  border-right: 1px solid var(--trait);
+  border-bottom: 1px solid var(--trait);
+  border-bottom-right-radius: 3px;
+  transform: rotate(45deg);
+}
+.bulle-message-entete {
+  font-size: var(--t-appui);
+  font-weight: 700;
+  color: var(--sang);
+  margin-bottom: var(--e2);
+}
+.bulle-message-texte {
+  font-size: var(--t-corps);
+  line-height: 1.6;
+  text-align: justify;
+  color: var(--encre);
+}
+.bulle-message-horodatage {
+  display: block;
+  margin-top: var(--e3);
+  font-size: var(--t-petit);
+  color: var(--encre-secondaire);
+}
+
+/* =====================================================================
+   20. CADRE D'URGENCE — délai de réponse (E7)
+   Réutilise .encadre : bordure gauche + fond teinté déjà dans la
+   charte. Le pulse ne s'active qu'à échéance proche, sur le point
+   seulement — jamais tout l'encadré, pour rester bienveillant.
+   ===================================================================== */
+.cadre-urgence-compte {
+  font-weight: 700;
+  color: var(--sang);
+}
+.cadre-urgence-icone.respire {
+  animation: cadre-urgence-respire 1.8s ease-in-out infinite;
+}
+@keyframes cadre-urgence-respire {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
+}
+
+/* =====================================================================
+   21. ADRESSE DU CENTRE (E7)
+   ===================================================================== */
+.bloc-adresse { display: flex; gap: var(--e3); align-items: flex-start; }
+.bloc-adresse svg { flex-shrink: 0; margin-top: 2px; color: var(--encre-secondaire); }
