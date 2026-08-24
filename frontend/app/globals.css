@@ -572,6 +572,7 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   transition: color var(--duree) var(--courbe);
 }
 .barre-nav a.actif { color: var(--sang); font-weight: 600; }
+.barre-nav a:active { transform: scale(.95); }
 .barre-nav-indicateur {
   position: absolute;
   top: -1px; left: var(--e3); right: var(--e3);
@@ -1305,3 +1306,43 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   border-left: 4px solid var(--sang);
   padding: var(--e5);
 }
+
+/* En-tête de carte-section, dépliable : même repère que .section-titre
+   (filet dessous, même espacement) mais interactif. */
+.carte-section-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--trait);
+  padding: 0 0 var(--e2);
+  margin-bottom: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+/* =====================================================================
+   23. ACCÈS AU COMPTE DEPUIS TOUT ÉCRAN DONNEUR
+   ===================================================================== */
+.icone-profil {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cible);
+  height: var(--cible);
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: var(--encre-secondaire);
+  transition: background var(--duree) var(--courbe), color var(--duree) var(--courbe),
+              transform var(--duree) var(--courbe);
+}
+.icone-profil:hover { background: rgba(36,30,29,.06); color: var(--encre); }
+.icone-profil:active { transform: scale(.92); }
+.icone-profil-clair { color: rgba(255,255,255,.92); }
+.icone-profil-clair:hover { background: rgba(255,255,255,.16); color: #fff; }
+
+.carte-entete-icone-profil { position: absolute; top: var(--e5); right: var(--e5); z-index: 2; }

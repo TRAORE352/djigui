@@ -10,6 +10,7 @@ import { mesDons } from '@/lib/api';
 import { dateLongue } from '@/lib/format';
 import { LignesEnAttente } from '../../composants/Squelette';
 import { MessageErreur } from '../../composants/Message';
+import EnteteDonneur from '../../composants/EnteteDonneur';
 
 // Un compte de plus de trois mois sans aucun don a probablement déjà
 // donné ailleurs avant d'installer DJIGUI : c'est la question qu'il se
@@ -44,6 +45,8 @@ export default function MesDons() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.28, ease: 'easeOut' }}
     >
+      <EnteteDonneur titre="Mes dons" />
+
       <div className="pile-s">
         <span className="archivo" style={{ fontSize: 56, lineHeight: 1 }}>{donnees.nb_dons}</span>
         <span style={{ fontWeight: 600 }}>

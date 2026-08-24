@@ -11,9 +11,9 @@
 // =====================================================================
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, useReducedMotion } from 'motion/react';
+import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import {
-  Phone, MessageSquare, MessageCircle, X, Eye, EyeOff, LogOut, Lock
+  Phone, MessageSquare, MessageCircle, X, Eye, EyeOff, LogOut, Lock, ChevronDown
 } from 'lucide-react';
 import {
   monProfil, modifierProfil, changerQuestionSecurite, mesTelephones,
@@ -37,6 +37,44 @@ function useConfirmation() {
     return () => clearTimeout(minuterie);
   }, [mot]);
   return [mot, setMot];
+}
+
+// Carte-section dépliable : titre en petites capitales, filet dessous,
+// chevron qui pivote — même repère que les .section-titre d'avant,
+// devenu interactif. « Mes informations » ouverte par défaut : c'est
+// ce qu'on vient vérifier le plus souvent ; le reste se déplie au besoin.
+function CarteSection({ titre, ouvertParDefaut = false, children }) {
+  const [ouvert, setOuvert] = useState(ouvertParDefaut);
+  const mouvementReduit = useReducedMotion();
+
+  return (
+    <section className="carte-secondaire pile">
+      <button type="button" className="carte-section-entete"
+              onClick={() => setOuvert(!ouvert)} aria-expanded={ouvert}>
+        <span className="etiquette">{titre}</span>
+        <motion.span
+          animate={{ rotate: ouvert ? 180 : 0 }}
+          transition={{ duration: mouvementReduit ? 0 : 0.18 }}
+          style={{ display: 'flex' }}
+        >
+          <ChevronDown size={20} strokeWidth={1.75} aria-hidden="true" />
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {ouvert && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: mouvementReduit ? 0 : 0.25, ease: 'easeOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="pile" style={{ paddingTop: 'var(--e4)' }}>{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  );
 }
 
 export default function MonCompte() {
@@ -162,9 +200,8 @@ export default function MonCompte() {
       <MessageReussite>{reussite}</MessageReussite>
 
       {/* ---------------- Mes informations ---------------- */}
-      <motion.section className="carte-secondaire pile" {...entree(0)}>
-        <div className="section-titre"><span className="etiquette">Mes informations</span></div>
-
+      <motion.div {...entree(0)}>
+      <CarteSection titre="Mes informations" ouvertParDefaut>
         <div className="pile-s">
           <div className="ligne-fait" style={{ borderTop: 'none', paddingTop: 0 }}>
             <span style={{ fontWeight: 600 }}>{profil.prenom} {profil.nom}</span>
@@ -210,13 +247,12 @@ export default function MonCompte() {
                 }}>
           Enregistrer
         </Bouton>
-      </motion.section>
+      </CarteSection>
+      </motion.div>
 
       {/* ---------------- Mes numéros ---------------- */}
-      <motion.section className="carte-secondaire pile" {...entree(1)}>
-        <div className="section-titre">
-          <span className="etiquette">Mes numéros, dans l&rsquo;ordre d&rsquo;appel</span>
-        </div>
+      <motion.div {...entree(1)}>
+      <CarteSection titre="Mes numéros, dans l’ordre d’appel">
         <p className="petit">
           Le centre appelle dans cet ordre. Le premier numéro est aussi votre identifiant de
           connexion.
@@ -325,13 +361,12 @@ export default function MonCompte() {
             </Bouton>
           </div>
         </Repliable>
-      </motion.section>
+      </CarteSection>
+      </motion.div>
 
       {/* ---------------- Canaux ---------------- */}
-      <motion.section className="carte-secondaire pile" {...entree(2)}>
-        <div className="section-titre">
-          <span className="etiquette">Comment le centre me contacte</span>
-        </div>
+      <motion.div {...entree(2)}>
+      <CarteSection titre="Comment le centre me contacte">
         <p className="petit">
           Vous recevez les appels au don dans l&rsquo;application. Les autres moyens servent au
           centre pour vous joindre s&rsquo;il a besoin d&rsquo;une précision.
@@ -352,11 +387,12 @@ export default function MonCompte() {
         <p className="petit">
           L&rsquo;appel reste toujours possible : c&rsquo;est à cela que servent vos numéros.
         </p>
-      </motion.section>
+      </CarteSection>
+      </motion.div>
 
       {/* ---------------- Sécurité ---------------- */}
-      <motion.section className="carte-secondaire pile" {...entree(3)}>
-        <div className="section-titre"><span className="etiquette">Sécurité</span></div>
+      <motion.div {...entree(3)}>
+      <CarteSection titre="Sécurité">
         <div className="encadre encadre-ocre">
           <Lock size={18} strokeWidth={1.75} aria-hidden="true" />
           <span>
@@ -418,25 +454,26 @@ export default function MonCompte() {
             </Bouton>
           </div>
         </Repliable>
-      </motion.section>
+      </CarteSection>
+      </motion.div>
 
       {/* ---------------- Zone sensible ---------------- */}
-      <motion.section className="carte-zone-sensible pile" {...entree(4)} style={{ marginTop: 'var(--e4)' }}>
+      <motion.section className="carte-zone-sensible pile-s" {...entree(4)} style={{ marginTop: 'var(--e4)' }}>
         <span className="etiquette" style={{ color: 'var(--sang)' }}>Zone sensible</span>
 
-        <p className="appui">
+        <p className="petit">
           Vous ne recevrez plus aucun appel au don. Vos dons enregistrés restent
           au centre. Vous pouvez réactiver le compte en vous reconnectant.
         </p>
-        <Bouton variante="danger" style={{ alignSelf: 'flex-start' }}
+        <Bouton variante="danger" compact style={{ alignSelf: 'flex-start' }}
                 onClick={() => setDesactivationOuverte(true)}>
           Désactiver mon compte
         </Bouton>
 
         <hr className="filet" />
 
-        <Bouton variante="discret" style={{ alignSelf: 'flex-start' }} onClick={fermerSession}>
-          <LogOut size={18} strokeWidth={1.75} />Me déconnecter
+        <Bouton variante="discret" compact style={{ alignSelf: 'flex-start' }} onClick={fermerSession}>
+          <LogOut size={16} strokeWidth={1.75} />Me déconnecter
         </Bouton>
       </motion.section>
 

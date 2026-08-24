@@ -17,6 +17,7 @@ import BlocGroupe from '../../composants/BlocGroupe';
 import Etat from '../../composants/Etat';
 import Bouton from '../../composants/Bouton';
 import LogoPulsant from '../../composants/LogoPulsant';
+import EnteteDonneur from '../../composants/EnteteDonneur';
 import { MessageErreur } from '../../composants/Message';
 import { LignesEnAttente } from '../../composants/Squelette';
 import { dateCourte, dateLongue, pluriel } from '@/lib/format';
@@ -58,6 +59,7 @@ export default function MesAlertes() {
   if (alertes.length === 0) {
     return (
       <main className="page-telephone pile-l">
+        <EnteteDonneur titre="Alertes" />
         <div className="etat-vide pile" style={{ textAlign: 'center', alignItems: 'center' }}>
           <LogoPulsant taille={56} />
           <h1 className="lead">Aucun appel au don pour l&rsquo;instant.</h1>
@@ -100,9 +102,7 @@ export default function MesAlertes() {
   return (
     <main className="page-telephone pile-l">
       <div className="pile-s">
-        <h1 className="titre">
-          {pluriel(alertes.length, 'appel au don', 'appels au don')}
-        </h1>
+        <EnteteDonneur titre={pluriel(alertes.length, 'appel au don', 'appels au don')} />
         {attendent > 0 && (
           <p className="appui">
             {attendent === 1 ? '1 attend votre réponse.' : `${attendent} attendent votre réponse.`}

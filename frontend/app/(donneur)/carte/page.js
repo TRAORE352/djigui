@@ -13,6 +13,7 @@ import { CalendarPlus } from 'lucide-react';
 import { monProfil, telechargerRappel } from '@/lib/api';
 import { dateLongue, pluriel } from '@/lib/format';
 import BlocGroupe from '../../composants/BlocGroupe';
+import IconeProfil from '../../composants/IconeProfil';
 import Bouton from '../../composants/Bouton';
 import { MessageErreur } from '../../composants/Message';
 import { CarteEnAttente } from '../../composants/Squelette';
@@ -103,6 +104,7 @@ export default function CarteDonneur() {
   return (
     <main className="pile-l" style={{ paddingBottom: 'var(--e10)' }}>
       <motion.div className="carte-entete" {...entree(0)}>
+        <IconeProfil clair className="carte-entete-icone-profil" />
         <span className="etiquette carte-entete-etiquette">Carte de donneur</span>
         <p className="carte-entete-code mono">{profil.code_donneur}</p>
         <p className="carte-entete-instruction">
