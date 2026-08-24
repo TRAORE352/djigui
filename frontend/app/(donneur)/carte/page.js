@@ -103,7 +103,7 @@ export default function CarteDonneur() {
       </motion.div>
 
       <div className="carte-page-corps">
-        <motion.div className="carte-principale pile-l" {...entree(1)}>
+        <motion.div className="groupe-eligibilite" {...entree(1)}>
           <div className="carte-groupe-ligne">
             <motion.div
               initial={mouvementReduit ? false : { opacity: 0, scale: 0.8 }}
@@ -136,8 +136,6 @@ export default function CarteDonneur() {
               )}
             </div>
           </div>
-
-          <hr className="filet" />
 
           <div className="pile-s">
             {!groupeConnu && (

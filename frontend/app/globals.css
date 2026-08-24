@@ -1109,17 +1109,16 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   justify-content: center;
   gap: var(--e6);
 }
-.carte-principale {
-  position: relative;
-  z-index: 1;
-  margin-top: calc(-1 * var(--e8));
-  background: var(--surface);
-  border: 1px solid var(--trait);
-  box-shadow: 0 18px 34px -18px rgba(36,14,10,.35);
-  padding: var(--e7) var(--e6);
+/* Groupe + statut : plus une carte, un bloc posé sur le fond de page,
+   sous la courbe de l'en-tête. */
+.groupe-eligibilite {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e6);
+  padding-top: var(--e7);
 }
-.carte-groupe-ligne { display: flex; align-items: center; gap: var(--e5); }
-.carte-groupe-colonne { display: flex; flex-direction: column; gap: var(--e2); flex: 1; min-width: 0; }
+.carte-groupe-ligne { display: flex; align-items: center; justify-content: center; gap: var(--e5); }
+.carte-groupe-colonne { display: flex; flex-direction: column; gap: var(--e2); min-width: 0; }
 
 .puce-a-preciser {
   display: inline-flex;
