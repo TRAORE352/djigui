@@ -49,28 +49,11 @@ export default function CarteDonneur() {
   const [profil, setProfil] = useState(null);
   const [erreur, setErreur] = useState('');
   const [messageRappel, setMessageRappel] = useState('');
-  const [compteur, setCompteur] = useState(0);
   const mouvementReduit = useReducedMotion();
 
   useEffect(() => {
     monProfil().then(setProfil).catch((probleme) => setErreur(probleme.message));
   }, []);
-
-  // Le nombre de dons monte jusqu'à sa valeur : le geste dit qu'il
-  // s'agit d'un compte qui grandit, pas d'un chiffre figé.
-  useEffect(() => {
-    if (!profil) return;
-    if (mouvementReduit || profil.nb_dons === 0) { setCompteur(profil.nb_dons); return; }
-    const depart = performance.now();
-    let image;
-    const avancer = (instant) => {
-      const part = Math.min((instant - depart) / 500, 1);
-      setCompteur(Math.round(part * profil.nb_dons));
-      if (part < 1) image = requestAnimationFrame(avancer);
-    };
-    image = requestAnimationFrame(avancer);
-    return () => cancelAnimationFrame(image);
-  }, [profil, mouvementReduit]);
 
   async function ajouterRappel() {
     setMessageRappel('');
@@ -102,7 +85,7 @@ export default function CarteDonneur() {
   };
 
   return (
-    <main className="pile-l" style={{ paddingBottom: 'var(--e10)' }}>
+    <main className="pile-l" style={{ minHeight: '100dvh', paddingBottom: 'var(--e10)' }}>
       <motion.div className="carte-entete" {...entree(0)}>
         <IconeProfil clair className="carte-entete-icone-profil" />
         <span className="etiquette carte-entete-etiquette">Carte de donneur</span>
@@ -184,34 +167,6 @@ export default function CarteDonneur() {
             </Bouton>
           )}
           <MessageErreur>{messageRappel}</MessageErreur>
-        </motion.div>
-
-        <motion.div className="cartes-secondaires" {...entree(2)}>
-          <div className="carte-secondaire pile-s">
-            <span className="etiquette">Dons enregistrés</span>
-            <span className="carte-secondaire-compteur">{compteur}</span>
-          </div>
-
-          <div className="carte-secondaire pile-s">
-            <span className="etiquette">Dernier don</span>
-            {profil.date_dernier_don ? (
-              <span className="titre-s" style={{ fontWeight: 600 }}>
-                {dateLongue(profil.date_dernier_don)}
-              </span>
-            ) : (
-              <p className="appui">Votre premier don s&rsquo;inscrira ici.</p>
-            )}
-          </div>
-
-          {eligibilite.eligible && groupeConnu && (
-            <div className="carte-secondaire pile-s">
-              <span className="etiquette">Mécanique d&rsquo;alerte</span>
-              <p className="appui">
-                Si un centre appelle pour le groupe {profil.groupe_sanguin},
-                vous recevrez l&rsquo;alerte.
-              </p>
-            </div>
-          )}
         </motion.div>
 
         {/* Mention permanente de responsabilité médicale (règle RG6). */}

@@ -1099,12 +1099,14 @@ select.champ-saisie { appearance: none; cursor: pointer; }
 }
 
 .carte-page-corps {
+  flex: 1;
   max-width: var(--largeur-telephone);
   width: 100%;
   margin: 0 auto;
   padding: 0 var(--e5) var(--e6);
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: var(--e6);
 }
 .carte-principale {
@@ -1114,7 +1116,7 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   background: var(--surface);
   border: 1px solid var(--trait);
   box-shadow: 0 18px 34px -18px rgba(36,14,10,.35);
-  padding: var(--e6) var(--e5);
+  padding: var(--e7) var(--e6);
 }
 .carte-groupe-ligne { display: flex; align-items: center; gap: var(--e5); }
 .carte-groupe-colonne { display: flex; flex-direction: column; gap: var(--e2); flex: 1; min-width: 0; }
@@ -1157,7 +1159,6 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   50% { box-shadow: 0 0 0 5px rgba(46,106,79,0); }
 }
 
-.cartes-secondaires { display: flex; flex-direction: column; gap: var(--e4); }
 .carte-secondaire {
   background: var(--surface);
   border: 1px solid var(--trait);
@@ -1167,14 +1168,6 @@ select.champ-saisie { appearance: none; cursor: pointer; }
 .carte-secondaire:hover, .carte-secondaire:active {
   transform: translateY(-2px);
   box-shadow: 0 12px 24px -16px rgba(36,14,10,.3);
-}
-.carte-secondaire-compteur {
-  font-family: var(--police-mono), ui-monospace, monospace;
-  font-size: var(--t-enorme);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--sang);
-  line-height: 1;
 }
 
 /* Alerte close (E6, historique) : un fait passé, jamais une action —
