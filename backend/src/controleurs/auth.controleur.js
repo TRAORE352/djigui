@@ -109,9 +109,16 @@ async function inscription(requete, reponse) {
   if (groupe !== null && !GROUPES_VALIDES.includes(groupe)) {
     return reponse.status(400).json({ erreur: 'Groupe sanguin non reconnu.', champ: 'groupe_sanguin' });
   }
-  const poids = Number(corps.poids_declare);
-  if (!poids || poids <= 0 || poids > 300) {
-    return reponse.status(400).json({ erreur: 'Écrivez votre poids en kilogrammes.', champ: 'poids_declare' });
+  // Le poids peut lui aussi rester inconnu à l'inscription : le donneur
+  // ne sera simplement pas proposé comme éligible tant qu'il ne l'a pas
+  // complété, au centre ou depuis Mon compte (RG5 reste entière, elle
+  // s'applique juste plus tard).
+  let poids = null;
+  if (corps.poids_declare !== undefined && corps.poids_declare !== null && corps.poids_declare !== '') {
+    poids = Number(corps.poids_declare);
+    if (!poids || poids <= 0 || poids > 300) {
+      return reponse.status(400).json({ erreur: 'Ce poids ne semble pas exact.', champ: 'poids_declare' });
+    }
   }
   const idZone = Number(corps.id_zone);
   if (!idZone || !(await zoneExiste(idZone))) {

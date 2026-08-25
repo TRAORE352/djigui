@@ -14,6 +14,7 @@ const { journaliser } = require('../requetes/journal');
 const { evaluerEligibilite } = require('../regles/eligibilite');
 const { normaliserNumero, normaliserReponse } = require('./auth.controleur');
 const { signerJeton } = require('../middlewares/auth');
+const { GROUPES } = require('../regles/compatibilite');
 
 const MOTIFS_REFUS = ['don_trop_recent', 'absent_de_la_ville', 'raison_de_sante', 'autre'];
 const MOYENS_DEPLACEMENT = ['a_pied', 'deux_roues', 'transport_commun'];
@@ -90,27 +91,57 @@ async function mesDons(requete, reponse) {
   });
 }
 
-// PUT /api/donneurs/moi — poids, zone, repère, canaux (E10).
-// L'identité et le groupe ne sont pas modifiables ici : ils se
-// corrigent au centre, avec une pièce d'identité.
+// PUT /api/donneurs/moi — poids, zone, repère, canaux, et groupe sanguin
+// une seule fois (E10). Le nom et le prénom restent en lecture seule :
+// ils se corrigent au centre, avec une pièce d'identité, pour ne pas
+// ouvrir de porte à une usurpation par simple modification du profil.
 async function modifierProfil(requete, reponse) {
   const donneur = await chargerMonDonneur(requete, reponse);
   if (!donneur) return;
   const corps = requete.body || {};
 
-  const poids = corps.poids_declare === undefined
-    ? Number(donneur.poids_declare) : Number(corps.poids_declare);
-  if (!poids || poids <= 0 || poids > 300) {
-    return reponse.status(400).json({ erreur: 'Écrivez votre poids en kilogrammes.', champ: 'poids_declare' });
+  // Le poids reste facultatif (règle du lot 1) : vide ou absent efface
+  // la valeur plutôt que d'imposer un chiffre inventé.
+  let poids = donneur.poids_declare === null ? null : Number(donneur.poids_declare);
+  if (corps.poids_declare !== undefined) {
+    if (corps.poids_declare === null || corps.poids_declare === '') {
+      poids = null;
+    } else {
+      poids = Number(corps.poids_declare);
+      if (!poids || poids <= 0 || poids > 300) {
+        return reponse.status(400).json({ erreur: 'Ce poids ne semble pas exact.', champ: 'poids_declare' });
+      }
+    }
   }
+
   const idZone = corps.id_zone === undefined ? donneur.id_zone : Number(corps.id_zone);
   if (!idZone || !(await zoneExiste(idZone))) {
     return reponse.status(400).json({ erreur: 'Choisissez votre zone dans la liste.', champ: 'id_zone' });
   }
 
+  // Le groupe ne se règle qu'une fois par le donneur : une fois connu,
+  // seul le centre peut le corriger (RG, cohérent avec E4 à
+  // l'inscription — « Je ne sais pas » reste réparable ici, une seule
+  // fois, mais pas un groupe déjà déclaré).
+  let groupe = donneur.groupe_sanguin;
+  if (corps.groupe_sanguin !== undefined && donneur.groupe_sanguin === null) {
+    const propose = corps.groupe_sanguin || null;
+    if (propose !== null && !GROUPES.includes(propose)) {
+      return reponse.status(400).json({ erreur: 'Groupe sanguin non reconnu.', champ: 'groupe_sanguin' });
+    }
+    groupe = propose;
+  } else if (corps.groupe_sanguin !== undefined && donneur.groupe_sanguin !== null
+             && corps.groupe_sanguin !== donneur.groupe_sanguin) {
+    return reponse.status(403).json({
+      erreur: 'Votre groupe sanguin est déjà enregistré. Seul le centre peut le corriger.',
+      champ: 'groupe_sanguin'
+    });
+  }
+
   await donneurs.mettreAJourProfil(donneur.id_donneur, {
     poids_declare: poids,
     id_zone: idZone,
+    groupe_sanguin: groupe,
     repere_position: corps.repere_position !== undefined
       ? String(corps.repere_position || '').trim() : donneur.repere_position,
     accepte_sms: corps.accepte_sms !== undefined ? corps.accepte_sms : Boolean(donneur.accepte_sms),

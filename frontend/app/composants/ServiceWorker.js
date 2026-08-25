@@ -10,6 +10,15 @@ export default function ServiceWorker() {
         // L'installation restera possible plus tard : rien à signaler.
       });
     }
+    // Demande au navigateur de ne pas évincer le stockage de
+    // l'application sous pression mémoire (le jeton de session vit en
+    // localStorage). Purement best-effort : Chrome/Android l'accorde le
+    // plus souvent une fois l'app installée et utilisée ; Safari/iOS
+    // n'offre aucune garantie équivalente côté web, quoi que fasse le
+    // code — une limite de la plateforme, pas de l'application.
+    if (navigator.storage?.persist) {
+      navigator.storage.persist().catch(() => {});
+    }
   }, []);
   return null;
 }

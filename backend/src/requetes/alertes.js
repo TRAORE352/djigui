@@ -22,12 +22,23 @@ const { envoyerPushCandidats } = require('../push');
 // et construireFiltres doivent être appelés dans l'ordre exact où leurs
 // $n apparaîtront dans le texte final, qui diffère selon l'appelant —
 // voir compterCibles et candidatsFinaux.
+//
+// Trois modes (correctif 3) : « groupe » cible un groupe précis (élargi
+// ou non aux compatibles) — un donneur sans groupe renseigné n'y a
+// jamais sa place, il n'a pas prouvé appartenir à CE groupe. « zone » et
+// « tous » ne posent aucun filtre de groupe : `groupes` reste `null`, et
+// construireFiltres n'ajoute alors aucune clause « groupe_sanguin IN »,
+// ce qui inclut de lui-même les donneurs au groupe encore inconnu (une
+// clause IN exclurait toujours NULL, quel que soit son contenu).
 async function baseCiblage(ciblage) {
   const parametres = await lireParametres();
-  const groupes = ciblage.elargir_compatibles
-    ? groupesCompatibles(ciblage.groupe)
-    : [ciblage.groupe];
-  return { parametres, groupes, filtres: { groupes, zones: ciblage.zones || [] } };
+  const mode = ciblage.mode || 'groupe';
+  const groupes = mode === 'groupe'
+    ? (ciblage.elargir_compatibles ? groupesCompatibles(ciblage.groupe) : [ciblage.groupe])
+    : null;
+  const filtres = { zones: mode === 'tous' ? [] : (ciblage.zones || []) };
+  if (groupes) filtres.groupes = groupes;
+  return { parametres, groupes, mode, filtres };
 }
 
 // Un donneur est retenu s'il a AU MOINS UN numéro qui n'est pas signalé
@@ -50,7 +61,7 @@ const EXPR_A_UN_NUMERO_UTILISABLE = `EXISTS (
 // construction de `valeurs` = ordre d'apparition dans le texte : les deux
 // exprEligible() du SELECT d'abord, puis construireFiltres() du WHERE.
 async function compterCibles(idStructure, ciblage) {
-  const { parametres, groupes, filtres } = await baseCiblage(ciblage);
+  const { parametres, groupes, mode, filtres } = await baseCiblage(ciblage);
 
   const valeurs = [];
   const exprPeuvent = exprEligible(valeurs, parametres);
@@ -71,8 +82,9 @@ async function compterCibles(idStructure, ciblage) {
   const peuventDonner = Number(ligne.peuvent_donner_aujourdhui) || 0;
   const recevront = Number(ligne.recevront) || 0;
   return {
+    mode_ciblage: mode,
     groupes_cibles: groupes,
-    sans_substitut: sansSubstitut(ciblage.groupe),
+    sans_substitut: mode === 'groupe' ? sansSubstitut(ciblage.groupe) : true,
     donneurs_cible: Number(ligne.total) || 0,
     numeros_confirmes: Number(ligne.confirmes) || 0,
     peuvent_donner_aujourdhui: peuventDonner,
@@ -128,11 +140,12 @@ async function creerAlerte(donnees, idAgent) {
   try {
     await client.query('BEGIN');
     const resultat = await client.query(
-      `INSERT INTO alerte (id_structure, cree_par, groupe_cible, elargi_compatibles, message,
-                            canaux, date_limite, heure_limite, statut)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'brouillon')
+      `INSERT INTO alerte (id_structure, cree_par, groupe_cible, mode_ciblage, elargi_compatibles,
+                            message, canaux, date_limite, heure_limite, statut)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'brouillon')
        RETURNING id_alerte`,
-      [donnees.idStructure, idAgent, donnees.groupe, Boolean(donnees.elargirCompatibles),
+      [donnees.idStructure, idAgent, donnees.groupe || null, donnees.mode || 'groupe',
+       Boolean(donnees.elargirCompatibles),
        donnees.message, donnees.canaux, donnees.dateLimite, donnees.heureLimite]);
     const idAlerte = resultat.rows[0].id_alerte;
     for (const idZone of donnees.zones) {
@@ -162,11 +175,11 @@ async function modifierAlerte(idAlerte, idStructure, donnees) {
     await client.query('BEGIN');
     await client.query(
       `UPDATE alerte
-          SET groupe_cible = $1, elargi_compatibles = $2, message = $3, canaux = $4,
-              date_limite = $5, heure_limite = $6
-        WHERE id_alerte = $7`,
-      [donnees.groupe, Boolean(donnees.elargirCompatibles), donnees.message, donnees.canaux,
-       donnees.dateLimite, donnees.heureLimite, idAlerte]);
+          SET groupe_cible = $1, mode_ciblage = $2, elargi_compatibles = $3, message = $4,
+              canaux = $5, date_limite = $6, heure_limite = $7
+        WHERE id_alerte = $8`,
+      [donnees.groupe || null, donnees.mode || 'groupe', Boolean(donnees.elargirCompatibles),
+       donnees.message, donnees.canaux, donnees.dateLimite, donnees.heureLimite, idAlerte]);
     await client.query('DELETE FROM alerte_zone WHERE id_alerte = $1', [idAlerte]);
     for (const idZone of donnees.zones) {
       await client.query('INSERT INTO alerte_zone (id_alerte, id_zone) VALUES ($1, $2)', [idAlerte, idZone]);
@@ -192,7 +205,8 @@ async function envoyerAlerte(idAlerte, idStructure, idAgent) {
   const zones = zonesResultat.rows.map((ligne) => ligne.id_zone);
 
   const candidats = await candidatsFinaux({
-    groupe: alerte.groupe_cible, elargir_compatibles: Boolean(alerte.elargi_compatibles), zones
+    mode: alerte.mode_ciblage, groupe: alerte.groupe_cible,
+    elargir_compatibles: Boolean(alerte.elargi_compatibles), zones
   });
   if (candidats.length === 0) {
     throw new Error(

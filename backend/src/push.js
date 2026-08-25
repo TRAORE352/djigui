@@ -36,11 +36,10 @@ async function envoyerPushCandidats(candidats, alerte) {
     'SELECT nom FROM structure_sang WHERE id_structure = $1', [alerte.id_structure]);
   const nomStructure = structureResultat.rows[0]?.nom || 'Un centre';
 
-  const charge = JSON.stringify({
-    titre: 'DJIGUI : appel au don',
-    corps: `${nomStructure} recherche des donneurs ${alerte.groupe_cible}.`,
-    url: '/alertes'
-  });
+  const corps = alerte.groupe_cible
+    ? `${nomStructure} recherche des donneurs ${alerte.groupe_cible}.`
+    : `${nomStructure} recherche des donneurs de sang.`;
+  const charge = JSON.stringify({ titre: 'DJIGUI : appel au don', corps, url: '/alertes' });
 
   await Promise.all(abonnements.map(async (abonnement) => {
     try {

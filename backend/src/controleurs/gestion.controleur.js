@@ -18,6 +18,12 @@ const zones = require('../requetes/zones');
 const { lireParametres } = require('../requetes/parametres');
 const { journaliser, journaliserConsultation } = require('../requetes/journal');
 const { ORDRE_AFFICHAGE, GROUPES } = require('../regles/compatibilite');
+
+// Trois façons de cibler un appel (correctif 3) : un groupe précis,
+// une ou plusieurs zones sans distinction de groupe, ou tout le monde.
+// Un donneur sans groupe renseigné ne peut recevoir que les deux
+// derniers : voir le commentaire de baseCiblage (requetes/alertes.js).
+const MODES_CIBLAGE = ['groupe', 'zone', 'tous'];
 const { evaluerEligibilite } = require('../regles/eligibilite');
 
 const ERREUR_SANS_STRUCTURE =
@@ -457,17 +463,21 @@ async function cibleAlerte(requete, reponse) {
   const idStructure = idStructureDe(requete);
   if (!idStructure) return reponse.status(400).json({ erreur: ERREUR_SANS_STRUCTURE });
 
+  const mode = MODES_CIBLAGE.includes(requete.query.mode) ? requete.query.mode : 'groupe';
   const groupe = requete.query.groupe;
-  if (!GROUPES.includes(groupe)) {
+  if (mode === 'groupe' && !GROUPES.includes(groupe)) {
     return reponse.status(400).json({ erreur: 'Choisissez le groupe demandé.' });
   }
-  const zones = requete.query.zones
-    ? String(requete.query.zones).split(',').map(Number).filter(Boolean) : [];
+  const zones = mode === 'tous' ? [] : (requete.query.zones
+    ? String(requete.query.zones).split(',').map(Number).filter(Boolean) : []);
+  if (mode === 'zone' && zones.length === 0) {
+    return reponse.status(400).json({ erreur: 'Cochez au moins une zone.' });
+  }
   const elargir = requete.query.elargir === '1' || requete.query.elargir === 'true';
 
   const [cibles, dernierAppel] = await Promise.all([
-    alertes.compterCibles(idStructure, { groupe, elargir_compatibles: elargir, zones }),
-    alertes.dernierAppelDuGroupe(idStructure, groupe)
+    alertes.compterCibles(idStructure, { mode, groupe, elargir_compatibles: elargir, zones }),
+    mode === 'groupe' ? alertes.dernierAppelDuGroupe(idStructure, groupe) : Promise.resolve(null)
   ]);
 
   return reponse.json({ ...cibles, dernier_appel_meme_groupe: dernierAppel });
@@ -486,11 +496,13 @@ async function creerAlerteCtrl(requete, reponse) {
   if (!idStructure) return reponse.status(400).json({ erreur: ERREUR_SANS_STRUCTURE });
   const corps = requete.body || {};
 
-  if (!GROUPES.includes(corps.groupe)) {
+  const mode = MODES_CIBLAGE.includes(corps.mode_ciblage) ? corps.mode_ciblage : 'groupe';
+  if (mode === 'groupe' && !GROUPES.includes(corps.groupe)) {
     return reponse.status(400).json({ erreur: 'Choisissez le groupe demandé.', champ: 'groupe' });
   }
-  const zones = Array.isArray(corps.zones) ? corps.zones.map(Number).filter(Boolean) : [];
-  if (zones.length === 0) {
+  const zones = mode === 'tous' ? []
+    : (Array.isArray(corps.zones) ? corps.zones.map(Number).filter(Boolean) : []);
+  if (mode !== 'tous' && zones.length === 0) {
     return reponse.status(400).json({ erreur: 'Cochez au moins une zone.', champ: 'zones' });
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(corps.date_limite || '')) {
@@ -502,15 +514,15 @@ async function creerAlerteCtrl(requete, reponse) {
   }
 
   const idAlerte = await alertes.creerAlerte({
-    idStructure, groupe: corps.groupe,
-    elargirCompatibles: corps.elargir_compatibles === true,
+    idStructure, mode, groupe: mode === 'groupe' ? corps.groupe : null,
+    elargirCompatibles: mode === 'groupe' && corps.elargir_compatibles === true,
     zones, message,
     canaux: Array.isArray(corps.canaux) && corps.canaux.length > 0 ? corps.canaux.join(',') : 'application',
     dateLimite: corps.date_limite, heureLimite: corps.heure_limite || null
   }, requete.utilisateur.id_utilisateur);
 
   journaliser(requete.utilisateur.id_utilisateur, 'Création d’un appel au don (brouillon)',
-    `Groupe ${corps.groupe}`);
+    mode === 'groupe' ? `Groupe ${corps.groupe}` : mode === 'zone' ? 'Par zone, tous groupes' : 'Tous les donneurs');
 
   return reponse.status(201).json({ id_alerte: idAlerte });
 }
@@ -522,10 +534,12 @@ async function modifierAlerteCtrl(requete, reponse) {
   const idAlerte = Number(requete.params.id);
   const corps = requete.body || {};
 
+  const mode = MODES_CIBLAGE.includes(corps.mode_ciblage) ? corps.mode_ciblage : 'groupe';
   try {
     await alertes.modifierAlerte(idAlerte, idStructure, {
-      groupe: corps.groupe, elargirCompatibles: corps.elargir_compatibles === true,
-      zones: Array.isArray(corps.zones) ? corps.zones.map(Number).filter(Boolean) : [],
+      mode, groupe: mode === 'groupe' ? corps.groupe : null,
+      elargirCompatibles: mode === 'groupe' && corps.elargir_compatibles === true,
+      zones: mode === 'tous' ? [] : (Array.isArray(corps.zones) ? corps.zones.map(Number).filter(Boolean) : []),
       message: String(corps.message || '').trim(),
       canaux: Array.isArray(corps.canaux) && corps.canaux.length > 0 ? corps.canaux.join(',') : 'application',
       dateLimite: corps.date_limite, heureLimite: corps.heure_limite || null

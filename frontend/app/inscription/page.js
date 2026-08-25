@@ -85,7 +85,7 @@ export default function Inscription() {
 
   const etape2Valide = Boolean(
     numeroValide && confirmationValide && secondairesValides &&
-    (d.groupe || d.groupeInconnu) && Number(d.poids) > 0 && d.idZone &&
+    (d.groupe || d.groupeInconnu) && d.idZone &&
     (d.canaux.appel || d.canaux.sms || d.canaux.whatsapp));
 
   const etape3Valide = Boolean(
@@ -120,7 +120,6 @@ export default function Inscription() {
     if (!d.groupe && !d.groupeInconnu) {
       return poserErreur('Choisissez votre groupe, ou « Je ne sais pas ».', 'groupe');
     }
-    if (!Number(d.poids)) return poserErreur('Écrivez votre poids en kilogrammes.', 'poids');
     if (!d.idZone) return poserErreur('Choisissez votre zone dans les propositions.', 'zone');
     if (!d.canaux.appel && !d.canaux.sms && !d.canaux.whatsapp) {
       return poserErreur('Choisissez au moins un moyen de contact.', 'canaux');
@@ -146,7 +145,7 @@ export default function Inscription() {
         numeros_secondaires: d.secondaires.filter((numero) => numero.trim()),
         mot_de_passe: d.motDePasse,
         groupe_sanguin: d.groupeInconnu ? null : d.groupe,
-        poids_declare: Number(d.poids), id_zone: d.idZone,
+        poids_declare: d.poids ? Number(d.poids) : null, id_zone: d.idZone,
         question_securite: d.question.trim(), reponse_securite: d.reponse,
         accepte_sms: d.canaux.sms, accepte_messagerie: d.canaux.whatsapp,
         consentement: true
@@ -355,16 +354,18 @@ export default function Inscription() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--e5)' }}>
                 <label className={classe('poids')}>
-                  <span className="champ-etiquette">Poids</span>
+                  <span className="champ-etiquette">Poids (facultatif)</span>
                   <span className="champ-saisie-groupe">
                     <input className="champ-saisie-nue mono" inputMode="numeric" maxLength={3}
                            value={d.poids}
                            onChange={(e) => changer('poids', e.target.value.replace(/\D/g, ''))} />
                     <span className="appui">kg</span>
                   </span>
-                  {d.poids && Number(d.poids) < 50 && (
+                  {d.poids && Number(d.poids) < 50 ? (
                     <span className="champ-aide">Sous 50 kg, le centre décidera sur place.</span>
-                  )}
+                  ) : !d.poids ? (
+                    <span className="champ-aide">Le centre le prendra sur place si vous ne le donnez pas.</span>
+                  ) : null}
                 </label>
                 <ChampZone valeur={d.idZone} enErreur={champFautif === 'zone'}
                            surChoix={(id) => changer('idZone', id)} />

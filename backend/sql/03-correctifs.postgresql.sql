@@ -53,3 +53,28 @@ INSERT INTO parametre (cle, valeur, libelle, consequence, unite, categorie) VALU
 ('session_donneur_jours', '400', 'Durée du jeton d''un donneur',
  'Renouvelée à chaque usage : un donneur actif ne se reconnecte jamais. Le verrou d''application protège l''appareil entre deux usages.', 'jours', 'securite')
 ON CONFLICT (cle) DO NOTHING;
+
+-- Correctif 3 — appel au don sans groupe précis (ciblage par zone ou à
+-- tout le monde).
+--
+-- Avant ce correctif, groupe_cible était obligatoire : un appel visait
+-- toujours un groupe précis, et la clause SQL « groupe_sanguin IN (...) »
+-- qui en découle exclut structurellement tout donneur dont le groupe
+-- n'est pas renseigné (IN ne retient jamais NULL, quel que soit son
+-- contenu). Un donneur qui n'a pas encore précisé son groupe ne pouvait
+-- donc JAMAIS recevoir un appel — y compris un appel voulu pour « tout
+-- le monde ». mode_ciblage rend explicite l'intention de l'agent
+-- (groupe précis, zone(s) sans distinction de groupe, ou tout le monde) ;
+-- groupe_cible devient NULL pour les deux derniers cas, et le moteur de
+-- ciblage (requetes/alertes.js) n'applique alors aucun filtre de groupe,
+-- ce qui inclut naturellement les groupes NULL.
+ALTER TABLE alerte ALTER COLUMN groupe_cible DROP NOT NULL;
+ALTER TABLE alerte ADD COLUMN IF NOT EXISTS mode_ciblage VARCHAR(20) NOT NULL DEFAULT 'groupe'
+  CONSTRAINT chk_alerte_mode_ciblage CHECK (mode_ciblage IN ('groupe', 'zone', 'tous'));
+
+-- Correctif 4 — poids non obligatoire à l'inscription, comme le groupe
+-- sanguin l'est déjà. Un donneur qui ne connaît pas son poids ne sera
+-- simplement pas proposé comme éligible tant qu'il ne l'a pas complété
+-- (au centre ou depuis Mon compte) : la règle RG5 sur le poids minimum
+-- reste entière, elle s'applique juste plus tard.
+ALTER TABLE donneur ALTER COLUMN poids_declare DROP NOT NULL;

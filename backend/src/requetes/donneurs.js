@@ -73,10 +73,11 @@ async function mettreAJourProfil(idDonneur, donnees) {
   await pool.query(
     `UPDATE donneur
         SET poids_declare = $1, id_zone = $2, repere_position = $3,
-            accepte_sms = $4, accepte_messagerie = $5
-      WHERE id_donneur = $6`,
+            accepte_sms = $4, accepte_messagerie = $5, groupe_sanguin = $6
+      WHERE id_donneur = $7`,
     [donnees.poids_declare, donnees.id_zone, donnees.repere_position || null,
-     Boolean(donnees.accepte_sms), Boolean(donnees.accepte_messagerie), idDonneur]);
+     Boolean(donnees.accepte_sms), Boolean(donnees.accepte_messagerie),
+     donnees.groupe_sanguin, idDonneur]);
 }
 
 async function changerQuestionSecurite(idDonneur, question, condensatReponse) {
