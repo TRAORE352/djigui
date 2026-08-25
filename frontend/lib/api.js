@@ -73,6 +73,7 @@ export const sante = () => appel('/api/sante', { jeton: null });
 
 /* --------------------- Données publiques ---------------------------- */
 export const listerZones = () => appel('/api/zones', { jeton: null });
+export const configPublique = () => appel('/api/config', { jeton: null });
 
 /* ------------------------ Authentification -------------------------- */
 export const inscription = (corps) =>
@@ -118,6 +119,12 @@ export const remplacerNumeroPrincipal = (corps) =>
 export const desactiverMonCompte = () =>
   appel('/api/donneurs/moi/desactivation', { methode: 'PUT' });
 export const mesDons = () => appel('/api/donneurs/moi/dons');
+
+// Notifications Web Push (E10, section Notifications ; invite de E6).
+export const enregistrerAbonnementPush = (corps) =>
+  appel('/api/donneurs/moi/abonnement-push', { methode: 'POST', corps });
+export const retirerAbonnementPush = (endpoint) =>
+  appel('/api/donneurs/moi/abonnement-push', { methode: 'DELETE', corps: { endpoint } });
 
 // Le rappel d'agenda est un fichier : il passe par un téléchargement.
 export async function telechargerRappel() {

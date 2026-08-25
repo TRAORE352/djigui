@@ -11,6 +11,7 @@
 // =====================================================================
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import {
   Phone, MessageSquare, MessageCircle, X, Eye, EyeOff, LogOut, Lock, ChevronDown
@@ -20,11 +21,13 @@ import {
   ajouterTelephone, retirerTelephone, remplacerNumeroPrincipal,
   desactiverMonCompte, changerMotDePasse, deconnexion, effacerJeton
 } from '@/lib/api';
+import { etatNotifications, activerNotifications, desactiverNotifications } from '@/lib/notifications';
 import { dateCourte, numeroLisible } from '@/lib/format';
 import ChampZone from '../../composants/ChampZone';
 import Repliable from '../../composants/Repliable';
 import Bouton from '../../composants/Bouton';
 import Confirmation from '../../composants/Confirmation';
+import Etat from '../../composants/Etat';
 import { MessageErreur, MessageReussite } from '../../composants/Message';
 import { LignesEnAttente } from '../../composants/Squelette';
 
@@ -74,6 +77,82 @@ function CarteSection({ titre, ouvertParDefaut = false, children }) {
         )}
       </AnimatePresence>
     </section>
+  );
+}
+
+// Section Notifications de la carte-section du même nom. Quatre états,
+// jamais de demande de permission au chargement — uniquement sur clic
+// du bouton « Activer ».
+function NotificationsPush() {
+  const [etat, setEtat] = useState(null);
+  const [enCours, setEnCours] = useState(false);
+  const [erreur, setErreur] = useState('');
+
+  const charger = () => etatNotifications().then(setEtat);
+  useEffect(() => { charger(); }, []);
+
+  async function activer() {
+    setEnCours(true); setErreur('');
+    const resultat = await activerNotifications();
+    if (resultat.etat === 'erreur') {
+      setErreur(resultat.message || 'Impossible d’activer les notifications pour l’instant.');
+    }
+    await charger();
+    setEnCours(false);
+  }
+
+  async function desactiver() {
+    setEnCours(true); setErreur('');
+    await desactiverNotifications();
+    await charger();
+    setEnCours(false);
+  }
+
+  if (!etat) return <p className="petit">Vérification…</p>;
+
+  if (!etat.supporte) {
+    return (
+      <div className="pile-s">
+        <p className="appui">
+          Installez d&rsquo;abord DJIGUI sur votre écran d&rsquo;accueil pour activer les alertes.
+        </p>
+        <Link href="/installation" className="lien">Voir la marche à suivre</Link>
+      </div>
+    );
+  }
+
+  if (etat.permission === 'denied') {
+    return (
+      <p className="appui">
+        Les notifications sont bloquées pour DJIGUI dans les réglages de votre téléphone.
+        Autorisez-les depuis ces réglages pour recevoir les alertes ici.
+      </p>
+    );
+  }
+
+  if (etat.abonne) {
+    return (
+      <div className="pile-s">
+        <Etat ton="seve">Alertes activées</Etat>
+        <button type="button" className="bouton-fantome" style={{ alignSelf: 'flex-start' }}
+                disabled={enCours} onClick={desactiver}>
+          Désactiver
+        </button>
+        <MessageErreur>{erreur}</MessageErreur>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pile-s">
+      <p className="petit">Recevez une notification dès qu&rsquo;un centre a besoin de votre groupe.</p>
+      <Bouton variante="secondaire" className="bouton-souleve" compact
+              style={{ alignSelf: 'flex-start' }} enCours={enCours} motEnCours="Activation"
+              onClick={activer}>
+        Activer les alertes sur ce téléphone
+      </Bouton>
+      <MessageErreur>{erreur}</MessageErreur>
+    </div>
   );
 }
 
@@ -390,8 +469,15 @@ export default function MonCompte() {
       </CarteSection>
       </motion.div>
 
-      {/* ---------------- Sécurité ---------------- */}
+      {/* ---------------- Notifications ---------------- */}
       <motion.div {...entree(3)}>
+      <CarteSection titre="Notifications">
+        <NotificationsPush />
+      </CarteSection>
+      </motion.div>
+
+      {/* ---------------- Sécurité ---------------- */}
+      <motion.div {...entree(4)}>
       <CarteSection titre="Sécurité">
         <div className="encadre encadre-ocre">
           <Lock size={18} strokeWidth={1.75} aria-hidden="true" />
@@ -458,7 +544,7 @@ export default function MonCompte() {
       </motion.div>
 
       {/* ---------------- Zone sensible ---------------- */}
-      <motion.section className="carte-zone-sensible pile-s" {...entree(4)} style={{ marginTop: 'var(--e4)' }}>
+      <motion.section className="carte-zone-sensible pile-s" {...entree(5)} style={{ marginTop: 'var(--e4)' }}>
         <span className="etiquette" style={{ color: 'var(--sang)' }}>Zone sensible</span>
 
         <p className="petit">

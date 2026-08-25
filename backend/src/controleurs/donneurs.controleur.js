@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const donneurs = require('../requetes/donneurs');
 const telephones = require('../requetes/telephones');
 const reponses = require('../requetes/reponses');
+const abonnementsPush = require('../requetes/abonnements-push');
 const { zoneExiste } = require('../requetes/zones');
 const { lireParametres } = require('../requetes/parametres');
 const { journaliser } = require('../requetes/journal');
@@ -226,6 +227,37 @@ async function desactiver(requete, reponse) {
   });
 }
 
+// POST /api/donneurs/moi/abonnement-push — E10, section Notifications,
+// et l'invite de E6. { endpoint, keys: { p256dh, auth } }, format natif
+// de PushSubscription.toJSON() côté navigateur.
+async function enregistrerAbonnementPush(requete, reponse) {
+  const donneur = await chargerMonDonneur(requete, reponse);
+  if (!donneur) return;
+  const corps = requete.body || {};
+  const endpoint = String(corps.endpoint || '').trim();
+  const p256dh = corps.keys?.p256dh;
+  const auth = corps.keys?.auth;
+  if (!endpoint || !p256dh || !auth) {
+    return reponse.status(400).json({ erreur: 'Abonnement incomplet.' });
+  }
+  await abonnementsPush.enregistrerAbonnement(donneur.id_donneur, endpoint, p256dh, auth);
+  journaliser(requete.utilisateur.id_utilisateur, 'Activation des notifications sur un appareil', null);
+  return reponse.status(201).json({ message: 'Notifications activées sur cet appareil.' });
+}
+
+// DELETE /api/donneurs/moi/abonnement-push — ne retire que l'appareil
+// courant (identifié par son endpoint), jamais tous les abonnements du
+// donneur.
+async function retirerAbonnementPush(requete, reponse) {
+  const donneur = await chargerMonDonneur(requete, reponse);
+  if (!donneur) return;
+  const endpoint = String(requete.body?.endpoint || '').trim();
+  if (!endpoint) return reponse.status(400).json({ erreur: 'Abonnement introuvable.' });
+  await abonnementsPush.supprimerAbonnement(donneur.id_donneur, endpoint);
+  journaliser(requete.utilisateur.id_utilisateur, 'Désactivation des notifications sur un appareil', null);
+  return reponse.json({ message: 'Notifications désactivées sur cet appareil.' });
+}
+
 // GET /api/donneurs/moi/rappel.ics — bouton de l'écran E5.
 async function rappelAgenda(requete, reponse) {
   const donneur = await chargerMonDonneur(requete, reponse);
@@ -343,5 +375,6 @@ async function enregistrerDisponibiliteCtrl(requete, reponse) {
 module.exports = {
   monProfil, mesTelephones, mesDons, modifierProfil, changerQuestion,
   ajouterTelephone, retirerTelephone, remplacerPrincipal, desactiver, rappelAgenda,
+  enregistrerAbonnementPush, retirerAbonnementPush,
   mesAlertes, detailAlerte, repondreAlerte, enregistrerDisponibiliteCtrl, codeDonneur
 };

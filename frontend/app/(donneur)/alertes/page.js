@@ -11,8 +11,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import { Check, ArrowRight } from 'lucide-react';
+import { Check, ArrowRight, Bell, X } from 'lucide-react';
 import { mesAlertesDonneur, monProfil, repondreAlerteDonneur } from '@/lib/api';
+import { etatNotifications, activerNotifications } from '@/lib/notifications';
 import BlocGroupe from '../../composants/BlocGroupe';
 import Etat from '../../composants/Etat';
 import Bouton from '../../composants/Bouton';
@@ -29,6 +30,64 @@ const MOTIFS = [
   { cle: 'autre', mot: 'Autre' }
 ];
 const MOTIF_MOT = Object.fromEntries(MOTIFS.map((m) => [m.cle, m.mot]));
+
+const CLE_INVITE_VUE = 'djigui_invite_push_vue';
+
+// Invite douce : ne s'affiche que si l'appareil supporte le push, que
+// la permission n'a jamais été refusée, et que le donneur n'est pas
+// déjà abonné. Se referme d'elle-même dès qu'on active, refuse ou
+// ferme la croix — jamais deux fois dans la même session (sessionStorage,
+// pas localStorage : elle peut revenir à la prochaine visite).
+function BandeauNotifications() {
+  const [visible, setVisible] = useState(false);
+  const [enCours, setEnCours] = useState(false);
+  const mouvementReduit = useReducedMotion();
+
+  useEffect(() => {
+    if (window.sessionStorage.getItem(CLE_INVITE_VUE)) return;
+    etatNotifications().then((etat) => {
+      if (etat.supporte && etat.permission === 'default' && !etat.abonne) setVisible(true);
+    });
+  }, []);
+
+  function fermer() {
+    window.sessionStorage.setItem(CLE_INVITE_VUE, '1');
+    setVisible(false);
+  }
+
+  async function activer() {
+    setEnCours(true);
+    await activerNotifications();
+    setEnCours(false);
+    // Abonné ou refusé : dans les deux cas, l'invite a fait son office.
+    fermer();
+  }
+
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div className="encadre encadre-ocre"
+                    initial={mouvementReduit ? false : { opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={mouvementReduit ? undefined : { opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2, ease: 'easeOut' }}>
+          <Bell size={18} strokeWidth={1.75} aria-hidden="true" />
+          <div className="pile-s" style={{ flex: 1 }}>
+            <span>Activez les notifications pour ne manquer aucun appel.</span>
+            <div className="rang" style={{ gap: 'var(--e3)' }}>
+              <Bouton variante="secondaire" compact enCours={enCours} motEnCours="Activation" onClick={activer}>
+                Activer
+              </Bouton>
+              <button type="button" className="bouton-fantome" onClick={fermer} aria-label="Fermer cette invite">
+                <X size={16} strokeWidth={1.75} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 export default function MesAlertes() {
   const [profil, setProfil] = useState(null);
@@ -60,6 +119,7 @@ export default function MesAlertes() {
     return (
       <main className="page-telephone pile-l">
         <EnteteDonneur titre="Alertes" />
+        <BandeauNotifications />
         <div className="etat-vide pile" style={{ textAlign: 'center', alignItems: 'center' }}>
           <LogoPulsant taille={56} />
           <h1 className="lead">Aucun appel au don pour l&rsquo;instant.</h1>
@@ -109,6 +169,8 @@ export default function MesAlertes() {
           </p>
         )}
       </div>
+
+      <BandeauNotifications />
 
       {actives.length > 0 && (
         <div className="pile-s">
