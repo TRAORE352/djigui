@@ -205,6 +205,11 @@ h1, h2, h3, p, ul, ol { margin: 0; }
 
 .bouton-compact { min-height: var(--cible); padding: 0 var(--e4); font-size: var(--t-appui); }
 
+/* Action grave mais volontairement discrète (E10, zone sensible) :
+   plus petite que .bouton-compact, jamais au poids visuel d'une
+   action courante comme « Enregistrer ». */
+.bouton-minuscule { min-height: 32px; padding: 0 var(--e3); font-size: var(--t-petit); }
+
 .lien {
   display: inline-flex;
   align-items: center;
@@ -1222,6 +1227,14 @@ select.champ-saisie { appearance: none; cursor: pointer; }
    la carte s'efface un peu plutôt que de garder l'éclat des actives. */
 .carte-attenuee { opacity: .6; }
 
+/* Bloc incrusté de l'espace donneur (E6 Alertes, E10 Compte) : pas de
+   carte blanche à contour, pas d'ombre de conteneur — seul un léger
+   changement de surface (--surface sur --fond) groupe visuellement une
+   liste ou une section, dans le même esprit que Ma carte (E5). Distinct
+   de .carte/.carte-secondaire, qui restent la base des espaces
+   professionnels : ceux-là ne sont pas concernés par cette refonte. */
+.bloc-donneur { background: var(--surface); padding: var(--e5); }
+
 /* =====================================================================
    18. HIÉRARCHIE DE BOUTONS (E6, E7)
    Trois forces : .bouton-principal / .bouton-secondaire existent déjà et
@@ -1343,8 +1356,7 @@ select.champ-saisie { appearance: none; cursor: pointer; }
 
 .carte-zone-sensible {
   background: var(--surface);
-  border: 1px solid var(--trait);
-  border-left: 4px solid var(--sang);
+  border-left: 3px solid var(--sang);
   padding: var(--e5);
 }
 

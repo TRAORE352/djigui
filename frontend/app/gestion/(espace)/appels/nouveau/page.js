@@ -27,16 +27,24 @@ const CANAUX = [
   { cle: 'appel', mot: 'Appel téléphonique' }
 ];
 
-function messageType(groupe, dateLimite, heureLimite) {
-  if (!groupe) return '';
+const MODES = [
+  { cle: 'groupe', mot: 'Par groupe' },
+  { cle: 'zone', mot: 'Par zone' },
+  { cle: 'tous', mot: 'Tout le monde' }
+];
+
+function messageType(mode, groupe, dateLimite, heureLimite) {
+  if (mode === 'groupe' && !groupe) return '';
   const quand = dateLimite ? `avant le ${dateLongue(dateLimite)}${heureLimite ? ` à ${heureLimite}` : ''}` : 'dès que possible';
-  return `Le centre a besoin de dons ${groupe}. Merci de venir ${quand} si vous le pouvez. Répondez « je viens » ou « je ne peux pas » dans l’application.`;
+  const objet = mode === 'groupe' ? `de dons ${groupe}` : 'de donneurs de sang';
+  return `Le centre a besoin ${objet}. Merci de venir ${quand} si vous le pouvez. Répondez « je viens » ou « je ne peux pas » dans l’application.`;
 }
 
 export default function NouvelAppel() {
   const routeur = useRouter();
   const parametresUrl = useSearchParams();
 
+  const [mode, setMode] = useState('groupe');
   const [groupe, setGroupe] = useState(parametresUrl.get('groupe') || '');
   const [elargir, setElargir] = useState(false);
   const [zones, setZones] = useState(null);
@@ -58,43 +66,56 @@ export default function NouvelAppel() {
   useEffect(() => { listerZones().then((r) => setZones(r.zones)).catch(() => setZones([])); }, []);
   useEffect(() => { tableauDeBordGestion().then((r) => setStock(r.stock)).catch(() => {}); }, []);
 
+  // Changer de mode réinitialise les réglages propres au groupe :
+  // rester sur un groupe choisi alors qu'on cible « tout le monde »
+  // n'aurait aucun sens.
+  function changerMode(nouveauMode) {
+    setMode(nouveauMode);
+    if (nouveauMode !== 'groupe') { setGroupe(''); setElargir(false); }
+  }
+
   // Le message proposé se régénère tant que l'agent ne l'a pas modifié.
   useEffect(() => {
-    const propose = messageType(groupe, dateLimite, heureLimite);
+    const propose = messageType(mode, groupe, dateLimite, heureLimite);
     if (message === messageAuto) setMessage(propose);
     setMessageAuto(propose);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupe, dateLimite, heureLimite]);
+  }, [mode, groupe, dateLimite, heureLimite]);
 
-  // Le compteur de ciblage, recalculé à chaque réglage.
+  // Le compteur de ciblage, recalculé à chaque réglage. En mode
+  // « groupe », il faut un groupe choisi ; en mode « zone », au moins
+  // une zone ; en mode « tous », rien de plus n'est nécessaire.
   useEffect(() => {
-    if (!groupe) { setCible(null); return; }
+    if (mode === 'groupe' && !groupe) { setCible(null); return; }
+    if (mode === 'zone' && zonesChoisies.length === 0) { setCible(null); return; }
     const minuterie = setTimeout(() => {
-      cibleAlerteGestion(groupe, zonesChoisies, elargir)
+      cibleAlerteGestion(mode, groupe, zonesChoisies, elargir)
         .then(setCible)
         .catch((probleme) => setErreur(probleme.message));
     }, 300);
     return () => clearTimeout(minuterie);
-  }, [groupe, elargir, zonesChoisies.join(',')]);
+  }, [mode, groupe, elargir, zonesChoisies.join(',')]);
 
   // Zéro destinataire : on cherche lequel des réglages est de trop,
   // même principe que l'état vide de E24. On essaie d'abord
-  // l'élargissement aux groupes compatibles, puis chaque zone non
-  // cochée, et on garde la meilleure piste.
+  // l'élargissement aux groupes compatibles (mode groupe seulement),
+  // puis chaque zone non cochée, et on garde la meilleure piste.
   useEffect(() => {
     setSuggestion(null);
-    if (!cible || cible.recevront_appel > 0 || !groupe || !zones) return;
+    if (!cible || cible.recevront_appel > 0 || !zones) return;
+    if (mode === 'groupe' && !groupe) return;
     let annule = false;
 
     async function chercher() {
       const nomsChoisis = zonesChoisies.map((id) => zones.find((z) => z.id_zone === id)?.nom).filter(Boolean);
+      const sujet = mode === 'groupe' ? `donneur ${groupe}` : 'donneur';
       const base = nomsChoisis.length > 0
-        ? `Aucun donneur ${groupe} à ${nomsChoisis.join(' et ')}.`
-        : `Aucun donneur ${groupe} avec ce réglage.`;
+        ? `Aucun ${sujet} à ${nomsChoisis.join(' et ')}.`
+        : `Aucun ${sujet} avec ce réglage.`;
 
-      if (!elargir && !cible.sans_substitut) {
+      if (mode === 'groupe' && !elargir && !cible.sans_substitut) {
         try {
-          const essai = await cibleAlerteGestion(groupe, zonesChoisies, true);
+          const essai = await cibleAlerteGestion(mode, groupe, zonesChoisies, true);
           if (!annule && essai.recevront_appel > 0) {
             setSuggestion({
               texte: `${base} En élargissant aux groupes compatibles, ${pluriel(essai.recevront_appel, 'donneur')} pourraient recevoir cet appel.`,
@@ -109,7 +130,7 @@ export default function NouvelAppel() {
       let meilleure = null;
       for (const zone of zonesRestantes) {
         try {
-          const essai = await cibleAlerteGestion(groupe, [...zonesChoisies, zone.id_zone], elargir);
+          const essai = await cibleAlerteGestion(mode, groupe, [...zonesChoisies, zone.id_zone], elargir);
           if (essai.recevront_appel > 0 && (!meilleure || essai.recevront_appel > meilleure.nb)) {
             meilleure = { zone, nb: essai.recevront_appel };
           }
@@ -122,13 +143,13 @@ export default function NouvelAppel() {
           appliquer: () => toggleZone(meilleure.zone.id_zone)
         });
       } else {
-        setSuggestion({ texte: `${base} Essayez d’autres zones ou groupes compatibles.` });
+        setSuggestion({ texte: `${base} Essayez d’autres zones${mode === 'groupe' ? ' ou groupes compatibles' : ''}.` });
       }
     }
     chercher();
     return () => { annule = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cible, groupe, elargir, zonesChoisies.join(','), zones]);
+  }, [cible, mode, groupe, elargir, zonesChoisies.join(','), zones]);
 
   function toggleZone(idZone) {
     setZonesChoisies((z) => (z.includes(idZone) ? z.filter((v) => v !== idZone) : [...z, idZone]));
@@ -139,14 +160,16 @@ export default function NouvelAppel() {
 
   const niveauGroupe = stock?.find((l) => l.groupe_sanguin === groupe)?.niveau;
   const aujourdHui = new Date().toISOString().slice(0, 10);
-  const bloque = !groupe || zonesChoisies.length === 0 || !dateLimite || message.trim().length < 10
-    || !cible || cible.recevront_appel === 0;
+  const bloque = (mode === 'groupe' && !groupe) || (mode !== 'tous' && zonesChoisies.length === 0)
+    || !dateLimite || message.trim().length < 10 || !cible || cible.recevront_appel === 0;
 
   async function envoyer() {
     setEnvoiEnCours(true); setErreur('');
     try {
       const { id_alerte: idAlerte } = await creerAlerteGestion({
-        groupe, elargir_compatibles: elargir, zones: zonesChoisies,
+        mode_ciblage: mode, groupe: mode === 'groupe' ? groupe : undefined,
+        elargir_compatibles: mode === 'groupe' && elargir,
+        zones: mode === 'tous' ? [] : zonesChoisies,
         date_limite: dateLimite, heure_limite: heureLimite || null,
         message: message.trim(), canaux: ['application', ...canaux]
       });
@@ -185,46 +208,69 @@ export default function NouvelAppel() {
       <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 'var(--e7)', alignItems: 'start' }}>
         <div className="pile-l">
           <div className="pile-s">
-            <span className="etiquette">Groupe demandé</span>
-            <div className="rang" style={{ gap: 'var(--e3)' }}>
-              <div className="grille-groupes" style={{ flex: 1 }}>
-                {ORDRE_GROUPES.map((g) => (
-                  <button key={g} type="button" className="touche-groupe" aria-pressed={groupe === g}
-                          onClick={() => setGroupe(g)}>
-                    {g}
-                  </button>
-                ))}
-              </div>
-              {groupe && (
+            <span className="etiquette">Qui viser</span>
+            <div className="rang" style={{ gap: 'var(--e2)' }}>
+              {MODES.map(({ cle, mot }) => (
+                <button key={cle} type="button" className="touche" aria-pressed={mode === cle}
+                        onClick={() => changerMode(cle)}>
+                  {mot}
+                </button>
+              ))}
+            </div>
+            {mode === 'zone' && (
+              <span className="champ-aide">Tous les groupes sanguins, y compris ceux pas encore renseignés.</span>
+            )}
+            {mode === 'tous' && (
+              <span className="champ-aide">Tout le bassin de donneurs, sans distinction de groupe ni de zone.</span>
+            )}
+          </div>
+
+          {mode === 'groupe' && (
+            <>
+              <div className="pile-s">
+                <span className="etiquette">Groupe demandé</span>
                 <div className="rang" style={{ gap: 'var(--e3)' }}>
-                  <BlocGroupe groupe={groupe} taille="m" />
-                  {niveauGroupe && (
-                    <Etat ton={niveauGroupe === 'critique' ? 'sang' : niveauGroupe === 'bas' ? 'ocre' : 'neutre'}>
-                      {MOTS_NIVEAU[niveauGroupe]}
-                    </Etat>
+                  <div className="grille-groupes" style={{ flex: 1 }}>
+                    {ORDRE_GROUPES.map((g) => (
+                      <button key={g} type="button" className="touche-groupe" aria-pressed={groupe === g}
+                              onClick={() => setGroupe(g)}>
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                  {groupe && (
+                    <div className="rang" style={{ gap: 'var(--e3)' }}>
+                      <BlocGroupe groupe={groupe} taille="m" />
+                      {niveauGroupe && (
+                        <Etat ton={niveauGroupe === 'critique' ? 'sang' : niveauGroupe === 'bas' ? 'ocre' : 'neutre'}>
+                          {MOTS_NIVEAU[niveauGroupe]}
+                        </Etat>
+                      )}
+                    </div>
                   )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          <div className="pile-s">
-            <label className="rang" style={{ gap: 'var(--e3)' }}>
-              <input type="checkbox" className="case-a-cocher" checked={elargir}
-                     disabled={!groupe || cible?.sans_substitut}
-                     onChange={(e) => setElargir(e.target.checked)} />
-              <span>Élargir aux groupes compatibles</span>
-            </label>
-            {groupe && cible?.sans_substitut && (
-              <span className="champ-aide">
-                Aucun autre groupe ne peut remplacer une poche {groupe}.
-              </span>
-            )}
-            {elargir && cible?.groupes_cibles?.length > 1 && (
-              <span className="petit">Groupes retenus : {cible.groupes_cibles.join(', ')}.</span>
-            )}
-          </div>
+              <div className="pile-s">
+                <label className="rang" style={{ gap: 'var(--e3)' }}>
+                  <input type="checkbox" className="case-a-cocher" checked={elargir}
+                         disabled={!groupe || cible?.sans_substitut}
+                         onChange={(e) => setElargir(e.target.checked)} />
+                  <span>Élargir aux groupes compatibles</span>
+                </label>
+                {groupe && cible?.sans_substitut && (
+                  <span className="champ-aide">
+                    Aucun autre groupe ne peut remplacer une poche {groupe}.
+                  </span>
+                )}
+                {elargir && cible?.groupes_cibles?.length > 1 && (
+                  <span className="petit">Groupes retenus : {cible.groupes_cibles.join(', ')}.</span>
+                )}
+              </div>
+            </>
+          )}
 
+          {mode !== 'tous' && (
           <div className="pile-s">
             <span className="etiquette">Zones</span>
             <div className="rang" style={{ gap: 'var(--e2)', flexWrap: 'wrap' }}>
@@ -239,6 +285,7 @@ export default function NouvelAppel() {
               ))}
             </div>
           </div>
+          )}
 
           <div className="rang" style={{ gap: 'var(--e4)' }}>
             <label className="champ champ-encadre">
@@ -284,14 +331,18 @@ export default function NouvelAppel() {
 
         <div className="pile carte" style={{ position: 'sticky', top: 'var(--e6)' }}>
           <span className="etiquette">Ciblage</span>
-          {!groupe ? (
+          {mode === 'groupe' && !groupe ? (
             <p className="appui">Choisissez un groupe pour voir le nombre de destinataires.</p>
+          ) : mode === 'zone' && zonesChoisies.length === 0 ? (
+            <p className="appui">Cochez au moins une zone pour voir le nombre de destinataires.</p>
           ) : !cible ? (
             <p className="appui">Calcul en cours…</p>
           ) : (
             <div className="pile-s">
               <div className="rang-espace">
-                <span className="appui">Donneurs du groupe, dans les zones</span>
+                <span className="appui">
+                  {mode === 'groupe' ? 'Donneurs du groupe, dans les zones' : 'Donneurs correspondants'}
+                </span>
                 <span className="mono">{cible.donneurs_cible}</span>
               </div>
               <div className="rang-espace">
@@ -338,7 +389,7 @@ export default function NouvelAppel() {
               {cible.dernier_appel_meme_groupe && (
                 <>
                   <hr className="filet" />
-                  <span className="etiquette">Dernier appel {groupe}</span>
+                  <span className="etiquette">Dernier appel {mode === 'groupe' ? groupe : ''}</span>
                   <p className="petit">
                     {dateCourte(cible.dernier_appel_meme_groupe.date_envoi)} ·{' '}
                     {pluriel(cible.dernier_appel_meme_groupe.nb_destinataires, 'destinataire')} ·{' '}
@@ -361,8 +412,15 @@ export default function NouvelAppel() {
         surAnnuler={() => setConfirmationOuverte(false)}
       >
         <p className="appui">
-          Groupe {groupe}{elargir ? ' (élargi aux groupes compatibles)' : ''}, zones{' '}
-          {zonesChoisies.map((id) => zones?.find((z) => z.id_zone === id)?.nom).filter(Boolean).join(', ')}.
+          {mode === 'groupe' && (
+            <>Groupe {groupe}{elargir ? ' (élargi aux groupes compatibles)' : ''}, zones{' '}
+              {zonesChoisies.map((id) => zones?.find((z) => z.id_zone === id)?.nom).filter(Boolean).join(', ')}.</>
+          )}
+          {mode === 'zone' && (
+            <>Tous les groupes, zones{' '}
+              {zonesChoisies.map((id) => zones?.find((z) => z.id_zone === id)?.nom).filter(Boolean).join(', ')}.</>
+          )}
+          {mode === 'tous' && 'Tous les donneurs, toutes zones et tous groupes confondus.'}
         </p>
         <p className="appui">
           Réponses attendues avant le {dateLongue(dateLimite)}{heureLimite ? ` à ${heureLimite}` : ''}.

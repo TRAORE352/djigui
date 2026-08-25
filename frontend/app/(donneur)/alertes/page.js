@@ -237,7 +237,7 @@ function CarteAlerte({ alerte, mouvementReduit, onReponse }) {
   }
 
   return (
-    <div className={active ? 'carte-secondaire pile-l' : 'carte pile-l carte-attenuee'}>
+    <div className={active ? 'bloc-donneur pile-l' : 'bloc-donneur pile-l carte-attenuee'}>
       <div className="rang" style={{ gap: 'var(--e4)' }}>
         <BlocGroupe groupe={alerte.groupe_cible} taille="m" />
         <div className="pile-s" style={{ flex: 1 }}>

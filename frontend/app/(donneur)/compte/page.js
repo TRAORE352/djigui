@@ -22,7 +22,7 @@ import {
   desactiverMonCompte, changerMotDePasse, deconnexion, effacerJeton
 } from '@/lib/api';
 import { etatNotifications, activerNotifications, desactiverNotifications } from '@/lib/notifications';
-import { dateCourte, numeroLisible } from '@/lib/format';
+import { dateCourte, numeroLisible, ORDRE_GROUPES } from '@/lib/format';
 import ChampZone from '../../composants/ChampZone';
 import Repliable from '../../composants/Repliable';
 import Bouton from '../../composants/Bouton';
@@ -51,7 +51,7 @@ function CarteSection({ titre, ouvertParDefaut = false, children }) {
   const mouvementReduit = useReducedMotion();
 
   return (
-    <section className="carte-secondaire pile">
+    <section className="bloc-donneur pile">
       <button type="button" className="carte-section-entete"
               onClick={() => setOuvert(!ouvert)} aria-expanded={ouvert}>
         <span className="etiquette">{titre}</span>
@@ -168,6 +168,7 @@ export default function MonCompte() {
   // Informations modifiables
   const [poids, setPoids] = useState('');
   const [idZone, setIdZone] = useState(null);
+  const [groupe, setGroupe] = useState('');
   const [enregistrement, setEnregistrement] = useState(false);
 
   // Numéros
@@ -202,8 +203,9 @@ export default function MonCompte() {
   async function recharger() {
     const [donneesProfil, donneesTelephones] = await Promise.all([monProfil(), mesTelephones()]);
     setProfil(donneesProfil);
-    setPoids(String(donneesProfil.poids_declare));
+    setPoids(donneesProfil.poids_declare != null ? String(donneesProfil.poids_declare) : '');
     setIdZone(donneesProfil.id_zone);
+    setGroupe(donneesProfil.groupe_sanguin || '');
     setTelephones(donneesTelephones.telephones);
     setMaximum(donneesTelephones.maximum);
   }
@@ -263,8 +265,12 @@ export default function MonCompte() {
     { cle: 'accepte_messagerie', mot: 'WhatsApp', Icone: MessageCircle, actif: profil.accepte_messagerie }
   ];
 
-  const infosModifiees = poids !== String(profil.poids_declare) || idZone !== profil.id_zone;
-  const infosValides = infosModifiees && Number(poids) > 0 && idZone;
+  const poidsInitial = profil.poids_declare != null ? String(profil.poids_declare) : '';
+  const poidsValide = poids === '' || Number(poids) > 0;
+  const groupeModifiable = !profil.groupe_sanguin;
+  const groupeModifie = groupeModifiable && groupe !== '';
+  const infosModifiees = poids !== poidsInitial || idZone !== profil.id_zone || groupeModifie;
+  const infosValides = infosModifiees && idZone && poidsValide;
 
   const entree = (rang) => mouvementReduit ? {} : {
     initial: { opacity: 0, y: 14 },
@@ -286,25 +292,53 @@ export default function MonCompte() {
             <span style={{ fontWeight: 600 }}>{profil.prenom} {profil.nom}</span>
             <span className="valeur">{dateCourte(profil.date_naissance)}</span>
           </div>
-          <div className="ligne-fait">
-            <span className="appui">Groupe sanguin</span>
-            <span className="valeur">{profil.groupe_sanguin || 'à préciser au centre'}</span>
-          </div>
           <p className="petit rang" style={{ gap: 'var(--e2)' }}>
             <Lock size={14} strokeWidth={1.75} aria-hidden="true" />
-            Modifiable au centre uniquement, avec une pièce d&rsquo;identité.
+            Nom, prénom et date de naissance se corrigent au centre, avec une pièce
+            d&rsquo;identité.
           </p>
         </div>
 
         <hr className="filet" />
 
+        {groupeModifiable ? (
+          <div className="pile-s">
+            <span className="champ-etiquette">Groupe sanguin</span>
+            <p className="petit">
+              Vous ne l&rsquo;aviez pas renseigné à l&rsquo;inscription. Vous pouvez le régler
+              une fois ici ; ensuite, seul le centre pourra le corriger.
+            </p>
+            <div className="grille-groupes">
+              {ORDRE_GROUPES.map((g) => (
+                <button key={g} type="button" className="touche-groupe" aria-pressed={groupe === g}
+                        onClick={() => setGroupe(groupe === g ? '' : g)}>
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="pile-s">
+            <div className="ligne-fait" style={{ borderTop: 'none', paddingTop: 0 }}>
+              <span className="appui">Groupe sanguin</span>
+              <span className="valeur">{profil.groupe_sanguin}</span>
+            </div>
+            <p className="petit rang" style={{ gap: 'var(--e2)' }}>
+              <Lock size={14} strokeWidth={1.75} aria-hidden="true" />
+              Modifiable au centre uniquement, avec une pièce d&rsquo;identité.
+            </p>
+          </div>
+        )}
+
+        <hr className="filet" />
+
         <p className="petit">
           Votre zone sert à savoir quel centre peut vous appeler. Tenez-la à jour si vous
-          déménagez.
+          déménagez. Le poids reste facultatif.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 'var(--e5)' }}>
           <label className="champ">
-            <span className="champ-etiquette">Poids</span>
+            <span className="champ-etiquette">Poids (facultatif)</span>
             <span className="rang" style={{ gap: 'var(--e2)' }}>
               <input className="champ-saisie mono" inputMode="numeric" maxLength={3}
                      value={poids}
@@ -320,7 +354,9 @@ export default function MonCompte() {
                 onClick={async () => {
                   setEnregistrement(true);
                   await agir(() => modifierProfil({
-                    poids_declare: Number(poids), id_zone: idZone
+                    poids_declare: poids === '' ? null : Number(poids),
+                    id_zone: idZone,
+                    ...(groupeModifie ? { groupe_sanguin: groupe } : {})
                   }), 'Enregistré.');
                   setEnregistrement(false);
                 }}>
@@ -551,16 +587,17 @@ export default function MonCompte() {
           Vous ne recevrez plus aucun appel au don. Vos dons enregistrés restent
           au centre. Vous pouvez réactiver le compte en vous reconnectant.
         </p>
-        <Bouton variante="danger" compact style={{ alignSelf: 'flex-start' }}
+        <Bouton variante="danger" className="bouton-minuscule" style={{ alignSelf: 'flex-start' }}
                 onClick={() => setDesactivationOuverte(true)}>
           Désactiver mon compte
         </Bouton>
 
         <hr className="filet" />
 
-        <Bouton variante="discret" compact style={{ alignSelf: 'flex-start' }} onClick={fermerSession}>
-          <LogOut size={16} strokeWidth={1.75} />Me déconnecter
-        </Bouton>
+        <button type="button" className="bouton-fantome" style={{ alignSelf: 'flex-start' }}
+                onClick={fermerSession}>
+          <LogOut size={14} strokeWidth={1.75} />Me déconnecter
+        </button>
       </motion.section>
 
       <Confirmation
