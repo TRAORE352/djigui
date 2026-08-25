@@ -28,4 +28,30 @@ async function supprimerAbonnement(idDonneur, endpoint) {
     [idDonneur, endpoint]);
 }
 
-module.exports = { enregistrerAbonnement, supprimerAbonnement };
+// E18/envoyerAlerte — tous les abonnements des donneurs qui viennent de
+// recevoir l'appel (un même donneur peut avoir plusieurs appareils).
+async function abonnementsPourDonneurs(idsDonneurs) {
+  if (!idsDonneurs.length) return [];
+  const resultat = await pool.query(
+    `SELECT id_abonnement, id_donneur, endpoint, cle_p256dh, cle_auth
+       FROM abonnement_push
+      WHERE id_donneur = ANY($1::int[])`,
+    [idsDonneurs]);
+  return resultat.rows;
+}
+
+async function marquerEnvoiReussi(idAbonnement) {
+  await pool.query('UPDATE abonnement_push SET date_dernier_envoi = NOW() WHERE id_abonnement = $1', [idAbonnement]);
+}
+
+// Le service de push répond 404/410 quand l'appareil n'existe plus
+// (désinstallation, données de navigateur effacées...) : l'abonnement
+// est mort, on le retire plutôt que de retenter indéfiniment dans le vide.
+async function supprimerAbonnementParId(idAbonnement) {
+  await pool.query('DELETE FROM abonnement_push WHERE id_abonnement = $1', [idAbonnement]);
+}
+
+module.exports = {
+  enregistrerAbonnement, supprimerAbonnement,
+  abonnementsPourDonneurs, marquerEnvoiReussi, supprimerAbonnementParId
+};

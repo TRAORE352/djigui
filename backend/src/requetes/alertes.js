@@ -14,6 +14,7 @@ const { pool } = require('../db');
 const { lireParametres } = require('./parametres');
 const { construireFiltres, exprEligible, DEPUIS } = require('./registre-donneurs');
 const { groupesCompatibles, sansSubstitut } = require('../regles/compatibilite');
+const { envoyerPushCandidats } = require('../push');
 
 // Construit la base commune à compterCibles et candidatsFinaux : le
 // groupe (élargi ou non aux compatibles, annexe D) et les zones cochées.
@@ -217,6 +218,13 @@ async function envoyerAlerte(idAlerte, idStructure, idAgent) {
   } finally {
     client.release();
   }
+
+  // Canal en plus, jamais une dépendance : l'alerte a déjà réussi au
+  // COMMIT ci-dessus. Fire-and-forget, hors transaction (aucune requête
+  // réseau ne doit retenir une connexion Postgres) — un échec total du
+  // push (permission refusée, réseau, service en panne) ne doit rien
+  // changer à ce que cette fonction retourne.
+  envoyerPushCandidats(candidats, alerte).catch(() => {});
 
   return { id_alerte: idAlerte, nb_destinataires: candidats.length, message: alerte.message, destinataires: candidats };
 }
