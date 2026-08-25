@@ -220,8 +220,8 @@ async function enregistrerDon(requete, reponse) {
       ? 'Don enregistré avec autorisation médicale (donneur non éligible)'
       : 'Enregistrement d’un don',
     motifAutorisation
-      ? `${donneur.prenom} ${donneur.nom} — poche ${resultat.code_poche} — motif : ${motifAutorisation}`
-      : `${donneur.prenom} ${donneur.nom} — poche ${resultat.code_poche}`,
+      ? `${donneur.prenom} ${donneur.nom}, poche ${resultat.code_poche}, motif : ${motifAutorisation}`
+      : `${donneur.prenom} ${donneur.nom}, poche ${resultat.code_poche}`,
     'reussie');
 
   const niveauAvant = ligneAvant.niveau;
@@ -554,7 +554,7 @@ async function envoyerAlerteCtrl(requete, reponse) {
   }
 
   journaliser(idAgent, 'Envoi d’un appel au don',
-    `Alerte ${idAlerte} — ${resultat.nb_destinataires} destinataire(s)`, 'reussie');
+    `Alerte ${idAlerte}, ${resultat.nb_destinataires} destinataire(s)`, 'reussie');
 
   return reponse.json(resultat);
 }

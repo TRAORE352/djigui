@@ -87,8 +87,8 @@ export default function Accueil() {
               <span className="heros-titre-accent">sauvez une vie</span>.
             </h1>
             <p className="heros-sous-titre">
-              DJIGUI vous prévient quand votre groupe est attendu près de chez vous —
-              vous répondez en une touche.
+              DJIGUI vous prévient quand votre groupe est attendu près de chez vous.
+              Vous répondez en une touche.
             </p>
           </motion.div>
 

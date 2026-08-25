@@ -361,7 +361,7 @@ export default function NouvelAppel() {
         surAnnuler={() => setConfirmationOuverte(false)}
       >
         <p className="appui">
-          Groupe {groupe}{elargir ? ' (élargi aux groupes compatibles)' : ''} — zones{' '}
+          Groupe {groupe}{elargir ? ' (élargi aux groupes compatibles)' : ''}, zones{' '}
           {zonesChoisies.map((id) => zones?.find((z) => z.id_zone === id)?.nom).filter(Boolean).join(', ')}.
         </p>
         <p className="appui">

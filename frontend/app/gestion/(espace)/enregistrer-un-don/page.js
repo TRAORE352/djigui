@@ -181,7 +181,7 @@ export default function EnregistrerUnDon() {
 
           <div className="pile-s">
             <span className="appui">
-              Prochain don possible pour {confirmation.donneur.prenom} {confirmation.donneur.nom} —
+              Prochain don possible pour {confirmation.donneur.prenom} {confirmation.donneur.nom},
               à dire à voix haute avant qu&rsquo;il ou elle quitte le centre :
             </span>
             <span className="lead">{dateLongue(confirmation.date_prochaine_eligibilite)}</span>

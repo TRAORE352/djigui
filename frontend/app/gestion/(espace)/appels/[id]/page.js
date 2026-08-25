@@ -147,7 +147,7 @@ export default function SuiviAppel() {
           <p className="valeur">{compteurs.ne_peuvent_pas}</p>
         </div>
         <div>
-          <p className="mot">Sans réponse — à relancer</p>
+          <p className="mot">Sans réponse, à relancer</p>
           <p className="valeur">{compteurs.sans_reponse}</p>
         </div>
       </div>

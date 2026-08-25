@@ -329,7 +329,7 @@ function CarteAlerte({ alerte, mouvementReduit, onReponse }) {
                 <p className="appui">
                   {alerte.creneau_prefere
                     ? `Créneau choisi : ${alerte.creneau_prefere}.`
-                    : 'Merci — votre venue compte.'}
+                    : 'Merci, votre venue compte.'}
                 </p>
                 {!alerte.creneau_prefere && active && (
                   <Link href={`/alertes/${alerte.id_alerte}/disponibilite`}

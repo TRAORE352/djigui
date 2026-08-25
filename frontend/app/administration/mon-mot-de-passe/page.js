@@ -89,7 +89,7 @@ export default function MonMotDePasse() {
 
       <p className="appui">
         Choisissez un nouveau mot de passe d’au moins dix caractères, avec une majuscule, une
-        minuscule et un chiffre — un mot de passe que vous n’utilisez nulle part ailleurs.
+        minuscule et un chiffre, que vous n’utilisez nulle part ailleurs.
       </p>
 
       <div className="encadre encadre-ocre">

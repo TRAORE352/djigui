@@ -122,7 +122,7 @@ export default function RepondreAlerte() {
           <span className="champ-etiquette" style={{ marginBottom: 0 }}>Adresse</span>
           <p className="appui">
             {alerte.structure_nom}, {alerte.structure_ville}
-            {alerte.structure_adresse ? ` — ${alerte.structure_adresse}` : ''}
+            {alerte.structure_adresse ? `, ${alerte.structure_adresse}` : ''}
           </p>
           {alerte.structure_horaires && <p className="petit">Horaires : {alerte.structure_horaires}</p>}
           {alerte.structure_telephone && (

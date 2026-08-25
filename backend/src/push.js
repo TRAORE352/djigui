@@ -37,7 +37,7 @@ async function envoyerPushCandidats(candidats, alerte) {
   const nomStructure = structureResultat.rows[0]?.nom || 'Un centre';
 
   const charge = JSON.stringify({
-    titre: 'DJIGUI — appel au don',
+    titre: 'DJIGUI : appel au don',
     corps: `${nomStructure} recherche des donneurs ${alerte.groupe_cible}.`,
     url: '/alertes'
   });
