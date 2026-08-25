@@ -2,17 +2,17 @@
 // =====================================================================
 //  E5 · Carte de donneur.
 //  L'écran que le donneur montre à un agent. Il dit une seule chose :
-//  si l'on peut donner, et à partir de quand. Le bloc groupe ne change
-//  jamais : c'est la phrase d'état et la pastille de couleur qui
-//  portent la différence — jamais un pulse hors du cas « éligible
-//  aujourd'hui », pour ne jamais laisser croire à une urgence absente.
+//  si l'on peut donner, et à partir de quand. Tout est incrusté sur le
+//  fond, sans carte ni contour : la goutte de groupe bat en continu
+//  (un battement, pas une alerte) ; seule la couleur de la pilule
+//  d'éligibilité distingue une attente d'une disponibilité immédiate.
 // =====================================================================
 import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { CalendarPlus } from 'lucide-react';
+import { CalendarPlus, HandHeart } from 'lucide-react';
 import { monProfil, telechargerRappel } from '@/lib/api';
 import { dateLongue, pluriel } from '@/lib/format';
-import BlocGroupe from '../../composants/BlocGroupe';
+import GoutteGroupe from '../../composants/GoutteGroupe';
 import IconeProfil from '../../composants/IconeProfil';
 import Bouton from '../../composants/Bouton';
 import { MessageErreur } from '../../composants/Message';
@@ -104,47 +104,57 @@ export default function CarteDonneur() {
 
       <div className="carte-page-corps">
         <motion.div className="groupe-eligibilite" {...entree(1)}>
-          <div className="carte-groupe-ligne">
-            <motion.div
-              initial={mouvementReduit ? false : { opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, duration: 0.4, ease: 'easeOut' }}
-            >
-              <BlocGroupe groupe={profil.groupe_sanguin} taille="xl" />
-            </motion.div>
+          <motion.div
+            initial={mouvementReduit ? false : { opacity: 0, scale: 0.85 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2, duration: 0.45, ease: 'easeOut' }}
+          >
+            <GoutteGroupe groupe={profil.groupe_sanguin} />
+          </motion.div>
 
-            <div className="carte-groupe-colonne">
-              {!groupeConnu && (
-                <span className="puce-a-preciser">À préciser au centre</span>
-              )}
-
-              {eligibilite.eligible ? (
-                <span className="pastille-etat ton-seve respire">
-                  <span className="point" aria-hidden="true" />
-                  Vous pouvez donner dès aujourd&rsquo;hui
-                </span>
-              ) : eligibilite.jours_restants > 0 ? (
-                <span className="pastille-etat ton-ocre">
-                  <span className="point" aria-hidden="true" />
-                  Dès le {dateLongue(profil.date_prochaine_eligibilite)}
-                </span>
-              ) : (
-                <span className="pastille-etat ton-ocre">
-                  <span className="point" aria-hidden="true" />
-                  Décision sur place
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="pile-s">
-            {!groupeConnu && (
+          {!groupeConnu && (
+            <div className="pile-s" style={{ alignItems: 'center' }}>
+              <span className="puce-a-preciser">À préciser au centre</span>
               <p className="appui">
                 Votre groupe sanguin sera précisé par le centre lors de votre
                 prochaine visite.
               </p>
-            )}
+            </div>
+          )}
 
+          <motion.div className="pile-s" style={{ alignItems: 'center' }} {...entree(2)}>
+            <span className="rang" style={{ gap: 'var(--e2)' }}>
+              <HandHeart size={18} strokeWidth={1.75} aria-hidden="true"
+                         color={eligibilite.eligible ? 'var(--encre-secondaire)' : 'var(--ocre)'} />
+              <span className={eligibilite.eligible ? 'info-don-neutre' : 'info-don-attente'}>
+                {profil.date_dernier_don
+                  ? `Dernier don le ${dateLongue(profil.date_dernier_don)}`
+                  : 'Pas encore de don'}
+              </span>
+            </span>
+            <p className="appui">{pluriel(profil.nb_dons, 'don')} au total</p>
+          </motion.div>
+
+          <motion.div {...entree(3)}>
+            {eligibilite.eligible ? (
+              <span className="pilule-eligibilite ton-seve">
+                <span className="point" aria-hidden="true" />
+                Vous pouvez donner dès aujourd&rsquo;hui
+              </span>
+            ) : eligibilite.jours_restants > 0 ? (
+              <span className="pilule-eligibilite ton-ocre">
+                <span className="point" aria-hidden="true" />
+                Dès le {dateLongue(profil.date_prochaine_eligibilite)}
+              </span>
+            ) : (
+              <span className="pilule-eligibilite ton-ocre">
+                <span className="point" aria-hidden="true" />
+                Décision sur place
+              </span>
+            )}
+          </motion.div>
+
+          <div className="pile-s" style={{ alignItems: 'center', maxWidth: 320 }}>
             {eligibilite.eligible ? null : eligibilite.jours_restants > 0 ? (
               <>
                 <p className="appui">Dans {pluriel(eligibilite.jours_restants, 'jour')}.</p>
@@ -168,7 +178,7 @@ export default function CarteDonneur() {
         </motion.div>
 
         {/* Mention permanente de responsabilité médicale (règle RG6). */}
-        <p className="petit">
+        <p className="petit" style={{ textAlign: 'center' }}>
           Cette information est indicative. La décision de prélever appartient au
           personnel médical du centre, après examen sur place.
         </p>

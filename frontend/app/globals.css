@@ -546,12 +546,14 @@ select.champ-saisie { appearance: none; cursor: pointer; }
    9. NAVIGATION
    ===================================================================== */
 
-/* Donneur : quatre sections, icône au-dessus du mot. */
+/* Donneur : trois sections, icône au-dessus du mot. Incrustée dans le
+   fond comme le reste de l'espace donneur : aucun trait, une ombre à
+   peine perceptible pour se détacher du contenu qui défile derrière,
+   jamais une arête de conteneur. */
 .barre-nav {
   position: fixed;
   bottom: 0; left: 0; right: 0;
   background: var(--fond);
-  border-top: 1px solid var(--trait);
   display: flex;
   z-index: 20;
   padding-bottom: env(safe-area-inset-bottom);
@@ -573,11 +575,19 @@ select.champ-saisie { appearance: none; cursor: pointer; }
 }
 .barre-nav a.actif { color: var(--sang); font-weight: 600; }
 .barre-nav a:active { transform: scale(.95); }
-.barre-nav-indicateur {
+
+/* Halo qui glisse d'un onglet à l'autre, derrière l'icône active —
+   plus vivant qu'un simple filet, toujours sans contour dur. */
+.barre-nav-icone-zone {
+  position: relative;
+  width: 40px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+}
+.barre-nav-halo {
   position: absolute;
-  top: -1px; left: var(--e3); right: var(--e3);
-  height: 2px;
-  background: var(--sang);
+  inset: 0;
+  border-radius: 999px;
+  background: var(--sang-clair);
 }
 
 /* Professionnel : rail vertical, libellés en toutes lettres. */
@@ -1111,22 +1121,22 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   justify-content: center;
   gap: var(--e6);
 }
-/* Groupe + statut : plus une carte, un bloc posé sur le fond de page,
-   sous la courbe de l'en-tête. */
+/* Groupe + statut : rien qu'un bloc posé sur le fond de page, sous la
+   courbe de l'en-tête — aucune carte, aucun contour, aucune ombre de
+   conteneur. Les éléments respirent directement sur --fond. */
 .groupe-eligibilite {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  text-align: center;
   gap: var(--e6);
   padding-top: var(--e7);
 }
-.carte-groupe-ligne { display: flex; align-items: center; justify-content: center; gap: var(--e5); }
-.carte-groupe-colonne { display: flex; flex-direction: column; gap: var(--e2); min-width: 0; }
 
 .puce-a-preciser {
   display: inline-flex;
   align-items: center;
   gap: var(--e1);
-  align-self: flex-start;
   padding: var(--e1) var(--e3);
   border: 1px dashed var(--trait-fort);
   border-radius: 999px;
@@ -1135,29 +1145,66 @@ select.champ-saisie { appearance: none; cursor: pointer; }
   font-weight: 600;
 }
 
-.pastille-etat {
+/* Goutte de groupe sanguin : l'élément héros de l'écran. Remplace le
+   bloc carré (BlocGroupe reste l'élément signature ailleurs dans le
+   produit, inchangé) par une forme dessinée, posée directement sur le
+   fond, en pulsation continue et douce — un battement, pas une alerte. */
+.goutte-groupe {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 176px;
+  filter: drop-shadow(0 14px 28px rgba(140, 28, 44, .32));
+}
+.goutte-groupe-texte {
+  position: absolute;
+  top: 60%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #fff;
+  font-family: var(--police-archivo), sans-serif;
+  font-weight: 700;
+  font-size: var(--t-enorme);
+  letter-spacing: .01em;
+}
+
+/* Infos de don : neutres si éligible, colorées d'attente (ocre, jamais
+   le rouge réservé à l'erreur) tant que le délai court encore. */
+.info-don-attente { color: var(--ocre); font-weight: 600; }
+.info-don-neutre { color: var(--encre-secondaire); }
+
+/* Éligibilité en pilule : plus grande, plus affirmée que l'ancienne
+   pastille, et animée en permanence pour attirer l'œil — un halo qui
+   respire, jamais un clignotement. Plus vif si éligible aujourd'hui
+   (nouvelle positive), plus sobre sinon (une attente, pas une alarme). */
+.pilule-eligibilite {
   display: inline-flex;
   align-items: center;
   gap: var(--e2);
-  align-self: flex-start;
-  padding: var(--e2) var(--e3);
+  padding: var(--e3) var(--e6);
   border-radius: 999px;
-  font-size: var(--t-appui);
-  font-weight: 600;
+  font-size: var(--t-lead);
+  font-weight: 700;
 }
-.pastille-etat .point { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.pastille-etat.ton-seve { background: var(--seve-clair); color: var(--seve); }
-.pastille-etat.ton-seve .point { background: var(--seve); }
-.pastille-etat.ton-ocre { background: var(--ocre-clair); color: var(--ocre); }
-.pastille-etat.ton-ocre .point { background: var(--ocre); }
+.pilule-eligibilite .point { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.pilule-eligibilite.ton-seve { background: var(--seve-clair); color: var(--seve); }
+.pilule-eligibilite.ton-seve .point { background: var(--seve); }
+.pilule-eligibilite.ton-ocre { background: var(--ocre-clair); color: var(--ocre); }
+.pilule-eligibilite.ton-ocre .point { background: var(--ocre); }
 
-/* Pulse réservé au seul état « éligible aujourd'hui » : jamais sur une
-   attente ou une décision sur place, pour ne pas laisser croire à une
-   urgence qui n'existe pas. */
-.pastille-etat.respire .point { animation: pastille-respire 1.8s ease-in-out infinite; }
-@keyframes pastille-respire {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(46,106,79,.45); }
-  50% { box-shadow: 0 0 0 5px rgba(46,106,79,0); }
+.pilule-eligibilite.ton-seve { animation: pilule-halo-vive 1.9s ease-in-out infinite; }
+.pilule-eligibilite.ton-ocre { animation: pilule-halo-douce 3.2s ease-in-out infinite; }
+@keyframes pilule-halo-vive {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(46, 106, 79, .38); }
+  50%      { box-shadow: 0 0 0 11px rgba(46, 106, 79, 0); }
+}
+@keyframes pilule-halo-douce {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(154, 100, 0, .22); }
+  50%      { box-shadow: 0 0 0 8px rgba(154, 100, 0, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pilule-eligibilite.ton-seve, .pilule-eligibilite.ton-ocre { animation: none; }
 }
 
 .carte-secondaire {

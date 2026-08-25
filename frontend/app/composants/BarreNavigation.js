@@ -27,20 +27,22 @@ export default function BarreNavigation() {
         return (
           <Link key={adresse} href={adresse} className={actif ? 'actif' : ''}
                 aria-current={actif ? 'page' : undefined}>
-            {actif && (
+            <span className="barre-nav-icone-zone">
+              {actif && (
+                <motion.span
+                  className="barre-nav-halo"
+                  layoutId="barre-nav-halo"
+                  transition={mouvementReduit ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 34 }}
+                />
+              )}
               <motion.span
-                className="barre-nav-indicateur"
-                layoutId="barre-nav-indicateur"
-                transition={mouvementReduit ? { duration: 0 } : { type: 'spring', stiffness: 420, damping: 34 }}
-              />
-            )}
-            <motion.span
-              style={{ display: 'flex' }}
-              animate={actif && !mouvementReduit ? { scale: [1, 1.22, 1] } : { scale: 1 }}
-              transition={{ duration: 0.35, ease: 'easeOut' }}
-            >
-              <Icone size={24} strokeWidth={actif ? 2 : 1.6} aria-hidden="true" />
-            </motion.span>
+                style={{ display: 'flex', position: 'relative' }}
+                animate={actif && !mouvementReduit ? { scale: [1, 1.22, 1] } : { scale: 1 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+              >
+                <Icone size={24} strokeWidth={actif ? 2 : 1.6} aria-hidden="true" />
+              </motion.span>
+            </span>
             <span>{mot}</span>
           </Link>
         );
