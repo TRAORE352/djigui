@@ -15,6 +15,12 @@ const { evaluerEligibilite } = require('../regles/eligibilite');
 const { normaliserNumero, normaliserReponse } = require('./auth.controleur');
 const { signerJeton } = require('../middlewares/auth');
 const { GROUPES } = require('../regles/compatibilite');
+const {
+  generateRegistrationOptions, verifyRegistrationResponse,
+  generateAuthenticationOptions, verifyAuthenticationResponse
+} = require('@simplewebauthn/server');
+const passkeys = require('../requetes/passkeys');
+const { RP_NAME, RP_ID, ORIGINES, poserDefi, lireDefi } = require('../webauthn');
 
 const MOTIFS_REFUS = ['don_trop_recent', 'absent_de_la_ville', 'raison_de_sante', 'autre'];
 const MOYENS_DEPLACEMENT = ['a_pied', 'deux_roues', 'transport_commun'];
@@ -51,7 +57,7 @@ async function monProfil(requete, reponse) {
     sexe: donneur.sexe,
     date_naissance: donneur.date_naissance,
     groupe_sanguin: donneur.groupe_sanguin,
-    poids_declare: Number(donneur.poids_declare),
+    poids_declare: donneur.poids_declare === null ? null : Number(donneur.poids_declare),
     zone: donneur.zone_nom,
     ville: donneur.zone_ville,
     id_zone: donneur.id_zone,
@@ -307,6 +313,153 @@ async function deverrouiller(requete, reponse) {
   return reponse.json({ jeton: await signerJeton(utilisateur) });
 }
 
+// =====================================================================
+//  Déverrouillage biométrique (WebAuthn). Canal en plus du mot de
+//  passe, jamais une dépendance : proposé seulement après un premier
+//  déverrouillage réussi au mot de passe, jamais imposé. L'empreinte
+//  elle-même ne quitte jamais l'appareil : seule une clé publique et
+//  un identifiant de clé (opaques, inutilisables sans l'appareil)
+//  sont conservés ici.
+// =====================================================================
+
+// GET /api/donneurs/moi/passkey — un passkey est-il déjà enregistré ?
+async function passkeyEtat(requete, reponse) {
+  const donneur = await chargerMonDonneur(requete, reponse);
+  if (!donneur) return;
+  const existant = await passkeys.trouverParDonneur(donneur.id_donneur);
+  return reponse.json({ actif: Boolean(existant) });
+}
+
+// POST /api/donneurs/moi/passkey/options-enregistrement
+async function passkeyOptionsEnregistrement(requete, reponse) {
+  const donneur = await chargerMonDonneur(requete, reponse);
+  if (!donneur) return;
+
+  const existant = await passkeys.trouverParDonneur(donneur.id_donneur);
+  const options = await generateRegistrationOptions({
+    rpName: RP_NAME,
+    rpID: RP_ID,
+    userID: Buffer.from(String(donneur.id_donneur)),
+    userName: `${donneur.prenom} ${donneur.nom}`,
+    userDisplayName: `${donneur.prenom} ${donneur.nom}`,
+    attestationType: 'none',
+    authenticatorSelection: { residentKey: 'preferred', userVerification: 'required', authenticatorAttachment: 'platform' },
+    excludeCredentials: existant ? [{ id: existant.credential_id }] : []
+  });
+  poserDefi(donneur.id_donneur, options.challenge);
+  return reponse.json(options);
+}
+
+// POST /api/donneurs/moi/passkey/enregistrer — { response }
+async function passkeyEnregistrer(requete, reponse) {
+  const donneur = await chargerMonDonneur(requete, reponse);
+  if (!donneur) return;
+
+  const defi = lireDefi(donneur.id_donneur);
+  if (!defi) {
+    return reponse.status(400).json({ erreur: 'La demande a expiré. Recommencez.' });
+  }
+
+  let verification;
+  try {
+    verification = await verifyRegistrationResponse({
+      response: requete.body?.response,
+      expectedChallenge: defi,
+      expectedOrigin: ORIGINES,
+      expectedRPID: RP_ID
+    });
+  } catch (erreur) {
+    journaliser(requete.utilisateur.id_utilisateur, 'Enregistrement d’une empreinte', null, 'echouee');
+    return reponse.status(400).json({ erreur: 'L’empreinte n’a pas pu être enregistrée sur cet appareil.' });
+  }
+  if (!verification.verified || !verification.registrationInfo) {
+    journaliser(requete.utilisateur.id_utilisateur, 'Enregistrement d’une empreinte', null, 'echouee');
+    return reponse.status(400).json({ erreur: 'L’empreinte n’a pas pu être vérifiée.' });
+  }
+
+  const { credential } = verification.registrationInfo;
+  await passkeys.enregistrer(
+    donneur.id_donneur, credential.id,
+    Buffer.from(credential.publicKey).toString('base64url'),
+    credential.counter, credential.transports);
+  journaliser(requete.utilisateur.id_utilisateur, 'Enregistrement d’une empreinte', null);
+  return reponse.status(201).json({ message: 'Empreinte enregistrée sur cet appareil.' });
+}
+
+// DELETE /api/donneurs/moi/passkey
+async function passkeySupprimer(requete, reponse) {
+  const donneur = await chargerMonDonneur(requete, reponse);
+  if (!donneur) return;
+  await passkeys.supprimer(donneur.id_donneur);
+  journaliser(requete.utilisateur.id_utilisateur, 'Retrait de l’empreinte de cet appareil', null);
+  return reponse.json({ message: 'Empreinte retirée.' });
+}
+
+// POST /api/donneurs/moi/passkey/options-deverrouillage
+async function passkeyOptionsDeverrouillage(requete, reponse) {
+  const donneur = await chargerMonDonneur(requete, reponse);
+  if (!donneur) return;
+  const existant = await passkeys.trouverParDonneur(donneur.id_donneur);
+  if (!existant) {
+    return reponse.status(404).json({ erreur: 'Aucune empreinte enregistrée sur cet appareil.' });
+  }
+  const options = await generateAuthenticationOptions({
+    rpID: RP_ID,
+    userVerification: 'required',
+    allowCredentials: [{
+      id: existant.credential_id,
+      transports: existant.transports ? JSON.parse(existant.transports) : undefined
+    }]
+  });
+  poserDefi(donneur.id_donneur, options.challenge);
+  return reponse.json(options);
+}
+
+// POST /api/donneurs/moi/passkey/deverrouiller — { response }
+// Mêmes garanties que le déverrouillage au mot de passe (deverrouiller
+// ci-dessus) : le jeton reste celui d'avant l'appel, cette route ne
+// fait que lever le voile posé par l'écran de verrouillage. Un échec
+// ne consomme jamais les essais du mot de passe (RG35) : la biométrie
+// et le mot de passe sont deux chemins distincts, l'échec de l'un
+// laisse l'autre entier.
+async function passkeyDeverrouiller(requete, reponse) {
+  const donneur = await chargerMonDonneur(requete, reponse);
+  if (!donneur) return;
+
+  const existant = await passkeys.trouverParDonneur(donneur.id_donneur);
+  const defi = lireDefi(donneur.id_donneur);
+  if (!existant || !defi) {
+    return reponse.status(400).json({ erreur: 'La demande a expiré. Utilisez votre mot de passe.' });
+  }
+
+  let verification;
+  try {
+    verification = await verifyAuthenticationResponse({
+      response: requete.body?.response,
+      expectedChallenge: defi,
+      expectedOrigin: ORIGINES,
+      expectedRPID: RP_ID,
+      credential: {
+        id: existant.credential_id,
+        publicKey: Buffer.from(existant.cle_publique, 'base64url'),
+        counter: Number(existant.compteur),
+        transports: existant.transports ? JSON.parse(existant.transports) : undefined
+      }
+    });
+  } catch (erreur) {
+    journaliser(requete.utilisateur.id_utilisateur, 'Déverrouillage par empreinte', null, 'echouee');
+    return reponse.status(403).json({ erreur: 'L’empreinte n’a pas été reconnue. Utilisez votre mot de passe.' });
+  }
+  if (!verification.verified) {
+    journaliser(requete.utilisateur.id_utilisateur, 'Déverrouillage par empreinte', null, 'echouee');
+    return reponse.status(403).json({ erreur: 'L’empreinte n’a pas été reconnue. Utilisez votre mot de passe.' });
+  }
+
+  await passkeys.mettreAJourCompteur(donneur.id_donneur, verification.authenticationInfo.newCounter);
+  journaliser(requete.utilisateur.id_utilisateur, 'Déverrouillage par empreinte', null);
+  return reponse.json({ jeton: await signerJeton(requete.utilisateur) });
+}
+
 // POST /api/donneurs/moi/abonnement-push — E10, section Notifications,
 // et l'invite de E6. { endpoint, keys: { p256dh, auth } }, format natif
 // de PushSubscription.toJSON() côté navigateur.
@@ -456,5 +609,7 @@ module.exports = {
   monProfil, mesTelephones, mesDons, modifierProfil, changerQuestion,
   ajouterTelephone, retirerTelephone, remplacerPrincipal, desactiver, rappelAgenda,
   deverrouiller, enregistrerAbonnementPush, retirerAbonnementPush,
+  passkeyEtat, passkeyOptionsEnregistrement, passkeyEnregistrer, passkeySupprimer,
+  passkeyOptionsDeverrouillage, passkeyDeverrouiller,
   mesAlertes, detailAlerte, repondreAlerte, enregistrerDisponibiliteCtrl, codeDonneur
 };

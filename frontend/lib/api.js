@@ -139,6 +139,18 @@ export const desactiverMonCompte = () =>
   appel('/api/donneurs/moi/desactivation', { methode: 'PUT' });
 export const deverrouillerApplication = (motDePasse) =>
   appel('/api/donneurs/moi/deverrouiller', { methode: 'POST', corps: { mot_de_passe: motDePasse } });
+
+// Déverrouillage biométrique (WebAuthn), canal en plus du mot de passe.
+export const etatPasskey = () => appel('/api/donneurs/moi/passkey');
+export const optionsEnregistrementPasskey = () =>
+  appel('/api/donneurs/moi/passkey/options-enregistrement', { methode: 'POST' });
+export const enregistrerPasskeyApi = (reponseWebAuthn) =>
+  appel('/api/donneurs/moi/passkey/enregistrer', { methode: 'POST', corps: { response: reponseWebAuthn } });
+export const supprimerPasskey = () => appel('/api/donneurs/moi/passkey', { methode: 'DELETE' });
+export const optionsDeverrouillagePasskey = () =>
+  appel('/api/donneurs/moi/passkey/options-deverrouillage', { methode: 'POST' });
+export const deverrouillerAvecPasskeyApi = (reponseWebAuthn) =>
+  appel('/api/donneurs/moi/passkey/deverrouiller', { methode: 'POST', corps: { response: reponseWebAuthn } });
 export const mesDons = () => appel('/api/donneurs/moi/dons');
 
 // Notifications Web Push (E10, section Notifications ; invite de E6).
@@ -267,9 +279,10 @@ export const statistiquesGestion = (depuis, jusquA) =>
   appel(`/api/gestion/statistiques?depuis=${encodeURIComponent(depuis)}&jusqu_a=${encodeURIComponent(jusquA)}`);
 
 // E18, E19, E20 — appel au don, espace gestion.
-export const cibleAlerteGestion = (groupe, zones, elargir) => {
+export const cibleAlerteGestion = (mode, groupe, zones, elargir) => {
   const parametres = new URLSearchParams();
-  parametres.set('groupe', groupe);
+  parametres.set('mode', mode || 'groupe');
+  if (groupe) parametres.set('groupe', groupe);
   if (zones?.length) parametres.set('zones', zones.join(','));
   if (elargir) parametres.set('elargir', '1');
   return appel(`/api/gestion/alertes/cibles?${parametres.toString()}`);

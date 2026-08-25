@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import BarreNavigation from '../composants/BarreNavigation';
 import VerrouApplication from '../composants/VerrouApplication';
+import InvitesInstallation from '../composants/InvitesInstallation';
 import { lireJeton } from '@/lib/api';
 
 export default function GabaritDonneur({ children }) {
@@ -26,6 +27,7 @@ export default function GabaritDonneur({ children }) {
     <VerrouApplication>
       {children}
       {!masquerBarre && <BarreNavigation />}
+      <InvitesInstallation />
     </VerrouApplication>
   );
 }
