@@ -6,11 +6,15 @@
 //  on compare ce fragment : si le mot de passe a changé, toutes les
 //  sessions ouvertes tombent d'un coup, sans table de sessions (RG31).
 //
-//  Durée : douze heures pour un donneur, trente minutes pour un compte
-//  professionnel (RG39, poste partagé). La session professionnelle se
-//  prolonge à chaque appel : le jeton rafraîchi part dans l'en-tête
-//  X-Jeton-Rafraichi, que le frontend enregistre. Trente minutes sans
-//  aucun appel ferment donc la session, ce qui est exactement la règle.
+//  Durée : plusieurs mois pour un donneur (verrou d'application côté
+//  écran, voir /api/donneurs/moi/deverrouiller), trente minutes pour un
+//  compte professionnel (RG39, poste partagé). Dans les deux cas, la
+//  session se prolonge à chaque appel : le jeton rafraîchi part dans
+//  l'en-tête X-Jeton-Rafraichi, que le frontend enregistre aussitôt.
+//  Un donneur qui utilise l'application régulièrement ne voit donc
+//  jamais son jeton expirer ; trente minutes d'inactivité ferment en
+//  revanche la session professionnelle, ce qui est exactement la règle
+//  du poste partagé.
 //
 //  Règle C4 : le contrôle des droits se fait ici, côté serveur, à
 //  chaque appel. Masquer un bouton à l'écran n'est jamais un contrôle.
@@ -29,7 +33,7 @@ function fragmentCondensat(condensat) {
 async function signerJeton(utilisateur) {
   const parametres = await lireParametres();
   const dureeMinutes = utilisateur.role === 'donneur'
-    ? 12 * 60
+    ? parametres.session_donneur_jours * 24 * 60
     : parametres.session_inactivite_minutes;
   return jwt.sign(
     {
@@ -98,11 +102,14 @@ async function verifierSession(requete, reponse, suite) {
 
   requete.utilisateur = utilisateur;
 
-  // Prolongation de la session professionnelle à chaque appel (RG39).
-  if (utilisateur.role !== 'donneur') {
-    reponse.setHeader('X-Jeton-Rafraichi', await signerJeton(utilisateur));
-    reponse.setHeader('Access-Control-Expose-Headers', 'X-Jeton-Rafraichi');
-  }
+  // Prolongation de la session à chaque appel, donneur comme
+  // professionnel (RG39 pour ce dernier). Un donneur qui utilise
+  // l'application régulièrement voit son jeton repoussé de plusieurs
+  // mois à chaque requête : c'est ce glissement, pas la seule durée
+  // initiale, qui rend la session persistante tant qu'il ne se
+  // déconnecte pas lui-même.
+  reponse.setHeader('X-Jeton-Rafraichi', await signerJeton(utilisateur));
+  reponse.setHeader('Access-Control-Expose-Headers', 'X-Jeton-Rafraichi');
 
   suite();
 }

@@ -17,6 +17,25 @@ export function enregistrerJeton(jeton) {
 
 export function effacerJeton() {
   if (typeof window !== 'undefined') window.localStorage.removeItem(CLE_JETON);
+  armerVerrou();
+}
+
+// Verrou d'application (E5 et suivants) : le jeton est persistant, mais
+// l'écran se reverrouille dès que l'application quitte le premier plan.
+// Ce marqueur ne vit que le temps de l'onglet (sessionStorage) : posé au
+// déverrouillage, retiré dès que l'application est cachée.
+const CLE_VERROU = 'djigui_deverrouille';
+
+export function estDeverrouillePourCetteSession() {
+  return typeof window !== 'undefined' && window.sessionStorage.getItem(CLE_VERROU) === '1';
+}
+
+export function marquerDeverrouille() {
+  if (typeof window !== 'undefined') window.sessionStorage.setItem(CLE_VERROU, '1');
+}
+
+export function armerVerrou() {
+  if (typeof window !== 'undefined') window.sessionStorage.removeItem(CLE_VERROU);
 }
 
 // Erreur porteuse : le champ fautif et le code permettent à l'écran de
@@ -118,6 +137,8 @@ export const remplacerNumeroPrincipal = (corps) =>
   appel('/api/donneurs/moi/numero-principal', { methode: 'PUT', corps });
 export const desactiverMonCompte = () =>
   appel('/api/donneurs/moi/desactivation', { methode: 'PUT' });
+export const deverrouillerApplication = (motDePasse) =>
+  appel('/api/donneurs/moi/deverrouiller', { methode: 'POST', corps: { mot_de_passe: motDePasse } });
 export const mesDons = () => appel('/api/donneurs/moi/dons');
 
 // Notifications Web Push (E10, section Notifications ; invite de E6).

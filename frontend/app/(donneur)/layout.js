@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import BarreNavigation from '../composants/BarreNavigation';
+import VerrouApplication from '../composants/VerrouApplication';
 import { lireJeton } from '@/lib/api';
 
 export default function GabaritDonneur({ children }) {
@@ -22,9 +23,9 @@ export default function GabaritDonneur({ children }) {
   // de barre du bas, seules les quatre sections principales l'ont.
   const masquerBarre = chemin.startsWith('/alertes/') && chemin !== '/alertes';
   return (
-    <>
+    <VerrouApplication>
       {children}
       {!masquerBarre && <BarreNavigation />}
-    </>
+    </VerrouApplication>
   );
 }

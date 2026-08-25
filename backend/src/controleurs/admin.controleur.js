@@ -387,7 +387,8 @@ const BORNES = {
   nb_telephones_max: [1, 6], recup_tentatives_heure: [1, 10],
   mdp_longueur_min: [8, 32], mdp_donneur_longueur_min: [6, 32],
   echecs_avant_verrou: [3, 10], duree_verrou_minutes: [5, 120],
-  session_inactivite_minutes: [5, 240], validite_provisoire_heures: [1, 168]
+  session_inactivite_minutes: [5, 240], validite_provisoire_heures: [1, 168],
+  session_donneur_jours: [30, 730]
 };
 
 async function modifierParametres(requete, reponse) {

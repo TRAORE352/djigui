@@ -11,7 +11,8 @@ const DEFAUTS = {
   nb_telephones_max: 4, recup_tentatives_heure: 3,
   mdp_longueur_min: 10, mdp_donneur_longueur_min: 8,
   echecs_avant_verrou: 5, duree_verrou_minutes: 15,
-  session_inactivite_minutes: 30, validite_provisoire_heures: 48
+  session_inactivite_minutes: 30, validite_provisoire_heures: 48,
+  session_donneur_jours: 400
 };
 
 let cache = null;

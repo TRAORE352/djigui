@@ -56,4 +56,6 @@ INSERT INTO parametre (cle, valeur, libelle, consequence, unite, categorie) VALU
 ('session_inactivite_minutes', '30', 'Fermeture d''une session inactive',
  'Au-delà, l''agent doit se reconnecter. Le poste partagé est protégé.', 'minutes', 'securite'),
 ('validite_provisoire_heures', '48', 'Validité du mot de passe provisoire',
- 'Passé ce délai, l''administrateur doit en délivrer un autre.', 'heures', 'securite');
+ 'Passé ce délai, l''administrateur doit en délivrer un autre.', 'heures', 'securite'),
+('session_donneur_jours', '400', 'Durée du jeton d''un donneur',
+ 'Renouvelée à chaque usage : un donneur actif ne se reconnecte jamais. Le verrou d''application protège l''appareil entre deux usages.', 'jours', 'securite');

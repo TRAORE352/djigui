@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { ArrowLeft, Eye, EyeOff, Check } from 'lucide-react';
-import { connexion, enregistrerJeton } from '@/lib/api';
+import { connexion, enregistrerJeton, marquerDeverrouille } from '@/lib/api';
 import LogoPulsant from '../composants/LogoPulsant';
 import Bouton from '../composants/Bouton';
 import { MessageErreur } from '../composants/Message';
@@ -31,6 +31,7 @@ export default function Connexion() {
     try {
       const resultat = await connexion(identifiant, motDePasse);
       enregistrerJeton(resultat.jeton);
+      marquerDeverrouille();
       routeur.push(resultat.espace || '/carte');
     } catch (probleme) {
       setErreur(probleme.message);

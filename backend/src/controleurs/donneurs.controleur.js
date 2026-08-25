@@ -7,11 +7,13 @@ const donneurs = require('../requetes/donneurs');
 const telephones = require('../requetes/telephones');
 const reponses = require('../requetes/reponses');
 const abonnementsPush = require('../requetes/abonnements-push');
+const utilisateurs = require('../requetes/utilisateurs');
 const { zoneExiste } = require('../requetes/zones');
 const { lireParametres } = require('../requetes/parametres');
 const { journaliser } = require('../requetes/journal');
 const { evaluerEligibilite } = require('../regles/eligibilite');
 const { normaliserNumero, normaliserReponse } = require('./auth.controleur');
+const { signerJeton } = require('../middlewares/auth');
 
 const MOTIFS_REFUS = ['don_trop_recent', 'absent_de_la_ville', 'raison_de_sante', 'autre'];
 const MOYENS_DEPLACEMENT = ['a_pied', 'deux_roues', 'transport_commun'];
@@ -227,6 +229,53 @@ async function desactiver(requete, reponse) {
   });
 }
 
+// POST /api/donneurs/moi/deverrouiller — verrou d'application (E5 et
+// suivants). Le donneur est déjà authentifié : son jeton reste celui
+// qu'il avait avant l'appel, cette route ne fait que revalider son mot
+// de passe pour lever le voile posé par l'écran de verrouillage. Elle
+// n'ouvre jamais de nouvelle session et ne renvoie jamais le mot de
+// passe ni aucune trace de celui-ci.
+// Réutilise le verrouillage RG35 déjà en place sur le compte (mêmes
+// colonnes que la connexion classique) : cinq échecs bloquent le
+// compte quinze minutes, à la fois ici et pour une connexion complète.
+// Un mot de passe refusé répond 403, jamais 401 : le jeton, lui, reste
+// parfaitement valide (401 déclencherait côté frontend l'effacement
+// automatique du jeton, prévu pour une session réellement invalide,
+// pas pour un simple mot de passe mal saisi au verrou).
+async function deverrouiller(requete, reponse) {
+  const utilisateur = requete.utilisateur;
+  const motDePasse = String(requete.body?.mot_de_passe || '');
+  const parametres = await lireParametres();
+
+  if (utilisateur.verrouille_jusqu_a && new Date(utilisateur.verrouille_jusqu_a) > new Date()) {
+    const minutes = Math.max(1, Math.ceil(
+      (new Date(utilisateur.verrouille_jusqu_a) - new Date()) / 60000));
+    return reponse.status(423).json({
+      erreur: `Compte bloqué après plusieurs essais. Réessayez dans ${minutes} minute${minutes > 1 ? 's' : ''}.`,
+      code: 'compte_bloque'
+    });
+  }
+
+  const correspond = await bcrypt.compare(motDePasse, utilisateur.mot_de_passe);
+  if (!correspond) {
+    await utilisateurs.enregistrerEchec(
+      utilisateur.id_utilisateur, parametres.echecs_avant_verrou, parametres.duree_verrou_minutes);
+    journaliser(utilisateur.id_utilisateur, 'Déverrouillage de l’application', null, 'echouee');
+    const essaisRestants = Math.max(
+      0, parametres.echecs_avant_verrou - (utilisateur.nb_echecs_connexion + 1));
+    return reponse.status(403).json({
+      erreur: essaisRestants > 0
+        ? `Mot de passe incorrect. Il reste ${essaisRestants} essai${essaisRestants > 1 ? 's' : ''} avant le blocage du compte.`
+        : `Mot de passe incorrect. Le compte est bloqué pendant ${parametres.duree_verrou_minutes} minutes.`,
+      essais_restants: essaisRestants
+    });
+  }
+
+  await utilisateurs.enregistrerReussite(utilisateur.id_utilisateur);
+  journaliser(utilisateur.id_utilisateur, 'Déverrouillage de l’application', null);
+  return reponse.json({ jeton: await signerJeton(utilisateur) });
+}
+
 // POST /api/donneurs/moi/abonnement-push — E10, section Notifications,
 // et l'invite de E6. { endpoint, keys: { p256dh, auth } }, format natif
 // de PushSubscription.toJSON() côté navigateur.
@@ -375,6 +424,6 @@ async function enregistrerDisponibiliteCtrl(requete, reponse) {
 module.exports = {
   monProfil, mesTelephones, mesDons, modifierProfil, changerQuestion,
   ajouterTelephone, retirerTelephone, remplacerPrincipal, desactiver, rappelAgenda,
-  enregistrerAbonnementPush, retirerAbonnementPush,
+  deverrouiller, enregistrerAbonnementPush, retirerAbonnementPush,
   mesAlertes, detailAlerte, repondreAlerte, enregistrerDisponibiliteCtrl, codeDonneur
 };

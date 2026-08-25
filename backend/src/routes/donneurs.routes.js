@@ -15,6 +15,7 @@ routeur.post('/moi/telephones', controleur.ajouterTelephone);
 routeur.delete('/moi/telephones/:id', controleur.retirerTelephone);
 routeur.put('/moi/numero-principal', controleur.remplacerPrincipal);
 routeur.put('/moi/desactivation', controleur.desactiver);
+routeur.post('/moi/deverrouiller', controleur.deverrouiller);
 routeur.post('/moi/abonnement-push', controleur.enregistrerAbonnementPush);
 routeur.delete('/moi/abonnement-push', controleur.retirerAbonnementPush);
 routeur.get('/moi/dons', controleur.mesDons);

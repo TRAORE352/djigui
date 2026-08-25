@@ -37,3 +37,19 @@ UPDATE telephone_donneur t
  WHERE d.id_donneur = t.id_donneur
    AND t.rang = 1
    AND t.statut_joignabilite = 'non_verifie';
+
+-- Correctif 2 — durée du jeton donneur (verrou d'application).
+--
+-- Avant ce correctif, le jeton d'un donneur expirait après douze heures
+-- fixes, sans jamais se renouveler : passé ce délai, quoi qu'il fasse,
+-- le donneur devait tout ressaisir (numéro et mot de passe). Avec le
+-- verrou d'application (mot de passe seul, à chaque retour), la
+-- session peut désormais durer aussi longtemps que le donneur revient
+-- de temps en temps : elle se prolonge à chaque appel, comme la
+-- session professionnelle (RG39). Ce correctif ajoute le paramètre
+-- pour une base créée avant son introduction dans 02-parametres.postgresql.sql.
+-- Sans danger à réimporter : ON CONFLICT ne touche rien si la ligne existe déjà.
+INSERT INTO parametre (cle, valeur, libelle, consequence, unite, categorie) VALUES
+('session_donneur_jours', '400', 'Durée du jeton d''un donneur',
+ 'Renouvelée à chaque usage : un donneur actif ne se reconnecte jamais. Le verrou d''application protège l''appareil entre deux usages.', 'jours', 'securite')
+ON CONFLICT (cle) DO NOTHING;
