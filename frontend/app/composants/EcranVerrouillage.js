@@ -16,11 +16,10 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion, useReducedMotion } from 'motion/react';
 import { Eye, EyeOff, LogOut, Fingerprint } from 'lucide-react';
-import { deverrouillerApplication, enregistrerJeton, marquerDeverrouille, effacerJeton } from '@/lib/api';
+import { deverrouillerApplication, enregistrerJeton, marquerDeverrouille, effacerJeton, etatPasskey } from '@/lib/api';
 import {
   deverrouillerAvecPasskey, enregistrerPasskey, biometrieVerifiablePourAppareil,
-  passkeyActifLocalement, marquerPasskeyActifLocalement,
-  passkeyDejaPropose, marquerPasskeyPropose
+  marquerPasskeyActifLocalement, passkeyDejaPropose, marquerPasskeyPropose
 } from '@/lib/webauthn';
 import Bouton from './Bouton';
 import { MessageErreur } from './Message';
@@ -55,7 +54,16 @@ export default function EcranVerrouillage({ onDeverrouille }) {
   const [enCoursOffre, setEnCoursOffre] = useState(false);
   const [essais, setEssais] = useState(0);
 
-  useEffect(() => { setPasskeyDispo(passkeyActifLocalement()); }, []);
+  // Source de vérité : le service (une ligne passkey_donneur existe-t-elle
+  // pour CE compte connecté ?), jamais un drapeau local — un drapeau posé
+  // par un compte précédemment connecté sur ce même appareil resterait
+  // sinon actif à tort pour un compte qui n'a jamais rien enregistré.
+  useEffect(() => {
+    let annule = false;
+    etatPasskey().then(({ actif }) => { if (!annule) setPasskeyDispo(actif); })
+      .catch(() => { if (!annule) setPasskeyDispo(false); });
+    return () => { annule = true; };
+  }, []);
 
   function deconnecterCompletement() {
     effacerJeton();
@@ -64,9 +72,14 @@ export default function EcranVerrouillage({ onDeverrouille }) {
 
   // Après un déverrouillage réussi (empreinte ou mot de passe), propose
   // une seule fois d'enregistrer l'empreinte si l'appareil le permet et
-  // qu'elle n'est ni déjà active ni déjà refusée.
+  // que ce compte n'en a pas déjà une (vérifié côté service) ni refusée.
   async function terminerOuProposer() {
-    if (!passkeyActifLocalement() && !passkeyDejaPropose() && await biometrieVerifiablePourAppareil()) {
+    if (passkeyDejaPropose() || !(await biometrieVerifiablePourAppareil())) {
+      onDeverrouille();
+      return;
+    }
+    const { actif } = await etatPasskey().catch(() => ({ actif: true }));
+    if (!actif) {
       setEtape('offre_passkey');
       return;
     }
@@ -98,6 +111,11 @@ export default function EcranVerrouillage({ onDeverrouille }) {
 
   // Déclenché UNIQUEMENT par le toucher de l'empreinte (bouton réel) :
   // jamais au chargement, un navigateur refuserait WebAuthn sans geste.
+  // Le message distingue la vraie cause plutôt que de tout masquer
+  // derrière un seul texte générique : absence d'empreinte enregistrée
+  // (ne devrait plus arriver, vérifié avant affichage, mais un appareil
+  // change vite), signature refusée, ou un vrai échec WebAuthn (matériel,
+  // sécurité) que le navigateur seul a produit.
   async function tenterPasskey() {
     setErreur('');
     setEnCoursPasskey(true);
@@ -111,7 +129,14 @@ export default function EcranVerrouillage({ onDeverrouille }) {
       // Annulation volontaire (croix système, retour) : silencieux, on
       // reste sur l'empreinte plutôt que de basculer sans qu'on le demande.
       if (probleme?.name === 'NotAllowedError') return;
-      setErreur('L’empreinte n’a pas été reconnue. Utilisez votre mot de passe.');
+      if (probleme?.statut === 404) {
+        setErreur('Aucune empreinte n’est enregistrée sur cet appareil pour ce compte.');
+        setPasskeyDispo(false);
+      } else if (probleme?.statut === 403) {
+        setErreur('L’empreinte n’a pas été reconnue. Réessayez, ou utilisez votre mot de passe.');
+      } else {
+        setErreur('La vérification par empreinte a échoué sur cet appareil. Utilisez votre mot de passe.');
+      }
       setAfficherMotDePasse(true);
     }
   }

@@ -11,9 +11,10 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Bell, Fingerprint } from 'lucide-react';
 import { etatNotifications, activerNotifications } from '@/lib/notifications';
+import { etatPasskey } from '@/lib/api';
 import {
   biometrieVerifiablePourAppareil, enregistrerPasskey,
-  passkeyActifLocalement, marquerPasskeyActifLocalement,
+  marquerPasskeyActifLocalement,
   passkeyDejaPropose, marquerPasskeyPropose
 } from '@/lib/webauthn';
 import Bouton from './Bouton';
@@ -37,11 +38,17 @@ export default function InvitesInstallation() {
 
     async function verifierBiometrie() {
       if (annule) return;
-      if (!passkeyActifLocalement() && !passkeyDejaPropose() && await biometrieVerifiablePourAppareil()) {
-        if (!annule) setEtape('biometrie');
-      } else {
+      // Source de vérité : le service (une ligne passkey_donneur existe-t-elle
+      // déjà pour CE compte ?), jamais un drapeau local qui pourrait venir
+      // d'un compte précédemment connecté sur ce même appareil.
+      if (passkeyDejaPropose() || !(await biometrieVerifiablePourAppareil())) {
         terminer();
+        return;
       }
+      const { actif } = await etatPasskey().catch(() => ({ actif: true }));
+      if (annule) return;
+      if (!actif) setEtape('biometrie');
+      else terminer();
     }
 
     etatNotifications().then((etat) => {
@@ -60,11 +67,13 @@ export default function InvitesInstallation() {
   }
 
   async function verifierBiometrieApres() {
-    if (!passkeyActifLocalement() && !passkeyDejaPropose() && await biometrieVerifiablePourAppareil()) {
-      setEtape('biometrie');
-    } else {
+    if (passkeyDejaPropose() || !(await biometrieVerifiablePourAppareil())) {
       terminer();
+      return;
     }
+    const { actif } = await etatPasskey().catch(() => ({ actif: true }));
+    if (!actif) setEtape('biometrie');
+    else terminer();
   }
 
   async function activerLesNotifications() {
