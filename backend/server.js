@@ -13,6 +13,29 @@ const { configure: pushConfigure } = require('./src/push');
 
 const application = express();
 
+// --- Confiance au proxy (Render place l'application derrière un seul
+// reverse proxy) -------------------------------------------------------
+// Sans ce réglage, Express garde trust proxy = false par défaut : il
+// ignore l'en-tête X-Forwarded-For et req.ip renvoie l'adresse du
+// proxy Render, pas celle du client. express-rate-limit (RG35, limite
+// sur /api/auth) détecte cette incohérence — un en-tête XFF présent
+// alors que trust proxy ne l'autorise pas — et lève une ValidationError
+// (ERR_ERL_UNEXPECTED_X_FORWARDED_FOR) à chaque requête passant par le
+// limiteur, ce qui a fait tomber le service (piège Express 4 documenté
+// plus bas dans ce fichier : une erreur non interceptée dans un
+// contrôleur/middleware asynchrone n'est pas rattrapée par Express).
+//
+// `1` plutôt que `true` : `true` ferait confiance à TOUT en-tête
+// X-Forwarded-For, quel que soit le nombre de sauts — un client pourrait
+// alors fabriquer son propre en-tête et usurper n'importe quelle
+// adresse IP, rendant le limiteur de débit inutile. `1` dit à Express de
+// ne faire confiance qu'à UN SEUL proxy en amont (celui de Render) :
+// req.ip devient l'adresse que CE proxy a lui-même constatée, jamais une
+// valeur que le client aurait pu injecter avant lui. Exactement un
+// niveau de proxy, ni plus ni moins, correspond à l'infrastructure
+// réelle de Render.
+application.set('trust proxy', 1);
+
 // --- Contrôle des réglages avant tout démarrage ----------------------
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 20) {
   console.error(
