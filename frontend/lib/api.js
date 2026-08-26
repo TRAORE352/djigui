@@ -38,6 +38,30 @@ export function armerVerrou() {
   if (typeof window !== 'undefined') window.sessionStorage.removeItem(CLE_VERROU);
 }
 
+// --- Mouchard temporaire (diagnostic du bug de déconnexion inattendue
+// au retour dans l'application) : ne change aucun comportement d'accès,
+// se contente d'écrire ce qui se passe réellement avant toute
+// correction. Conservé en localStorage pour survivre à la fermeture de
+// l'application ; plafonné pour ne jamais grossir sans fin.
+const CLE_MOUCHARD = 'djigui_mouchard';
+const MOUCHARD_MAX = 20;
+
+function tracerMouchard(entree) {
+  if (typeof window === 'undefined') return;
+  try {
+    const brut = window.localStorage.getItem(CLE_MOUCHARD);
+    const trace = brut ? JSON.parse(brut) : [];
+    trace.push({ heure: new Date().toISOString(), ...entree });
+    window.localStorage.setItem(CLE_MOUCHARD, JSON.stringify(trace.slice(-MOUCHARD_MAX)));
+  } catch { /* le mouchard ne doit jamais faire échouer un appel réel */ }
+}
+
+// Appelé au montage de la mise en page donneur : dit si le jeton était
+// déjà absent au réveil de l'application, avant tout appel réseau.
+export function tracerDemarrage() {
+  tracerMouchard({ raison: 'demarrage', jeton_present: Boolean(lireJeton()) });
+}
+
 // Erreur porteuse : le champ fautif et le code permettent à l'écran de
 // réagir précisément, au lieu d'afficher un message générique.
 export class ErreurService extends Error {
@@ -79,7 +103,10 @@ async function appel(chemin, options = {}) {
   try { donnees = await reponse.json(); } catch { /* réponse sans corps */ }
 
   if (!reponse.ok) {
-    if (reponse.status === 401 && typeof window !== 'undefined') effacerJeton();
+    if (reponse.status === 401 && typeof window !== 'undefined') {
+      tracerMouchard({ raison: 'jeton_efface_sur_401', url_appel: chemin, corps: donnees });
+      effacerJeton();
+    }
     throw new ErreurService(
       donnees?.erreur || 'Le service a rencontré un problème. Réessayez.',
       { statut: reponse.status, champ: donnees?.champ, code: donnees?.code, donnees });

@@ -7,7 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import BarreNavigation from '../composants/BarreNavigation';
 import VerrouApplication from '../composants/VerrouApplication';
 import InvitesInstallation from '../composants/InvitesInstallation';
-import { lireJeton } from '@/lib/api';
+import { lireJeton, tracerDemarrage } from '@/lib/api';
 
 export default function GabaritDonneur({ children }) {
   const routeur = useRouter();
@@ -15,6 +15,10 @@ export default function GabaritDonneur({ children }) {
   const [pret, setPret] = useState(false);
 
   useEffect(() => {
+    // Mouchard temporaire (diagnostic du bug de déconnexion inattendue) :
+    // dit si le jeton était déjà absent à ce réveil de l'application,
+    // avant même de savoir s'il faut rediriger vers la connexion.
+    tracerDemarrage();
     if (!lireJeton()) routeur.replace('/connexion');
     else setPret(true);
   }, [routeur]);
