@@ -212,3 +212,157 @@ a { color: var(--primaire); text-decoration: none; }
 
 /* Les messages à icône alignent le texte et le pictogramme. */
 .message { display: inline-flex; align-items: center; gap: var(--e2); }
+
+/* =====================================================================
+   Coquille d'application — barre latérale fixe + en-tête de page.
+   La plateforme s'utilise sur poste fixe : la navigation reste visible.
+   Sous 900 px, la barre passe en bandeau horizontal défilable.
+   ===================================================================== */
+.coquille {
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
+  background: var(--fond);
+}
+
+.lateral {
+  display: flex; flex-direction: column; gap: var(--e6);
+  padding: var(--e6) var(--e4);
+  background: var(--surface);
+  border-right: 1px solid var(--trait);
+  position: sticky; top: 0; height: 100dvh;
+}
+.lateral__marque { display: flex; align-items: center; gap: var(--e3); padding: 0 var(--e3); }
+.lateral__logo {
+  display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: 10px;
+  background: var(--sang-clair); color: var(--sang);
+}
+.lateral__nom { font-size: var(--t-appui); font-weight: 700; line-height: 1.2; }
+.lateral__espace { font-size: var(--t-micro); color: var(--encre-2); text-transform: uppercase; letter-spacing: 0.06em; }
+
+.lateral__menu { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.lateral__groupe { padding: var(--e4) var(--e3) var(--e2); font-size: var(--t-micro); font-weight: 700; color: var(--encre-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.lateral__lien {
+  display: flex; align-items: center; gap: var(--e3);
+  min-height: var(--cible); padding: 0 var(--e3);
+  border-radius: var(--rayon-petit);
+  color: var(--encre); font-size: var(--t-appui); font-weight: 550;
+  transition: background 140ms, color 140ms;
+}
+/* La déconnexion est un <button> : il ne doit pas porter le style natif
+   (bordure, fond gris, police système) au milieu de liens de navigation. */
+.lateral__lien[type], button.lateral__lien {
+  width: 100%; border: 0; background: none;
+  font: inherit; font-size: var(--t-appui); font-weight: 550;
+  text-align: left; cursor: pointer;
+}
+.lateral__lien:hover { background: var(--fond); }
+.lateral__lien svg { flex-shrink: 0; color: var(--encre-2); }
+.lateral__lien--actif { background: var(--primaire-clair); color: var(--primaire-fonce); font-weight: 650; }
+.lateral__lien--actif svg { color: var(--primaire); }
+.lateral__compte { margin-left: auto; font-size: var(--t-micro); font-weight: 700; color: var(--encre-2); }
+
+.lateral__pied { display: flex; flex-direction: column; gap: var(--e3); padding-top: var(--e4); border-top: 1px solid var(--trait); }
+.lateral__agent { display: flex; flex-direction: column; gap: 2px; padding: 0 var(--e3); min-width: 0; }
+.lateral__agent span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.contenu { min-width: 0; padding: var(--e6) var(--e7) var(--e8); display: flex; flex-direction: column; gap: var(--e6); }
+.contenu__entete { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--e4); flex-wrap: wrap; }
+.contenu__titre { font-size: var(--t-grand); font-weight: 700; letter-spacing: -0.015em; line-height: 1.15; }
+.contenu__chapeau { font-size: var(--t-appui); color: var(--encre-2); max-width: 62ch; margin-top: var(--e1); }
+
+@media (max-width: 900px) {
+  .coquille { grid-template-columns: 1fr; }
+  .lateral {
+    position: static; height: auto; flex-direction: row; align-items: center;
+    gap: var(--e4); padding: var(--e3) var(--e4);
+    border-right: 0; border-bottom: 1px solid var(--trait);
+    overflow-x: auto;
+  }
+  .lateral__menu { flex-direction: row; flex: 0 0 auto; }
+  .lateral__groupe { display: none; }
+  .lateral__lien { white-space: nowrap; }
+  .lateral__pied { flex-direction: row; align-items: center; border-top: 0; padding-top: 0; margin-left: auto; }
+  .lateral__agent { display: none; }
+  .contenu { padding: var(--e5) var(--e4) var(--e7); gap: var(--e5); }
+  .contenu__titre { font-size: var(--t-titre); }
+}
+
+/* =====================================================================
+   Tableaux de travail — lecture en rafale, chiffres alignés.
+   ===================================================================== */
+.tableau-cadre { background: var(--surface); border: 1px solid var(--trait); border-radius: var(--rayon); box-shadow: var(--ombre); overflow: hidden; }
+.tableau-defile { overflow-x: auto; }
+.tableau { width: 100%; border-collapse: collapse; font-size: var(--t-appui); }
+.tableau th {
+  text-align: left; padding: var(--e3) var(--e4);
+  background: var(--fond); border-bottom: 1px solid var(--trait);
+  font-size: var(--t-micro); font-weight: 700; color: var(--encre-2);
+  text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+}
+.tableau td { padding: var(--e4); border-bottom: 1px solid var(--trait); vertical-align: middle; }
+.tableau tbody tr:last-child td { border-bottom: 0; }
+.tableau tbody tr:hover { background: var(--fond); }
+.tableau__nombre { text-align: right; font-family: var(--police-chiffres); font-variant-numeric: tabular-nums; }
+.tableau__actions { display: flex; gap: var(--e2); justify-content: flex-end; }
+
+/* =====================================================================
+   États : vide, chargement, erreur. Un écran vide explique quoi faire.
+   ===================================================================== */
+.etat-vide {
+  display: flex; flex-direction: column; align-items: center; gap: var(--e3);
+  padding: var(--e8) var(--e5); text-align: center;
+  background: var(--surface); border: 1px dashed var(--trait-fort); border-radius: var(--rayon);
+}
+.etat-vide__icone { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--fond); color: var(--encre-2); }
+.etat-vide__titre { font-size: var(--t-corps); font-weight: 650; }
+.etat-vide__texte { font-size: var(--t-appui); color: var(--encre-2); max-width: 46ch; }
+
+/* Carte d'indicateur cliquable (raccourcis du poste de travail) */
+.raccourci {
+  display: flex; flex-direction: column; gap: var(--e2);
+  padding: var(--e5); text-align: left;
+  background: var(--surface); border: 1px solid var(--trait); border-radius: var(--rayon);
+  box-shadow: var(--ombre); color: var(--encre); cursor: pointer;
+  transition: border-color 140ms, transform 140ms, box-shadow 140ms;
+}
+.raccourci:hover { border-color: var(--primaire); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 24, 40, 0.08); }
+.raccourci__icone { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--primaire-clair); color: var(--primaire); }
+.raccourci__titre { font-size: var(--t-corps); font-weight: 650; }
+
+/* Bloc de groupe sanguin (élément signature) */
+.bloc-groupe {
+  display: inline-grid; place-items: center;
+  background: var(--sang); color: #fff;
+  font-family: var(--police-chiffres); font-weight: 700; letter-spacing: -0.02em;
+  border-radius: var(--rayon-petit);
+}
+.bloc-groupe--s { min-width: 34px; height: 24px; padding: 0 var(--e2); font-size: var(--t-petit); }
+.bloc-groupe--m { min-width: 44px; height: 32px; padding: 0 var(--e2); font-size: var(--t-appui); }
+.bloc-groupe--l { min-width: 60px; height: 44px; padding: 0 var(--e3); font-size: var(--t-titre-s); }
+
+/* Fiche à deux colonnes (détail d'un donneur, d'une poche) */
+.fiche { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--e4); }
+.fiche__cle { font-size: var(--t-micro); font-weight: 700; color: var(--encre-2); text-transform: uppercase; letter-spacing: 0.05em; }
+.fiche__valeur { font-size: var(--t-corps); font-weight: 600; }
+
+/* Frise d'événements (traçabilité) */
+.frise { display: flex; flex-direction: column; }
+.frise__etape { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--e4); padding-bottom: var(--e5); position: relative; }
+.frise__etape:last-child { padding-bottom: 0; }
+.frise__puce { width: 12px; height: 12px; margin: 6px auto 0; border-radius: 50%; background: var(--primaire); box-shadow: 0 0 0 3px var(--primaire-clair); }
+.frise__etape:not(:last-child)::before {
+  content: ""; position: absolute; left: 11px; top: 22px; bottom: 4px;
+  width: 2px; background: var(--trait);
+}
+.frise__corps { display: flex; flex-direction: column; gap: 2px; }
+
+/* Grille de formulaire à trois colonnes */
+.grille-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--e4); }
+
+/* Barre de progression (objectif d'une alerte) */
+.jauge { height: 8px; border-radius: 999px; background: var(--trait); overflow: hidden; }
+.jauge__part { height: 100%; border-radius: 999px; background: var(--seve); transition: width 300ms; }
+.jauge__part--ocre { background: var(--ocre); }
+.jauge__part--sang { background: var(--sang); }

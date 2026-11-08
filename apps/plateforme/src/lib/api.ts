@@ -9,7 +9,7 @@ import type {
   EstimationAlerteReponse, Expedition, ExpeditionRequete, FicheTracabilite,
   InscriptionSurPlaceRequete, LancerAlerteRequete, LigneStock, ModifierRegleRequete,
   Passage, Poche, PreparerPocheRequete, Produit, Regle, ReinitialisationMotDePasseReponse,
-  Reponse, ReponseErreur, SiteAdmin, Statistiques, SuiviAlerte,
+  Reponse, ReponseErreur, SiteAdmin, SitePartenaire, Statistiques, SuiviAlerte,
 } from "@dds/contrat-api";
 import { lireJeton } from "./session";
 // `ErreurApi` et `messageDe` vivent dans ./erreurs : une seule définition
@@ -62,6 +62,10 @@ export const api = {
   pochesAanalyser: () =>
     appel<Poche[]>("GET", "/poches?statut=a_analyser"),
 
+  /** Poches qualifiées conformes, en attente de préparation des produits (P5). */
+  pochesAPreparer: () =>
+    appel<Poche[]>("GET", "/poches?statut=conforme"),
+
   analyser: (code: string, corps: EnregistrerAnalyseRequete) =>
     appel<Analyse>("POST", `/poches/${encodeURIComponent(code)}/analyse`, corps),
 
@@ -89,6 +93,7 @@ export const api = {
 
   // P8/P10 Distribution
   demandes: () => appel<Demande[]>("GET", "/demandes"),
+  sitesPartenaires: () => appel<SitePartenaire[]>("GET", "/sites-partenaires"),
   creerDemande: (corps: DemandeRequete) => appel<Demande>("POST", "/demandes", corps),
   creerExpedition: (corps: ExpeditionRequete) => appel<Expedition>("POST", "/expeditions", corps),
   recevoirExpedition: (id: string) => appel<Expedition>("POST", `/expeditions/${encodeURIComponent(id)}/reception`),

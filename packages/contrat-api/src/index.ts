@@ -579,6 +579,22 @@ export interface DelivranceRequete {
   service: string;
 }
 
+/**
+ * GET /sites-partenaires — les sites auxquels le site courant peut adresser
+ * une demande de produits (son propre site exclu).
+ *
+ * À ne pas confondre avec `GET /sites`, réservé à l'administration, qui
+ * expose tout le réseau et le nombre d'agents de chaque site. Ici, seul
+ * l'indispensable pour remplir le champ « fournisseur » d'une demande.
+ */
+export interface SitePartenaire {
+  id: string;
+  code: string;
+  nom: string;
+  type: "centre" | "depot" | "hopital";
+  ville: string;
+}
+
 // =====================================================================
 // Espace CNTS (administration) — P1 (comptes et rôles), P2 (zones et
 // centres), règles de don (Annexe E) et tableau de bord.

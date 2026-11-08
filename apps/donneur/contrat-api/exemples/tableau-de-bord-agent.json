@@ -1,0 +1,14 @@
+{ "donnees": {
+  "site": { "id": "s_ouaga_cnts", "nom": "CNTS Ouagadougou" },
+  "nbCritiques": 1,
+  "stock": [
+    { "groupeSanguin": "O+", "pochesDisponibles": 18, "seuilBas": 15, "seuilCritique": 6, "niveau": "normal", "dernierMouvement": "2026-11-07T08:40:00Z" },
+    { "groupeSanguin": "A+", "pochesDisponibles": 9, "seuilBas": 12, "seuilCritique": 5, "niveau": "bas", "dernierMouvement": "2026-11-06T16:05:00Z" },
+    { "groupeSanguin": "B+", "pochesDisponibles": 7, "seuilBas": 8, "seuilCritique": 4, "niveau": "bas", "dernierMouvement": "2026-11-05T11:20:00Z" },
+    { "groupeSanguin": "AB+", "pochesDisponibles": 3, "seuilBas": 4, "seuilCritique": 2, "niveau": "bas", "dernierMouvement": "2026-11-04T09:00:00Z" },
+    { "groupeSanguin": "O-", "pochesDisponibles": 2, "seuilBas": 5, "seuilCritique": 3, "niveau": "critique", "dernierMouvement": "2026-11-07T07:15:00Z" },
+    { "groupeSanguin": "A-", "pochesDisponibles": 4, "seuilBas": 4, "seuilCritique": 2, "niveau": "normal", "dernierMouvement": "2026-11-03T14:30:00Z" },
+    { "groupeSanguin": "B-", "pochesDisponibles": 3, "seuilBas": 3, "seuilCritique": 1, "niveau": "normal", "dernierMouvement": null },
+    { "groupeSanguin": "AB-", "pochesDisponibles": 1, "seuilBas": 2, "seuilCritique": 1, "niveau": "normal", "dernierMouvement": null }
+  ]
+} }

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import type { Demande, DemandeRequete, Expedition } from "@dds/contrat-api";
+import type { Demande, DemandeRequete, Expedition, SitePartenaire } from "@dds/contrat-api";
 import { AppError } from "../lib/erreurs.js";
 import { requete, transaction } from "../lib/db.js";
 import { valider } from "../lib/validation.js";
@@ -20,6 +20,34 @@ export const routeDistribution = Router();
 const TYPES = ["GR", "PL", "PQ"] as const;
 const GROUPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
 const URGENCES = ["normale", "urgente", "critique"] as const;
+
+// ---------------------------------------------------------------------
+// GET /sites-partenaires — à qui ce site peut adresser une demande.
+// `GET /sites` est réservé à l'administration : le gestionnaire de stock a
+// besoin de la même liste, mais réduite et sans son propre site.
+// ---------------------------------------------------------------------
+routeDistribution.get("/sites-partenaires", ...STOCK, async (req, res) => {
+  const agent = req.utilisateur!;
+  const { rows } = await requete<{
+    id: string; code: string; nom: string; type: string; ville: string;
+  }>(
+    `select s.id, s.code, s.nom, s.type, coalesce(z.ville, '') as ville
+     from sites s
+     left join zones z on z.id = s.zone_id
+     where s.actif and s.id <> $1
+     order by s.type, s.nom`,
+    [agent.siteId],
+  );
+
+  const sites: SitePartenaire[] = rows.map((s) => ({
+    id: s.id,
+    code: s.code,
+    nom: s.nom,
+    type: s.type as SitePartenaire["type"],
+    ville: s.ville,
+  }));
+  res.json({ donnees: sites });
+});
 
 const schemaDemande = z.object({
   siteFournisseurId: z.string().uuid("Fournisseur invalide."),
