@@ -70,8 +70,10 @@ async function jeton(email, mdp) {
   await p.screenshot({ path: `${dir}/1-portail.png`, fullPage: true });
   const portes = await p.locator('.porte').count();
   ok(portes === 3, `portail affiche 3 portes (vu ${portes})`);
-  const lienDonneur = await p.locator('.porte[href*="donneur"]').count();
-  ok(lienDonneur === 1, 'une porte pointe vers l\'app donneur');
+  // La porte des donneurs mène au PRODUIT des donneurs, sur sa propre
+  // adresse : trois espaces distincts, pas trois onglets d'une même app.
+  const lienDonneur = await p.locator('.porte[href*="mydjigui"]').count();
+  ok(lienDonneur === 1, 'une porte pointe vers l\'app donneur (mydjigui)');
   await ctx.close();
 
   // ---- 2. Un AGENT ne peut pas entrer dans l'espace CNTS -------------

@@ -9,13 +9,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Droplet, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import type { AgentConnecte } from "@dds/contrat-api";
 import {
   LIBELLE_ROLE, sectionAutorisee, sectionCourante, sectionsVisibles,
   SECTIONS_ADMIN, SECTIONS_AGENT, type Section,
 } from "@/lib/navigation";
 import { fermerSession, lireAgent, lireJeton } from "@/lib/session";
+import { MARQUE } from "@/lib/espace";
+import Goutte from "@/components/Goutte";
 
 type Espace = "agent" | "admin";
 
@@ -70,10 +72,10 @@ export default function Coquille({ espace, children }: { espace: Espace; childre
     <div className="coquille">
       <aside className="lateral">
         <div className="lateral__marque">
-          <span className="lateral__logo"><Droplet size={20} aria-hidden="true" /></span>
+          <Goutte taille={18} />
           <span className="pile-s" style={{ gap: 0 }}>
-            <span className="lateral__nom">CNTS</span>
-            <span className="lateral__espace">{espace === "admin" ? "Administration" : "Espace agent"}</span>
+            <span className="lateral__nom">{MARQUE}</span>
+            <span className="lateral__espace">{espace === "admin" ? "Espace CNTS" : "Espace agent"}</span>
           </span>
         </div>
 

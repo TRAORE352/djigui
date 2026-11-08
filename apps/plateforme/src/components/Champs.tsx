@@ -52,11 +52,15 @@ export function ChampMotDePasse({ etiquette, aide, erreur, valeur, surChange, re
           value={valeur} onChange={(e) => surChange(e.target.value)}
           aria-invalid={!!erreur} aria-describedby={decrit(id, erreur, aide)}
         />
-        <button type="button" className="champ__interne" onClick={() => setVisible(!visible)}
-                aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}>
-          {visible ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-          {visible ? "Masquer" : "Afficher"}
-        </button>
+        {/* Rien à afficher tant que le champ est vide : proposer « Afficher »
+            sur un champ vierge ajoute une commande qui ne fait rien. */}
+        {valeur.length > 0 && (
+          <button type="button" className="champ__interne" onClick={() => setVisible(!visible)}
+                  aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}>
+            {visible ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+            {visible ? "Masquer" : "Afficher"}
+          </button>
+        )}
       </span>
     </Cadre>
   );

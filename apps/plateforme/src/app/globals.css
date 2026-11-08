@@ -131,7 +131,7 @@ a { color: var(--primaire); text-decoration: none; }
   background: var(--fond);
 }
 .portail__entete { display: flex; flex-direction: column; align-items: center; gap: var(--e3); text-align: center; }
-.portail__logo {
+.portail__logo { /* hérité : la goutte est désormais rendue par <Goutte /> */
   display: grid; place-items: center; width: 56px; height: 56px;
   border-radius: 16px; background: var(--sang-clair); color: var(--sang);
 }
@@ -178,9 +178,103 @@ a { color: var(--primaire); text-decoration: none; }
 /* Lien simple (retour, bascule entre espaces) */
 .lien { display: inline-flex; align-items: center; color: var(--primaire); font-weight: 600; }
 
-/* Accès (connexion d'un espace) */
-.acces { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: var(--e5); }
-.acces__carte { width: 100%; max-width: 400px; }
+/* =====================================================================
+   Accès : page d'authentification des espaces professionnels.
+
+   Deux volets : identité à gauche (fond encre, texte clair), formulaire à
+   droite. Sous 900px le volet gauche disparaît au profit d'un bandeau de
+   marque compact dans la carte — un écran de connexion doit montrer ses
+   champs sans défilement, sur téléphone comme sur poste de travail.
+   ===================================================================== */
+.acces { min-height: 100dvh; display: grid; grid-template-columns: 1fr 1fr; }
+
+/* --- Volet d'identité --------------------------------------------- */
+.acces__volet {
+  display: flex; flex-direction: column; justify-content: space-between;
+  gap: var(--e8); padding: var(--e8) clamp(var(--e7), 5vw, 64px);
+  background:
+    radial-gradient(900px 480px at 12% 8%, rgba(1, 101, 255, 0.28), transparent 62%),
+    radial-gradient(760px 520px at 88% 96%, rgba(217, 45, 32, 0.22), transparent 60%),
+    #101B2A;
+  color: #fff;
+}
+.acces__volet-haut { display: flex; flex-direction: column; gap: var(--e5); }
+.acces__marque { display: inline-flex; align-items: center; gap: var(--e3); }
+.acces__marque-nom {
+  font-size: var(--t-titre); font-weight: 700; letter-spacing: -0.02em;
+}
+.acces__accroche {
+  font-size: clamp(26px, 2.6vw, 34px); font-weight: 650;
+  line-height: 1.3; letter-spacing: -0.02em; max-width: 15ch;
+  text-wrap: balance;
+}
+.acces__sous { font-size: var(--t-appui); color: rgba(255, 255, 255, 0.64); }
+.acces__reperes {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: var(--e3);
+}
+.acces__repere {
+  display: flex; align-items: center; gap: var(--e3);
+  font-size: var(--t-appui); color: rgba(255, 255, 255, 0.86);
+}
+.acces__repere svg { color: rgba(255, 255, 255, 0.52); flex: none; }
+
+/* La goutte de marque, commune au portail et aux portes. */
+.goutte {
+  display: grid; place-items: center; flex: none;
+  border-radius: 14px; background: var(--sang-clair); color: var(--sang);
+}
+.acces__volet .goutte,
+.goutte--clair { background: rgba(255, 255, 255, 0.12); color: #fff; }
+
+/* --- Volet de saisie ---------------------------------------------- */
+.acces__volet-form {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: var(--e7) var(--e5) calc(var(--e8) + var(--e5));
+  background: var(--surface);
+}
+.acces__carte {
+  width: 100%; max-width: 384px;
+  display: flex; flex-direction: column; gap: var(--e5);
+}
+.acces__retour {
+  display: inline-flex; align-items: center; gap: var(--e2);
+  color: var(--encre-2); font-size: var(--t-appui); font-weight: 600;
+  transition: color 160ms;
+}
+.acces__retour:hover { color: var(--primaire); }
+/* Bandeau de marque : visible seulement quand le volet gauche est masqué. */
+.acces__mobile-marque { display: none; align-items: center; gap: var(--e3); }
+.acces__titre {
+  font-size: var(--t-grand); font-weight: 700; letter-spacing: -0.025em;
+}
+.acces__chapeau { font-size: var(--t-appui); color: var(--encre-2); }
+.acces__form { display: flex; flex-direction: column; gap: var(--e4); }
+.acces__oubli {
+  font-size: var(--t-petit); color: var(--encre-2); line-height: 1.5;
+  padding-top: var(--e1);
+}
+.acces__autre {
+  padding-top: var(--e3); border-top: 1px solid var(--trait);
+  font-size: var(--t-appui); font-weight: 600; text-align: center;
+}
+.acces__pied {
+  position: absolute; bottom: var(--e6); left: 0; right: 0;
+  font-size: var(--t-micro); color: var(--encre-2); text-align: center;
+}
+
+@media (max-width: 900px) {
+  .acces { grid-template-columns: 1fr; }
+  .acces__volet { display: none; }
+  .acces__volet-form { justify-content: flex-start; padding-top: var(--e7); background: var(--fond); }
+  .acces__mobile-marque { display: flex; }
+  .acces__carte {
+    gap: var(--e5); padding: var(--e6) var(--e5);
+    background: var(--surface); border: 1px solid var(--trait);
+    border-radius: var(--rayon); box-shadow: var(--ombre);
+  }
+}
 
 /* Chargement */
 .squelette { background: var(--trait); border-radius: var(--rayon-petit); animation: respire 1.4s ease-in-out infinite; }
