@@ -42,7 +42,7 @@ export const SECTIONS_AGENT: Section[] = [
   {
     adresse: "/agent/laboratoire",
     mot: "Laboratoire",
-    resume: "Analyser chaque poche : groupe sanguin, maladies transmissibles, puis libération."
+    resume: "Analyser chaque poche : groupe sanguin, maladies transmissibles, puis libération.",
     Icone: FlaskConical,
     roles: ["agent_labo"],
   },
