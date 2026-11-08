@@ -12,23 +12,12 @@ import type {
   Reponse, ReponseErreur, SiteAdmin, Statistiques, SuiviAlerte,
 } from "@dds/contrat-api";
 import { lireJeton } from "./session";
+// `ErreurApi` et `messageDe` vivent dans ./erreurs : une seule définition
+// partagée par le client d'API et par les écrans.
+export { ErreurApi, messageDe } from "./erreurs";
+import { ErreurApi } from "./erreurs";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-
-export class ErreurApi extends Error {
-  constructor(
-    message: string,
-    public code: string,
-    public champ?: string,
-  ) {
-    super(message);
-    this.name = "ErreurApi";
-  }
-}
-
-export function messageDe(p: unknown): string {
-  return p instanceof ErreurApi ? p.message : "Quelque chose n'a pas fonctionné.";
-}
 
 async function appel<T>(methode: string, chemin: string, corps?: unknown): Promise<T> {
   const jeton = lireJeton();

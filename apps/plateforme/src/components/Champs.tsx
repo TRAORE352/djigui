@@ -39,8 +39,8 @@ export function ChampTexte({ etiquette, aide, erreur, ...entree }:
   );
 }
 
-export function ChampMotDePasse({ etiquette, aide, erreur, valeur, surChange }:
-  Commun & { valeur: string; surChange: (v: string) => void }) {
+export function ChampMotDePasse({ etiquette, aide, erreur, valeur, surChange, required }:
+  Commun & { valeur: string; surChange: (v: string) => void; required?: boolean }) {
   const id = useId();
   const [visible, setVisible] = useState(false);
   return (
@@ -48,7 +48,7 @@ export function ChampMotDePasse({ etiquette, aide, erreur, valeur, surChange }:
       <span className="champ__groupe">
         <input
           id={id} className="champ__saisie" type={visible ? "text" : "password"}
-          autoComplete="current-password"
+          autoComplete="current-password" required={required}
           value={valeur} onChange={(e) => surChange(e.target.value)}
           aria-invalid={!!erreur} aria-describedby={decrit(id, erreur, aide)}
         />
