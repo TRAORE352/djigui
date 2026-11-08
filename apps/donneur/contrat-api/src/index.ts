@@ -607,7 +607,13 @@ export interface EstimationAlerteReponse {
 
 /** POST /alertes — lancer une alerte (gestionnaire de stock). */
 export interface LancerAlerteRequete {
-  groupeSanguin: GroupeSanguin;
+  /**
+   * Groupe MENTIONNÉ dans l'appel, ou null pour un appel ouvert à tous.
+   * Il ne restreint JAMAIS les destinataires : le ciblage se fait par zone
+   * et par éligibilité. La plupart des donneurs ignorent leur groupe — il
+   * est déterminé au laboratoire, après le prélèvement.
+   */
+  groupeSanguin: GroupeSanguin | null;
   urgence: "normale" | "urgente" | "critique";
   objectifDonneurs: number;
   dateLimite: string;               // ISO 8601
@@ -651,7 +657,11 @@ export interface DemandeRequete {
 export interface Demande {
   id: string;
   siteDemandeurId: string;
+  /** Nom lisible du site qui demande : un écran doit nommer qui attend. */
+  siteDemandeurNom: string;
   siteFournisseurId: string;
+  /** Nom lisible du site qui fournit. */
+  siteFournisseurNom: string;
   urgence: string;
   statut: string;
   date: string;

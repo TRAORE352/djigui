@@ -19,6 +19,7 @@ import { LES_GROUPES, TYPE_PRODUIT, TYPE_SITE, URGENCE, dateCourte, statutDemand
 import { useRessource } from "@/lib/useRessource";
 import { lireAgent } from "@/lib/session";
 import { EnTetePage } from "@/components/Coquille";
+import Explication from "@/components/Explication";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import BlocGroupe from "@/components/BlocGroupe";
@@ -46,8 +47,15 @@ export default function Distribution() {
     <>
       <EnTetePage
         titre="Distribution"
-        chapeau="Demandes entre sites, expéditions et délivrances aux services de soins."
+        chapeau="Envoyer du sang aux hôpitaux et aux dépôts qui en demandent."
         actions={<Bouton variante="secondaire" onClick={() => void demandes.recharger()}>Actualiser</Bouton>}
+      />
+
+      <Explication
+        Icone={Truck}
+        role="Les hôpitaux et les dépôts n'ont pas de stock à eux : quand ils ont besoin de sang, ils vous en demandent. Cet écran sert à voir ces demandes et à leur envoyer les poches."
+        quand="Chaque fois qu'une demande arrive, et avant chaque départ de véhicule."
+        ensuite="Le site qui reçoit confirme la réception. Chaque poche reste traçable jusqu'au patient."
       />
 
       {demandes.chargement && !demandes.donnees && <SqueletteLignes lignes={3} />}
@@ -56,11 +64,12 @@ export default function Distribution() {
       {demandes.donnees && (
         <>
           {/* L'essentiel du métier : ce que d'autres sites attendent de nous. */}
-          <Section titre="Demandes reçues" compte={recues.length}>
+          <Section titre="Ils attendent du sang de notre part" compte={recues.length}>
             {recues.length === 0 ? (
               <VideLigne Icone={Truck}>
-                Aucune demande reçue. Quand un dépôt ou un hôpital vous demande des
-                produits, elle apparaît ici.
+Personne n'attend de sang de votre part pour l'instant. Dès qu'un hôpital
+                ou un dépôt en demandera, la demande s'affichera ici avec ce qu'il faut
+                préparer.
               </VideLigne>
             ) : (
               recues.map((d) => (
@@ -69,10 +78,10 @@ export default function Distribution() {
             )}
           </Section>
 
-          <Section titre="Demandes envoyées" compte={envoyees.length}>
+          <Section titre="Ce que nous avons demandé à d'autres sites" compte={envoyees.length}>
             {envoyees.length === 0 ? (
               <VideLigne Icone={ArrowDownToLine}>
-                Aucune demande en cours auprès d'un autre site.
+                Vous n'avez rien demandé à un autre site. Utilisez « Demander des produits » plus bas si votre stock ne suffit pas.
               </VideLigne>
             ) : (
               envoyees.map((d) => (
@@ -139,8 +148,16 @@ function CarteDemande({ demande, role, surAction }: {
     <div className="bloc pile">
       <div className="rang-espace" style={{ flexWrap: "wrap" }}>
         <div className="pile-s" style={{ gap: 2 }}>
-          <span className="titre-s">{unites} unité{unites > 1 ? "s" : ""} demandée{unites > 1 ? "s" : ""}</span>
-          <span className="petit">Demande du {dateCourte(demande.date)}</span>
+          {/* Dire QUI demande, et quoi. Un nombre seul (« 0 unité
+              demandée ») ne permet pas de décider quoi faire. */}
+          <span className="titre-s">
+            {role === "fournisseur" ? demande.siteDemandeurNom : demande.siteFournisseurNom}
+          </span>
+          <span className="petit">
+            {unites > 0
+              ? `${unites} unité${unites > 1 ? "s" : ""} · demandé le ${dateCourte(demande.date)}`
+              : `Quantité à préciser · demandé le ${dateCourte(demande.date)}`}
+          </span>
         </div>
         <div className="rang" style={{ flexWrap: "wrap" }}>
           <Pilule ton={URGENCE[demande.urgence as keyof typeof URGENCE]?.ton ?? "neutre"}>

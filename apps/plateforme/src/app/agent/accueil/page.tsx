@@ -12,9 +12,7 @@
  * que l'agent voie, sans recharger, où il en est.
  */
 import { useEffect, useState } from "react";
-import {
-  CalendarClock, CheckCircle2, KeyRound, Search, UserPlus,
-} from "lucide-react";
+import { CalendarClock, CheckCircle2, KeyRound, Search, UserPlus, UserRound } from "lucide-react";
 import type {
   Canal, DonneurAgent, GroupeSanguin, Passage, Poche, Sexe, Zone,
 } from "@dds/contrat-api";
@@ -24,6 +22,7 @@ import {
   LES_GROUPES, dateCourte, telephoneInternational, telephoneLisible,
 } from "@/lib/metier";
 import { EnTetePage } from "@/components/Coquille";
+import Explication from "@/components/Explication";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import BlocGroupe from "@/components/BlocGroupe";
@@ -71,6 +70,13 @@ export default function AccueilPrelevement() {
             {formulaire ? "Fermer l'inscription" : "Inscrire sur place"}
           </Bouton>
         }
+      />
+
+      <Explication
+        Icone={UserRound}
+        role="C'est ici que commence chaque don. Vous retrouvez le donneur qui se présente, vous vérifiez qu'il peut donner aujourd'hui, puis vous enregistrez la poche prélevée."
+        quand="Au comptoir, dès qu'un donneur arrive — qu'il vienne suite à un appel ou de lui-même."
+        ensuite="La poche part au laboratoire, qui déterminera son groupe sanguin et vérifiera qu'elle est transfusable."
       />
 
       <form className="bloc rang" style={{ flexWrap: "wrap" }} onSubmit={rechercher}>

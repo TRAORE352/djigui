@@ -98,9 +98,22 @@ routeDistribution.get("/demandes", ...STOCK, async (req, res) => {
 });
 
 async function lireDemande(id: string): Promise<Demande | null> {
+  // On joint les sites : un écran doit pouvoir NOMMER qui demande et qui
+  // fournit. Un identifiant technique ne dit rien à un agent.
   const { rows } = await requete<{
-    id: string; site_demandeur_id: string; site_fournisseur_id: string; urgence: string; statut: string; date: Date;
-  }>("select id, site_demandeur_id, site_fournisseur_id, urgence, statut, date from demandes where id = $1", [id]);
+    id: string; site_demandeur_id: string; site_demandeur_nom: string;
+    site_fournisseur_id: string; site_fournisseur_nom: string;
+    urgence: string; statut: string; date: Date;
+  }>(
+    `select d.id, d.site_demandeur_id, sd.nom as site_demandeur_nom,
+            d.site_fournisseur_id, sf.nom as site_fournisseur_nom,
+            d.urgence, d.statut, d.date
+       from demandes d
+       join sites sd on sd.id = d.site_demandeur_id
+       join sites sf on sf.id = d.site_fournisseur_id
+      where d.id = $1`,
+    [id],
+  );
   const d = rows[0];
   if (!d) return null;
   const { rows: lignes } = await requete<{ type_produit: string; groupe_sanguin: string; quantite: number }>(
@@ -111,7 +124,9 @@ async function lireDemande(id: string): Promise<Demande | null> {
   return {
     id: d.id,
     siteDemandeurId: d.site_demandeur_id,
+    siteDemandeurNom: d.site_demandeur_nom,
     siteFournisseurId: d.site_fournisseur_id,
+    siteFournisseurNom: d.site_fournisseur_nom,
     urgence: d.urgence,
     statut: d.statut,
     date: d.date instanceof Date ? d.date.toISOString().slice(0, 10) : String(d.date).slice(0, 10),

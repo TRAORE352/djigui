@@ -420,10 +420,68 @@ a { color: var(--primaire); text-decoration: none; }
 .lateral__agent { display: flex; flex-direction: column; gap: 2px; padding: 0 var(--e3); min-width: 0; }
 .lateral__agent span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.contenu { min-width: 0; padding: var(--e6) var(--e7) var(--e8); display: flex; flex-direction: column; gap: var(--e6); }
+/* =====================================================================
+   Zone de contenu.
+
+   Le contenu est CENTRÉ dans une largeur de lecture confortable plutôt
+   qu'étiré d'un bord à l'autre : sur un écran large, une carte de 1200 px
+   de large oblige l'œil à balayer toute la table pour relier un libellé à
+   sa valeur, et le texte devient illisible au-delà d'environ 75 caractères
+   par ligne. Centrer remplit l'écran sans coller les éléments à gauche.
+   ===================================================================== */
+.contenu {
+  min-width: 0; padding: var(--e7) var(--e6) var(--e8);
+  display: flex; flex-direction: column; gap: var(--e6);
+}
+.contenu > * { width: 100%; max-width: 1080px; margin-inline: auto; }
 .contenu__entete { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--e4); flex-wrap: wrap; }
 .contenu__titre { font-size: var(--t-grand); font-weight: 700; letter-spacing: -0.015em; line-height: 1.15; }
 .contenu__chapeau { font-size: var(--t-appui); color: var(--encre-2); max-width: 62ch; margin-top: var(--e1); }
+
+/* =====================================================================
+   Explication d'écran : à quoi sert cette page, quand s'en sert-on.
+   ===================================================================== */
+.explication {
+  display: flex; gap: var(--e4); align-items: flex-start;
+  padding: var(--e5);
+  background: var(--primaire-clair);
+  border-radius: var(--rayon);
+}
+.explication__icone {
+  display: grid; place-items: center; flex: none;
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--surface); color: var(--primaire);
+}
+.explication__texte { display: flex; flex-direction: column; gap: var(--e3); min-width: 0; }
+.explication__role {
+  font-size: var(--t-corps); font-weight: 600; color: var(--encre);
+  max-width: 72ch; line-height: 1.5;
+}
+.explication__details {
+  margin: 0; display: flex; flex-wrap: wrap; gap: var(--e2) var(--e6);
+}
+.explication__details > div { display: flex; align-items: baseline; gap: var(--e2); }
+.explication__details dt {
+  font-size: var(--t-micro); font-weight: 700; color: var(--primaire);
+  text-transform: uppercase; letter-spacing: 0.06em; flex: none;
+}
+.explication__details dd {
+  margin: 0; font-size: var(--t-appui); color: var(--encre-2); max-width: 54ch;
+}
+
+/* --- Étapes numérotées -------------------------------------------- */
+.etape { display: flex; flex-direction: column; gap: var(--e4); }
+.etape__entete { display: flex; align-items: flex-start; gap: var(--e3); }
+.etape__numero {
+  display: grid; place-items: center; flex: none;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--encre); color: #fff;
+  font-size: var(--t-petit); font-weight: 700;
+}
+.etape__titre { font-size: var(--t-titre-s); font-weight: 650; letter-spacing: -0.01em; }
+.etape__resume { font-size: var(--t-appui); color: var(--encre-2); max-width: 70ch; margin-top: 2px; }
+.etape__corps { padding-left: calc(28px + var(--e3)); }
+@media (max-width: 640px) { .etape__corps { padding-left: 0; } }
 
 @media (max-width: 900px) {
   .coquille { grid-template-columns: 1fr; }
@@ -677,3 +735,22 @@ a { color: var(--primaire); text-decoration: none; }
   .bord-carte__valeur { font-size: 28px; }
   .travail__meta { margin-left: 0; }
 }
+
+/* =====================================================================
+   Grilles de formulaire et sélection de zones.
+
+   `auto-fit` + `minmax` plutôt qu'un nombre fixe de colonnes : les champs
+   occupent la largeur disponible et se replient d'eux-mêmes sur un écran
+   étroit, sans media query à maintenir.
+   ===================================================================== */
+.grille-auto {
+  display: grid; gap: var(--e4);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+.zones {
+  display: grid; gap: var(--e2);
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+/* Pile large : espacement généreux entre les étapes d'un écran. */
+.pile-g { display: flex; flex-direction: column; gap: var(--e8); }

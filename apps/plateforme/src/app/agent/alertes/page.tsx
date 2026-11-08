@@ -18,6 +18,7 @@ import { messageDe } from "@/lib/erreurs";
 import { LES_GROUPES, URGENCE } from "@/lib/metier";
 import { dateHeure } from "@/lib/format";
 import { EnTetePage } from "@/components/Coquille";
+import Explication, { Etape } from "@/components/Explication";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import BlocGroupe from "@/components/BlocGroupe";
@@ -54,8 +55,15 @@ export default function Alertes() {
   return (
     <>
       <EnTetePage
-        titre="Alertes aux donneurs"
-        chapeau="Un appel part vers les donneurs éligibles des zones choisies. Ils répondent depuis leur application ; leurs réponses arrivent ici."
+        titre="Appels au don"
+        chapeau="Prévenir les donneurs d'une zone qu'on a besoin d'eux, et suivre qui répond."
+      />
+
+      <Explication
+        Icone={Megaphone}
+        role="Vous envoyez un message aux donneurs qui habitent les zones que vous choisissez. Ils le reçoivent dans leur application et répondent s'ils peuvent venir."
+        quand="Quand le stock baisse, avant une opération programmée, ou après une urgence qui a vidé les réserves."
+        ensuite="Les donneurs qui acceptent se présentent au centre. Vous les accueillez depuis « Accueil et prélèvement »."
       />
 
       <Composer surLancement={surLancement} />
@@ -65,8 +73,8 @@ export default function Alertes() {
         {suivies.length === 0 ? (
           <EtatVide
             Icone={BellRing}
-            titre="Aucune alerte suivie"
-            texte="Les alertes que vous lancez ici apparaissent en dessous, avec le détail des réponses des donneurs."
+            titre="Aucun appel lancé pour l'instant"
+            texte="Les appels que vous lancez ici apparaissent en dessous : combien de donneurs prévenus, combien ont répondu, combien sont venus."
           />
         ) : (
           suivies.map((id) => <Suivi key={id} id={id} />)
@@ -81,7 +89,10 @@ export default function Alertes() {
    ===================================================================== */
 
 function Composer({ surLancement }: { surLancement: (id: string) => void }) {
-  const [groupe, setGroupe] = useState<GroupeSanguin>("O+");
+  // `null` = appel ouvert à tous, et c'est le cas NORMAL : le ciblage se
+  // fait par zone, jamais par groupe. Le groupe ne sert qu'à rédiger le
+  // message quand on sait de quoi on manque.
+  const [groupe, setGroupe] = useState<GroupeSanguin | null>(null);
   const [urgence, setUrgence] = useState<"normale" | "urgente" | "critique">("urgente");
   const [objectif, setObjectif] = useState(10);
   const [dateLimite, setDateLimite] = useState("");
@@ -128,7 +139,7 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
         message: message.trim(), zoneIds,
       });
       surLancement(alerte.id);
-      setReussite("Alerte lancée. Les donneurs éligibles des zones choisies sont prévenus.");
+      setReussite("Appel envoyé. Les donneurs des zones choisies viennent de recevoir le message.");
       setMessage(""); setZoneIds([]); setEstimation(null);
     } catch (p) {
       setErreur(messageDe(p));
@@ -141,87 +152,126 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
   const minLimite = new Date(Date.now() + 3_600_000).toISOString().slice(0, 16);
 
   return (
-    <form className="bloc pile" onSubmit={lancer}>
-      <h2 className="titre-s">Composer un appel au don</h2>
+    <form className="pile-g" onSubmit={lancer}>
+      <Etape
+        numero={1}
+        titre="Qui voulez-vous appeler ?"
+        resume="Choisissez les quartiers. Tous les donneurs qui y habitent et qui peuvent donner aujourd'hui recevront le message — on ne trie pas par groupe sanguin."
+      >
+        <div className="bloc pile">
+          {zones.length === 0 ? (
+            <p className="champ__aide">Chargement des zones…</p>
+          ) : (
+            <div className="zones">
+              {zones.map((z) => (
+                <label key={z.id} className="case">
+                  <input type="checkbox" checked={zoneIds.includes(z.id)} onChange={() => basculerZone(z.id)} />
+                  <span>{z.nom}</span>
+                </label>
+              ))}
+            </div>
+          )}
 
-      <div className="grille-3">
-        <label className="champ">
-          <span className="champ__etiquette">Groupe recherché</span>
-          <select className="champ__saisie" value={groupe}
-                  onChange={(e) => setGroupe(e.target.value as GroupeSanguin)}>
-            {LES_GROUPES.map((g) => <option key={g} value={g}>{g}</option>)}
-          </select>
-        </label>
-        <label className="champ">
-          <span className="champ__etiquette">Urgence</span>
-          <select className="champ__saisie" value={urgence}
-                  onChange={(e) => setUrgence(e.target.value as typeof urgence)}>
-            <option value="normale">Normale</option>
-            <option value="urgente">Urgente</option>
-            <option value="critique">Critique</option>
-          </select>
-          <span className="champ__aide">Détermine le ton du message reçu par le donneur.</span>
-        </label>
-        <label className="champ">
-          <span className="champ__etiquette">Objectif de donneurs</span>
-          <input className="champ__saisie chiffres" type="number" min={1} max={500} value={objectif}
-                 onChange={(e) => setObjectif(Math.max(1, Number(e.target.value) || 1))} />
-        </label>
-        <label className="champ">
-          <span className="champ__etiquette">Réponses attendues avant le</span>
-          <input className="champ__saisie" type="datetime-local" required min={minLimite}
-                 value={dateLimite} onChange={(e) => setDateLimite(e.target.value)} />
-        </label>
-      </div>
-
-      <label className="champ">
-        <span className="champ__etiquette">Message au donneur</span>
-        <input className="champ__saisie" value={message} required maxLength={200}
-               placeholder="Le stock O+ est critique au CNTS de Ouagadougou. Votre don peut sauver une vie aujourd'hui."
-               onChange={(e) => setMessage(e.target.value)} />
-        <span className="champ__aide">
-          Une phrase claire, sans jargon. {200 - message.length} caractères restants.
-        </span>
-      </label>
-
-      <fieldset className="champ" style={{ border: 0, padding: 0, margin: 0 }}>
-        <legend className="champ__etiquette">Zones ciblées</legend>
-        {zones.length === 0 ? (
-          <p className="champ__aide">Chargement des zones…</p>
-        ) : (
-          <div className="rang" style={{ flexWrap: "wrap", marginTop: "var(--e2)" }}>
-            {zones.map((z) => (
-              <label key={z.id} className="case">
-                <input type="checkbox" checked={zoneIds.includes(z.id)} onChange={() => basculerZone(z.id)} />
-                <span>{z.nom}</span>
-              </label>
-            ))}
+          <div className="rang-espace" style={{ flexWrap: "wrap" }}>
+            <Bouton variante="secondaire" icone={<Users size={18} aria-hidden="true" />}
+                    enCours={enCours === "estimation"} onClick={() => void estimer()}
+                    disabled={zoneIds.length === 0}>
+              Voir combien de donneurs cela représente
+            </Bouton>
+            {zoneIds.length > 0 && (
+              <span className="appui">{zoneIds.length} zone{zoneIds.length > 1 ? "s" : ""} choisie{zoneIds.length > 1 ? "s" : ""}</span>
+            )}
           </div>
-        )}
-      </fieldset>
 
-      <MessageErreur>{erreur}</MessageErreur>
-      <MessageReussite>{reussite}</MessageReussite>
+          {estimation !== null && (
+            <Encadre ton={estimation === 0 ? "ocre" : "seve"}>
+              {estimation === 0
+                ? "Personne ne peut être appelé dans ces zones aujourd'hui. Les donneurs qui ont donné récemment doivent attendre avant de redonner : choisissez d'autres quartiers."
+                : `${estimation} donneur${estimation > 1 ? "s" : ""} recevront ce message. Les donneurs en pause, ou qui ont donné trop récemment, en sont automatiquement exclus.`}
+            </Encadre>
+          )}
+        </div>
+      </Etape>
 
-      {estimation !== null && (
-        <Encadre ton={estimation === 0 ? "ocre" : "seve"}>
-          {estimation === 0
-            ? "Aucun donneur éligible dans ces zones pour l'instant : élargissez la sélection avant de lancer l'appel."
-            : `${estimation} donneur${estimation > 1 ? "s" : ""} seront prévenus. Les donneurs en pause ou non encore rééligibles ne sont pas comptés.`}
-        </Encadre>
-      )}
+      <Etape
+        numero={2}
+        titre="Que doivent-ils lire ?"
+        resume="C'est le message qui s'affichera sur leur téléphone. Une phrase simple, dans un langage de tous les jours."
+      >
+        <div className="bloc pile">
+          <label className="champ">
+            <span className="champ__etiquette">Message au donneur</span>
+            <input className="champ__saisie" value={message} required maxLength={200}
+                   placeholder="Le centre de Ouagadougou manque de sang. Votre don peut sauver une vie aujourd'hui."
+                   onChange={(e) => setMessage(e.target.value)} />
+            <span className="champ__aide">{200 - message.length} caractères restants.</span>
+          </label>
 
-      <div className="rang" style={{ flexWrap: "wrap" }}>
-        <Bouton variante="secondaire" icone={<Users size={18} aria-hidden="true" />}
-                enCours={enCours === "estimation"} onClick={() => void estimer()}>
-          Estimer la portée
-        </Bouton>
-        <Bouton type="submit" icone={<Megaphone size={18} aria-hidden="true" />}
-                enCours={enCours === "lancement"} motEnCours="Envoi…"
-                disabled={!dateLimite || !message.trim() || zoneIds.length === 0}>
-          Lancer l'alerte
-        </Bouton>
-      </div>
+          <div className="grille-auto">
+            <label className="champ">
+              <span className="champ__etiquette">Degré d&apos;urgence</span>
+              <select className="champ__saisie" value={urgence}
+                      onChange={(e) => setUrgence(e.target.value as typeof urgence)}>
+                <option value="normale">Normale</option>
+                <option value="urgente">Urgente</option>
+                <option value="critique">Critique</option>
+              </select>
+              <span className="champ__aide">Change le ton du message, pas les destinataires.</span>
+            </label>
+
+            {/* Le groupe est FACULTATIF et ne filtre personne : il sert
+                uniquement à préciser le message. La plupart des donneurs
+                ignorent leur groupe — c'est le laboratoire qui le
+                déterminera après le prélèvement. */}
+            <label className="champ">
+              <span className="champ__etiquette">Groupe à mentionner (facultatif)</span>
+              <select className="champ__saisie" value={groupe ?? ""}
+                      onChange={(e) => setGroupe((e.target.value || null) as GroupeSanguin | null)}>
+                <option value="">Ne pas préciser — appeler tout le monde</option>
+                {LES_GROUPES.map((g) => <option key={g} value={g}>Nous manquons de {g}</option>)}
+              </select>
+              <span className="champ__aide">
+                N&apos;exclut personne : tous les donneurs des zones choisies sont appelés,
+                même ceux qui ignorent leur groupe.
+              </span>
+            </label>
+          </div>
+        </div>
+      </Etape>
+
+      <Etape
+        numero={3}
+        titre="Jusqu'à quand, et combien ?"
+        resume="L'appel se referme de lui-même une fois la date passée."
+      >
+        <div className="bloc pile">
+          <div className="grille-auto">
+            <label className="champ">
+              <span className="champ__etiquette">Nombre de donneurs souhaité</span>
+              <input className="champ__saisie chiffres" type="number" min={1} max={500} value={objectif}
+                     onChange={(e) => setObjectif(Math.max(1, Number(e.target.value) || 1))} />
+              <span className="champ__aide">Sert à savoir quand l&apos;objectif est atteint.</span>
+            </label>
+            <label className="champ">
+              <span className="champ__etiquette">Réponses attendues avant le</span>
+              <input className="champ__saisie" type="datetime-local" required min={minLimite}
+                     value={dateLimite} onChange={(e) => setDateLimite(e.target.value)} />
+            </label>
+          </div>
+
+          <MessageErreur>{erreur}</MessageErreur>
+          <MessageReussite>{reussite}</MessageReussite>
+
+          <Bouton type="submit" icone={<Megaphone size={18} aria-hidden="true" />}
+                  enCours={enCours === "lancement"} motEnCours="Envoi en cours…"
+                  disabled={!dateLimite || !message.trim() || zoneIds.length === 0}>
+            Envoyer l&apos;appel aux donneurs
+          </Bouton>
+          {zoneIds.length === 0 && (
+            <p className="champ__aide">Choisissez d&apos;abord au moins une zone à l&apos;étape 1.</p>
+          )}
+        </div>
+      </Etape>
     </form>
   );
 }

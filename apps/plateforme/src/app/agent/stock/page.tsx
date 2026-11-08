@@ -14,6 +14,7 @@ import { messageDe } from "@/lib/erreurs";
 import { NIVEAU_STOCK, TYPE_PRODUIT, dateCourte, joursRestants } from "@/lib/metier";
 import { useRessource } from "@/lib/useRessource";
 import { EnTetePage } from "@/components/Coquille";
+import Explication from "@/components/Explication";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import BlocGroupe from "@/components/BlocGroupe";
@@ -36,6 +37,13 @@ export default function Stock() {
             Actualiser
           </Bouton>
         }
+      />
+
+      <Explication
+        Icone={Boxes}
+        role="L'état des réserves de votre site : combien de poches disponibles, de quel groupe, et lesquelles vont bientôt périmer."
+        quand="Chaque matin, et avant de répondre à une demande d'hôpital."
+        ensuite="Si un groupe passe au rouge, lancez un appel au don depuis « Appels au don »."
       />
 
       <ResumeNiveaux lignes={stock.donnees} />

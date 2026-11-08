@@ -52,7 +52,11 @@ routeAlertesGestion.post("/estimation", ...GESTION, async (req, res) => {
 });
 
 const schemaAlerte = z.object({
-  groupeSanguin: z.enum(GROUPES),
+  // Le groupe est FACULTATIF : il sert à rédiger le message (« nous manquons
+  // de O- »), jamais à choisir qui est appelé. Le ciblage se fait par zone et
+  // par éligibilité — la plupart des donneurs ignorent leur groupe, et c'est
+  // le laboratoire qui le détermine après le prélèvement.
+  groupeSanguin: z.preprocess((v) => v ?? null, z.enum(GROUPES).nullable()),
   urgence: z.enum(URGENCES),
   objectifDonneurs: z.number().int().positive(),
   dateLimite: z.string().min(1, "Date limite requise."),

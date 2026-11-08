@@ -42,7 +42,7 @@ export const SECTIONS_AGENT: Section[] = [
   {
     adresse: "/agent/laboratoire",
     mot: "Laboratoire",
-    resume: "Qualifier le don : réception, groupage, sérologie, puis libération.",
+    resume: "Analyser chaque poche : groupe sanguin, maladies transmissibles, puis libération."
     Icone: FlaskConical,
     roles: ["agent_labo"],
   },
@@ -55,15 +55,15 @@ export const SECTIONS_AGENT: Section[] = [
   },
   {
     adresse: "/agent/alertes",
-    mot: "Alertes aux donneurs",
-    resume: "Appeler les donneurs d'une zone et suivre leurs réponses en direct.",
+    mot: "Appels au don",
+    resume: "Prévenir les donneurs d'une zone qu'on a besoin d'eux, et suivre qui répond.",
     Icone: Bell,
     roles: ["agent_stock", "agent_depot"],
   },
   {
     adresse: "/agent/distribution",
     mot: "Distribution",
-    resume: "Demandes des dépôts, expéditions, réceptions et délivrances aux services.",
+    resume: "Envoyer du sang aux hôpitaux et aux dépôts qui en demandent.",
     Icone: Truck,
     roles: ["agent_stock", "agent_depot"],
   },

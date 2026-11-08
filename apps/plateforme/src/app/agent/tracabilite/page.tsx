@@ -14,6 +14,7 @@ import { messageDe } from "@/lib/erreurs";
 import { STATUT_POCHE, dateCourte } from "@/lib/metier";
 import { dateHeure } from "@/lib/format";
 import { EnTetePage } from "@/components/Coquille";
+import Explication from "@/components/Explication";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import BlocGroupe from "@/components/BlocGroupe";
@@ -56,6 +57,13 @@ export default function Tracabilite() {
       <EnTetePage
         titre="Traçabilité"
         chapeau="Saisissez ou scannez le code d'une poche ou d'un produit pour voir son histoire complète."
+      />
+
+      <Explication
+        Icone={ScanLine}
+        role="Retrouver toute l'histoire d'une poche à partir de son code : quel donneur, quel jour, quelles analyses, et vers quel hôpital elle est partie."
+        quand="En cas de problème sur un patient, lors d'un contrôle, ou pour répondre à une question d'un hôpital."
+        ensuite="C'est une consultation : rien n'est modifié depuis cet écran."
       />
 
       <form className="bloc rang" style={{ flexWrap: "wrap" }} onSubmit={rechercher}>

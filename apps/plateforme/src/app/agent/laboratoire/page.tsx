@@ -30,6 +30,7 @@ import {
 } from "@/lib/metier";
 import { useRessource } from "@/lib/useRessource";
 import { EnTetePage } from "@/components/Coquille";
+import Explication from "@/components/Explication";
 import { Section, VideLigne } from "@/components/Mise";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
@@ -71,6 +72,13 @@ export default function Laboratoire() {
         titre="Laboratoire"
         chapeau="Un don n'est transfusable qu'après quatre étapes : réception de l'échantillon, groupage, sérologie, puis libération."
         actions={<Bouton variante="secondaire" onClick={() => void toutRecharger()}>Actualiser</Bouton>}
+      />
+
+      <Explication
+        Icone={FlaskConical}
+        role="Une poche prélevée n'est pas encore utilisable. Ici vous l'analysez : vous déterminez son groupe sanguin et vous vérifiez qu'elle ne transmet aucune maladie."
+        quand="Après chaque prélèvement. Une poche attend ici tant qu'elle n'est pas analysée."
+        ensuite="Si tout est conforme, la poche est libérée et rejoint le stock. Sinon elle est écartée et détruite."
       />
 
       <nav className="onglets" aria-label="Étapes du laboratoire">
