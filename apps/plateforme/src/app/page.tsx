@@ -1,74 +1,92 @@
 "use client";
-/** Connexion d'un agent ou d'un administrateur (e-mail + mot de passe). */
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { LogIn } from "lucide-react";
-import { api, messageDe } from "@/lib/api";
-import { lireAgent, lireJeton, ouvrirSession } from "@/lib/session";
-import Bouton from "@/components/Bouton";
-import { ChampTexte, ChampMotDePasse } from "@/components/Champs";
-import { MessageErreur } from "@/components/Messages";
+/**
+ * Portail d'entrée — le choix de l'espace.
+ *
+ * Trois publics, trois portes distinctes :
+ *   · les donneurs        → application mobile, projet séparé
+ *   · les agents          → prélèvement, laboratoire, stock, distribution
+ *   · le CNTS             → comptes, réseau, règles
+ *
+ * Chaque espace a sa propre connexion. On ne passe plus de l'un à l'autre
+ * par un raccourci : un compte ouvre la porte de son espace, et seulement
+ * celle-là.
+ */
+import Link from "next/link";
+import { ArrowRight, Droplet, ShieldCheck, Smartphone, Stethoscope } from "lucide-react";
 
-export default function Connexion() {
-  const routeur = useRouter();
-  const [email, setEmail] = useState("");
-  const [motDePasse, setMotDePasse] = useState("");
-  const [erreur, setErreur] = useState("");
-  const [enCours, setEnCours] = useState(false);
+/** L'application des donneurs est déployée séparément. */
+const URL_DONNEUR =
+  process.env.NEXT_PUBLIC_URL_DONNEUR ?? "https://don-de-sang-donneur.vercel.app";
 
-  if (typeof window !== "undefined" && lireJeton()) {
-    routeur.replace(lireAgent()?.roles.includes("admin") ? "/admin" : "/agent");
-    return null;
-  }
+const PORTES = [
+  {
+    cle: "donneur",
+    titre: "Application du donneur",
+    pour: "Pour les donneurs de sang",
+    texte: "Carte de donneur, alertes du centre, historique des dons et centres de collecte.",
+    adresse: URL_DONNEUR,
+    externe: true,
+    Icone: Smartphone,
+  },
+  {
+    cle: "agent",
+    titre: "Espace agent",
+    pour: "Pour le personnel du centre",
+    texte: "Accueil et prélèvement, laboratoire, stock, alertes, distribution et traçabilité.",
+    adresse: "/connexion/agent",
+    externe: false,
+    Icone: Stethoscope,
+  },
+  {
+    cle: "cnts",
+    titre: "Espace CNTS",
+    pour: "Pour l'administration",
+    texte: "Comptes et rôles, zones et sites du réseau, règles de don et tableau de bord national.",
+    adresse: "/connexion/cnts",
+    externe: false,
+    Icone: ShieldCheck,
+  },
+];
 
-  async function envoyer(e: React.FormEvent) {
-    e.preventDefault();
-    setEnCours(true);
-    setErreur("");
-    try {
-      const session = await api.connexion(email, motDePasse);
-      ouvrirSession(session.jeton, session.utilisateur);
-      routeur.replace(session.utilisateur.roles.includes("admin") ? "/admin" : "/agent");
-    } catch (p) {
-      setErreur(messageDe(p));
-      setEnCours(false);
-    }
-  }
-
+export default function Portail() {
   return (
-    <main className="acces">
-      <div className="acces__carte bloc pile">
-        <div className="pile-s">
-          <h1 className="titre">Plateforme CNTS</h1>
-          <p className="appui">Connectez-vous avec votre e-mail professionnel.</p>
-        </div>
-        <form className="pile" onSubmit={envoyer}>
-          <ChampTexte
-            etiquette="E-mail"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => { setEmail(e.target.value); setErreur(""); }}
-            required
-          />
-          <ChampMotDePasse
-            etiquette="Mot de passe"
-            valeur={motDePasse}
-            required
-            surChange={(v) => { setMotDePasse(v); setErreur(""); }}
-          />
-          <MessageErreur>{erreur}</MessageErreur>
-          <Bouton
-            type="submit"
-            large
-            enCours={enCours}
-            motEnCours="Connexion…"
-            icone={<LogIn size={18} aria-hidden="true" />}
-          >
-            Se connecter
-          </Bouton>
-        </form>
+    <main className="portail">
+      <header className="portail__entete">
+        <span className="portail__logo"><Droplet size={30} aria-hidden="true" /></span>
+        <h1 className="portail__titre">Don de sang</h1>
+        <p className="portail__chapeau">
+          Plateforme nationale de don de sang et de traçabilité des poches.
+          Choisissez votre espace.
+        </p>
+      </header>
+
+      <div className="portail__portes">
+        {PORTES.map(({ cle, titre, pour, texte, adresse, externe, Icone }) => {
+          const contenu = (
+            <>
+              <span className="porte__icone"><Icone size={24} aria-hidden="true" /></span>
+              <span className="porte__pour">{pour}</span>
+              <span className="porte__titre">{titre}</span>
+              <span className="porte__texte">{texte}</span>
+              <span className="porte__aller">
+                Entrer <ArrowRight size={16} aria-hidden="true" />
+              </span>
+            </>
+          );
+
+          return externe ? (
+            <a key={cle} className="porte" href={adresse} rel="noreferrer">{contenu}</a>
+          ) : (
+            <Link key={cle} className="porte" href={adresse}>{contenu}</Link>
+          );
+        })}
       </div>
+
+      <footer className="portail__pied">
+        <span className="petit">
+          Centre national de transfusion sanguine · Burkina Faso
+        </span>
+      </footer>
     </main>
   );
 }

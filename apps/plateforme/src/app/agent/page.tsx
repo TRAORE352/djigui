@@ -54,12 +54,12 @@ export default function TableauDeBordAgent() {
       const sansErreur = <T,>(p: Promise<T>, defaut: T) => p.catch(() => defaut);
 
       const [labo, stock, peremption, demandes] = await Promise.all([
-        peut("agent_labo", "admin")
+        peut("agent_labo")
           ? sansErreur(api.fileLabo(), { aRecevoir: [], aGrouper: [], aTester: [], aLiberer: [] } as FileLabo)
           : Promise.resolve(null),
-        peut("agent_stock", "agent_depot", "admin") ? sansErreur(api.stock(), [] as LigneStock[]) : Promise.resolve(null),
-        peut("agent_stock", "agent_depot", "admin") ? sansErreur(api.produitsPeremption(), [] as Produit[]) : Promise.resolve(null),
-        peut("agent_stock", "agent_depot", "admin") ? sansErreur(api.demandes(), [] as Demande[]) : Promise.resolve(null),
+        peut("agent_stock", "agent_depot") ? sansErreur(api.stock(), [] as LigneStock[]) : Promise.resolve(null),
+        peut("agent_stock", "agent_depot") ? sansErreur(api.produitsPeremption(), [] as Produit[]) : Promise.resolve(null),
+        peut("agent_stock", "agent_depot") ? sansErreur(api.demandes(), [] as Demande[]) : Promise.resolve(null),
       ]);
 
       if (!vivant) return;
@@ -78,7 +78,7 @@ export default function TableauDeBordAgent() {
           adresse: "/agent/laboratoire",
           Icone: FlaskConical,
           ton: aFaire === 0 ? "calme" : "agir",
-          roles: ["agent_labo", "admin"],
+          roles: ["agent_labo"],
         });
         liste.push({
           cle: "labo-liberer",
@@ -90,7 +90,7 @@ export default function TableauDeBordAgent() {
           adresse: "/agent/laboratoire",
           Icone: CircleCheck,
           ton: labo.aLiberer.length === 0 ? "calme" : "urgent",
-          roles: ["agent_labo", "admin"],
+          roles: ["agent_labo"],
         });
       }
 
@@ -107,7 +107,7 @@ export default function TableauDeBordAgent() {
           adresse: critiques.length > 0 ? "/agent/alertes" : "/agent/stock",
           Icone: critiques.length > 0 ? Bell : Boxes,
           ton: critiques.length > 0 ? "urgent" : bas.length > 0 ? "agir" : "calme",
-          roles: ["agent_stock", "agent_depot", "admin"],
+          roles: ["agent_stock", "agent_depot"],
         });
       }
 
@@ -120,7 +120,7 @@ export default function TableauDeBordAgent() {
           adresse: "/agent/stock",
           Icone: CalendarX2,
           ton: peremption.length === 0 ? "calme" : "agir",
-          roles: ["agent_stock", "agent_depot", "admin"],
+          roles: ["agent_stock", "agent_depot"],
         });
       }
 
@@ -136,7 +136,7 @@ export default function TableauDeBordAgent() {
           adresse: "/agent/distribution",
           Icone: Truck,
           ton: aPreparer.length === 0 ? "calme" : "agir",
-          roles: ["agent_stock", "agent_depot", "admin"],
+          roles: ["agent_stock", "agent_depot"],
         });
       }
 
@@ -202,10 +202,9 @@ export default function TableauDeBordAgent() {
         <div className="rang" style={{ flexWrap: "wrap" }}>
           <Raccourci adresse="/agent/accueil" mot="Accueillir un donneur" />
           <Raccourci adresse="/agent/tracabilite" mot="Rechercher un code" />
-          {agent.roles.some((r) => ["agent_labo", "admin"].includes(r)) && (
+          {agent.roles.some((r) => ["agent_labo"].includes(r)) && (
             <Raccourci adresse="/agent/laboratoire" mot="Laboratoire" />
           )}
-          {agent.roles.includes("admin") && <Raccourci adresse="/admin" mot="Espace CNTS" />}
         </div>
       </Section>
     </>

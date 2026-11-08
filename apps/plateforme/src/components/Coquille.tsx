@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Droplet, LogOut, ShieldCheck, Stethoscope } from "lucide-react";
+import { Droplet, LogOut } from "lucide-react";
 import type { AgentConnecte } from "@dds/contrat-api";
 import {
   LIBELLE_ROLE, sectionAutorisee, sectionCourante, sectionsVisibles,
@@ -19,6 +19,12 @@ import { fermerSession, lireAgent, lireJeton } from "@/lib/session";
 
 type Espace = "agent" | "admin";
 
+/** Chaque espace a sa propre porte d'entrée : on ne les mélange pas. */
+const CONNEXION: Record<Espace, string> = {
+  agent: "/connexion/agent",
+  admin: "/connexion/cnts",
+};
+
 export default function Coquille({ espace, children }: { espace: Espace; children: React.ReactNode }) {
   const routeur = useRouter();
   const chemin = usePathname();
@@ -27,12 +33,18 @@ export default function Coquille({ espace, children }: { espace: Espace; childre
   useEffect(() => {
     const a = lireAgent();
     if (!a || !lireJeton()) {
-      routeur.replace("/");
+      routeur.replace(CONNEXION[espace]);
       return;
     }
-    // L'espace CNTS est réservé aux administrateurs.
-    if (espace === "admin" && !a.roles.includes("admin")) {
-      routeur.replace("/agent");
+    // Un compte ne peut être que dans SON espace. Un agent qui ouvre une
+    // adresse de l'espace CNTS est renvoyé à la connexion CNTS, pas
+    // glissé en douce dans l'autre espace.
+    const autorise = espace === "admin"
+      ? a.roles.includes("admin")
+      : a.roles.some((r) => r.startsWith("agent_"));
+    if (!autorise) {
+      fermerSession();
+      routeur.replace(CONNEXION[espace]);
       return;
     }
     setAgent(a);
@@ -83,24 +95,13 @@ export default function Coquille({ espace, children }: { espace: Espace; childre
         </nav>
 
         <div className="lateral__pied">
-          {agent.roles.includes("admin") && (
-            <Link
-              href={espace === "admin" ? "/agent" : "/admin"}
-              className="lateral__lien"
-            >
-              {espace === "admin"
-                ? <Stethoscope size={19} aria-hidden="true" />
-                : <ShieldCheck size={19} aria-hidden="true" />}
-              <span>{espace === "admin" ? "Espace agent" : "Espace CNTS"}</span>
-            </Link>
-          )}
           <span className="lateral__agent">
             <span className="fort petit">{agent.nomComplet}</span>
             <span className="petit">{agent.roles.map((r) => LIBELLE_ROLE[r] ?? r).join(" · ")}</span>
           </span>
           <button
             className="lateral__lien"
-            onClick={() => { fermerSession(); routeur.replace("/"); }}
+            onClick={() => { fermerSession(); routeur.replace(CONNEXION[espace]); }}
           >
             <LogOut size={19} aria-hidden="true" />
             <span>Se déconnecter</span>

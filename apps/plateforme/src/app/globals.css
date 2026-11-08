@@ -119,7 +119,66 @@ a { color: var(--primaire); text-decoration: none; }
 .message--erreur { color: var(--sang); }
 .message--reussite { color: var(--seve); }
 
-/* Accès (connexion) */
+/* =====================================================================
+   Portail d'entrée — le choix de l'espace
+   Trois publics, trois portes. Aucune n'est privilégiée visuellement :
+   un donneur et un administrateur arrivent sur le même écran.
+   ===================================================================== */
+.portail {
+  min-height: 100dvh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--e8); padding: var(--e7) var(--e5);
+  background: var(--fond);
+}
+.portail__entete { display: flex; flex-direction: column; align-items: center; gap: var(--e3); text-align: center; }
+.portail__logo {
+  display: grid; place-items: center; width: 56px; height: 56px;
+  border-radius: 16px; background: var(--sang-clair); color: var(--sang);
+}
+.portail__titre { font-size: 36px; font-weight: 700; letter-spacing: -0.025em; }
+.portail__chapeau { font-size: var(--t-lead); color: var(--encre-2); max-width: 50ch; }
+
+.portail__portes {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 300px));
+  gap: var(--e5); justify-content: center; width: 100%;
+}
+.porte {
+  display: flex; flex-direction: column; gap: var(--e2);
+  padding: var(--e6) var(--e5);
+  background: var(--surface); border: 1px solid var(--trait); border-radius: var(--rayon);
+  box-shadow: var(--ombre); color: var(--encre);
+  transition: border-color 160ms, transform 160ms, box-shadow 160ms;
+}
+.porte:hover {
+  border-color: var(--primaire); transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(16, 24, 40, 0.1);
+}
+.porte__icone {
+  display: grid; place-items: center; width: 44px; height: 44px;
+  margin-bottom: var(--e2);
+  border-radius: 12px; background: var(--primaire-clair); color: var(--primaire);
+}
+.porte__pour { font-size: var(--t-micro); font-weight: 700; color: var(--encre-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.porte__titre { font-size: var(--t-titre-s); font-weight: 650; letter-spacing: -0.01em; }
+.porte__texte { font-size: var(--t-appui); color: var(--encre-2); flex: 1; }
+.porte__aller {
+  display: inline-flex; align-items: center; gap: var(--e2);
+  margin-top: var(--e3); color: var(--primaire);
+  font-size: var(--t-appui); font-weight: 650;
+}
+.portail__pied { color: var(--encre-2); text-align: center; }
+
+@media (max-width: 640px) {
+  .portail { gap: var(--e6); padding: var(--e6) var(--e4); justify-content: flex-start; }
+  .portail__titre { font-size: 28px; }
+  .portail__chapeau { font-size: var(--t-corps); }
+  .portail__portes { grid-template-columns: 1fr; }
+}
+
+/* Lien simple (retour, bascule entre espaces) */
+.lien { display: inline-flex; align-items: center; color: var(--primaire); font-weight: 600; }
+
+/* Accès (connexion d'un espace) */
 .acces { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: var(--e5); }
 .acces__carte { width: 100%; max-width: 400px; }
 
