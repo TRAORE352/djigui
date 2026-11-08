@@ -366,3 +366,161 @@ a { color: var(--primaire); text-decoration: none; }
 .jauge__part { height: 100%; border-radius: 999px; background: var(--seve); transition: width 300ms; }
 .jauge__part--ocre { background: var(--ocre); }
 .jauge__part--sang { background: var(--sang); }
+
+/* =====================================================================
+   Allègement des écrans de travail
+   Un écran montre UNE chose. Les sections secondaires se replient, les
+   états vides ne prennent pas la place d'une section pleine.
+   ===================================================================== */
+
+/* Respiration : plus d'air entre les sections qu'à l'intérieur. */
+.contenu { gap: var(--e7); }
+.section { display: flex; flex-direction: column; gap: var(--e4); }
+.section__entete { display: flex; align-items: baseline; justify-content: space-between; gap: var(--e3); }
+.section__titre { font-size: var(--t-lead); font-weight: 650; letter-spacing: -0.01em; }
+.section__compte {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px;
+  padding: 0 7px; border-radius: 999px;
+  background: var(--primaire-clair); color: var(--primaire-fonce);
+  font-size: var(--t-micro); font-weight: 700;
+}
+.section__compte--vide { background: var(--trait); color: var(--encre-2); }
+
+/* État vide discret : une ligne, pas un panneau. */
+.vide-ligne {
+  display: flex; align-items: center; gap: var(--e3);
+  padding: var(--e5); border-radius: var(--rayon);
+  background: var(--surface); border: 1px dashed var(--trait-fort);
+  color: var(--encre-2); font-size: var(--t-appui);
+}
+.vide-ligne svg { flex-shrink: 0; opacity: 0.7; }
+
+/* Section repliable : ce qui ne sert pas tous les jours reste fermé. */
+.repli { background: var(--surface); border: 1px solid var(--trait); border-radius: var(--rayon); box-shadow: var(--ombre); }
+.repli__bouton {
+  display: flex; align-items: center; gap: var(--e3); width: 100%;
+  min-height: 56px; padding: 0 var(--e5);
+  border: 0; background: none; border-radius: var(--rayon);
+  font: inherit; font-size: var(--t-corps); font-weight: 600; text-align: left; cursor: pointer;
+}
+.repli__bouton:hover { background: var(--fond); }
+.repli__fleche { margin-left: auto; color: var(--encre-2); transition: transform 180ms; }
+.repli__bouton[aria-expanded="true"] .repli__fleche { transform: rotate(90deg); }
+.repli__corps { padding: 0 var(--e5) var(--e5); border-top: 1px solid var(--trait); padding-top: var(--e5); }
+
+/* Carte de travail : une poche, une action. */
+.travail {
+  display: flex; flex-direction: column; gap: var(--e4);
+  padding: var(--e5);
+  background: var(--surface); border: 1px solid var(--trait); border-radius: var(--rayon);
+  box-shadow: var(--ombre);
+}
+.travail__entete { display: flex; align-items: center; gap: var(--e4); flex-wrap: wrap; }
+.travail__code { font-family: var(--police-chiffres); font-size: var(--t-titre-s); font-weight: 700; letter-spacing: 0.02em; }
+.travail__meta { display: flex; gap: var(--e4); flex-wrap: wrap; margin-left: auto; }
+
+/* =====================================================================
+   Laboratoire — frise des quatre étapes de la qualification
+   ===================================================================== */
+.etapes { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
+.etape {
+  display: inline-flex; align-items: center; gap: var(--e2);
+  padding: var(--e2) var(--e3); border-radius: 999px;
+  background: var(--fond); color: var(--encre-2);
+  font-size: var(--t-petit); font-weight: 600; white-space: nowrap;
+}
+.etape__num {
+  display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--trait-fort); color: var(--surface);
+  font-size: 11px; font-weight: 700;
+}
+.etape--faite { background: var(--seve-clair); color: var(--seve); }
+.etape--faite .etape__num { background: var(--seve); }
+.etape--active { background: var(--primaire); color: #fff; }
+.etape--active .etape__num { background: rgba(255, 255, 255, 0.3); color: #fff; }
+.etape__lien { color: var(--trait-fort); flex-shrink: 0; }
+
+/* Grille de saisie des marqueurs sérologiques.
+   Le nom du marqueur est AU-DESSUS des boutons, pas à côté : côte à côte,
+   un libellé long (« Virus de l'immunodéficience humaine ») passe sous les
+   boutons et les chevauche. */
+.marqueurs { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: var(--e3); }
+.marqueur {
+  display: flex; flex-direction: column; gap: var(--e3);
+  padding: var(--e4);
+  border: 1px solid var(--trait); border-radius: var(--rayon-petit);
+  background: var(--surface);
+}
+.marqueur__nom { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.marqueur__choix { display: flex; gap: var(--e1); }
+.marqueur__choix .choix { flex: 1; }
+/* Boutons radio déguisés : trois états visibles d'un coup d'œil. */
+.choix {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 54px; height: 34px; padding: 0 var(--e2);
+  border: 1px solid var(--trait-fort); border-radius: var(--rayon-petit);
+  background: var(--surface); font-size: var(--t-petit); font-weight: 600;
+  color: var(--encre-2); cursor: pointer;
+}
+.choix input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+.choix:has(input:focus-visible) { outline: 2px solid var(--primaire); outline-offset: 1px; }
+.choix--seve:has(input:checked) { background: var(--seve); border-color: var(--seve); color: #fff; }
+.choix--sang:has(input:checked) { background: var(--sang); border-color: var(--sang); color: #fff; }
+.choix--ocre:has(input:checked) { background: var(--ocre); border-color: var(--ocre); color: #fff; }
+
+/* Verdict de libération : la conclusion, impossible à manquer. */
+.verdict {
+  display: flex; align-items: flex-start; gap: var(--e4);
+  padding: var(--e5); border-radius: var(--rayon);
+  border: 1px solid var(--trait);
+}
+.verdict--conforme { background: var(--seve-clair); border-color: var(--seve); }
+.verdict--non_conforme { background: var(--sang-clair); border-color: var(--sang); }
+.verdict--incomplet { background: var(--fond); }
+.verdict__icone { flex-shrink: 0; }
+.verdict--conforme .verdict__icone { color: var(--seve); }
+.verdict--non_conforme .verdict__icone { color: var(--sang); }
+.verdict--incomplet .verdict__icone { color: var(--encre-2); }
+.verdict__titre { font-size: var(--t-lead); font-weight: 700; }
+
+/* =====================================================================
+   Tableau de bord de l'agent
+   ===================================================================== */
+/* Une carte seule ne s'étire pas sur toute la largeur : un chiffre perdu
+   dans 1 100 px de blanc se lit moins bien qu'une carte cadrée. */
+.bord-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 320px));
+  justify-content: start;
+  gap: var(--e4);
+}
+/* Chiffre cliquable : la carte EST le raccourci vers l'écran concerné. */
+.bord-carte {
+  display: flex; flex-direction: column; gap: var(--e2);
+  padding: var(--e5); text-align: left;
+  background: var(--surface); border: 1px solid var(--trait); border-radius: var(--rayon);
+  box-shadow: var(--ombre); color: var(--encre);
+  transition: border-color 140ms, transform 140ms;
+}
+.bord-carte:hover { border-color: var(--primaire); transform: translateY(-1px); }
+.bord-carte__haut { display: flex; align-items: center; gap: var(--e3); }
+.bord-carte__icone { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--fond); color: var(--encre-2); }
+.bord-carte__valeur { font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
+.bord-carte--agir { border-left: 3px solid var(--ocre); }
+.bord-carte--agir .bord-carte__icone { background: var(--ocre-clair); color: var(--ocre); }
+.bord-carte--urgent { border-left: 3px solid var(--sang); }
+.bord-carte--urgent .bord-carte__icone { background: var(--sang-clair); color: var(--sang); }
+.bord-carte--calme .bord-carte__valeur { color: var(--encre-2); }
+
+/* Un bouton d'action ne s'étire pas sur toute la largeur d'un formulaire
+   large : au-delà de ~320 px, il cesse de ressembler à un bouton. */
+.travail > .bouton, .repli__corps > form > .bouton { align-self: flex-start; min-width: 200px; }
+
+/* Bandeau de bienvenue, sobre */
+.bienvenue { display: flex; flex-direction: column; gap: var(--e1); }
+.bienvenue__salut { font-size: var(--t-grand); font-weight: 700; letter-spacing: -0.02em; }
+
+@media (max-width: 640px) {
+  .bord-carte__valeur { font-size: 28px; }
+  .travail__meta { margin-left: 0; }
+}

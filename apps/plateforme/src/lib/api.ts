@@ -5,11 +5,12 @@
 import type {
   AgentCompte, AgentConnexionReponse, Analyse, CreerAgentRequete, CreerCentreRequete,
   CreerPocheRequete, CreerZoneRequete, DelivranceRequete, Demande,
-  DemandeRequete, DonneurAgent, EnregistrerAnalyseRequete, EnregistrerPassageRequete,
-  EstimationAlerteReponse, Expedition, ExpeditionRequete, FicheTracabilite,
-  InscriptionSurPlaceRequete, LancerAlerteRequete, LigneStock, ModifierRegleRequete,
-  Passage, Poche, PreparerPocheRequete, Produit, Regle, ReinitialisationMotDePasseReponse,
-  Reponse, ReponseErreur, SiteAdmin, SitePartenaire, Statistiques, SuiviAlerte,
+  DemandeRequete, DonneurAgent, DossierLabo, EnregistrerAnalyseRequete, EnregistrerPassageRequete,
+  EstimationAlerteReponse, Expedition, ExpeditionRequete, FicheTracabilite, FileLabo,
+  GroupageRequete, InscriptionSurPlaceRequete, LancerAlerteRequete, LigneStock, ModifierRegleRequete,
+  Passage, Poche, PreparerPocheRequete, Produit, ReceptionLaboRequete, Regle,
+  ReinitialisationMotDePasseReponse, Reponse, ReponseErreur, SerologieRequete,
+  SiteAdmin, SitePartenaire, Statistiques, SuiviAlerte,
 } from "@dds/contrat-api";
 import { lireJeton } from "./session";
 // `ErreurApi` et `messageDe` vivent dans ./erreurs : une seule définition
@@ -65,6 +66,19 @@ export const api = {
   /** Poches qualifiées conformes, en attente de préparation des produits (P5). */
   pochesAPreparer: () =>
     appel<Poche[]>("GET", "/poches?statut=conforme"),
+
+  // --- Chaîne du laboratoire (qualification biologique) ---
+  fileLabo: () => appel<FileLabo>("GET", "/poches/file-labo"),
+  dossierLabo: (code: string) =>
+    appel<DossierLabo>("GET", `/poches/${encodeURIComponent(code)}/dossier`),
+  receptionLabo: (code: string, corps: ReceptionLaboRequete) =>
+    appel<DossierLabo>("POST", `/poches/${encodeURIComponent(code)}/reception-labo`, corps),
+  groupage: (code: string, corps: GroupageRequete) =>
+    appel<DossierLabo>("POST", `/poches/${encodeURIComponent(code)}/groupage`, corps),
+  serologie: (code: string, corps: SerologieRequete) =>
+    appel<DossierLabo>("POST", `/poches/${encodeURIComponent(code)}/serologie`, corps),
+  libererPoche: (code: string) =>
+    appel<DossierLabo>("POST", `/poches/${encodeURIComponent(code)}/liberation`),
 
   analyser: (code: string, corps: EnregistrerAnalyseRequete) =>
     appel<Analyse>("POST", `/poches/${encodeURIComponent(code)}/analyse`, corps),

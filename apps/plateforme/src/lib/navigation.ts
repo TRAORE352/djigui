@@ -27,8 +27,8 @@ export type Section = {
 export const SECTIONS_AGENT: Section[] = [
   {
     adresse: "/agent",
-    mot: "Poste de travail",
-    resume: "Vos accès du jour, en un écran.",
+    mot: "Tableau de bord",
+    resume: "Ce qui attend une action de votre part, maintenant.",
     Icone: LayoutDashboard,
     roles: [],
   },
@@ -42,7 +42,7 @@ export const SECTIONS_AGENT: Section[] = [
   {
     adresse: "/agent/laboratoire",
     mot: "Laboratoire",
-    resume: "Qualifier les poches prélevées, puis préparer les produits sanguins.",
+    resume: "Qualifier le don : réception, groupage, sérologie, puis libération.",
     Icone: FlaskConical,
     roles: ["agent_labo", "admin"],
   },

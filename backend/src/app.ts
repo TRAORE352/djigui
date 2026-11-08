@@ -11,6 +11,7 @@ import { routeAlertes } from "./routes/alertes.js";
 import { routeGestion } from "./routes/gestion.js";
 import { routePassages } from "./routes/passages.js";
 import { routePoches } from "./routes/poches.js";
+import { routeLabo } from "./routes/laboratoire.js";
 import { routeCodes } from "./routes/codes.js";
 import { routeStock, routeProduits } from "./routes/stock.js";
 import { routeAlertesGestion } from "./routes/alertes-gestion.js";
@@ -66,6 +67,9 @@ app.use(`${base}/donneurs`, authentifier, exigerRole("agent_accueil", "admin"), 
 
 // Plateforme — collecte (P3), laboratoire (P4/P5) et traçabilité (P9).
 app.use(`${base}/passages`, authentifier, exigerRole("agent_accueil", "agent_prelevement", "admin"), routePassages);
+// La chaîne du laboratoire est montée AVANT routePoches : ses chemins
+// (/poches/file-labo, /poches/:code/groupage…) sont plus spécifiques.
+app.use(`${base}/poches`, authentifier, routeLabo);
 app.use(`${base}/poches`, authentifier, routePoches);
 app.use(`${base}/codes`, authentifier, exigerRole("agent_accueil", "agent_prelevement", "agent_labo", "agent_stock", "agent_depot", "admin"), routeCodes);
 

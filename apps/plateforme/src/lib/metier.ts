@@ -5,7 +5,10 @@
  * parlent français. Cette traduction vit ici, une seule fois, pour que les
  * deux espaces disent exactement la même chose de la même donnée.
  */
-import type { LigneStock, StatutPoche } from "@dds/contrat-api";
+import type {
+  EtapeLabo, LigneStock, MarqueurSerologie, MotifRefusEchantillon,
+  ResultatSerologie, StatutPoche,
+} from "@dds/contrat-api";
 
 export type Ton = "primaire" | "seve" | "ocre" | "sang" | "neutre";
 
@@ -82,6 +85,69 @@ export function telephoneInternational(saisie: string): string {
   const chiffres = saisie.replace(/\D/g, "");
   return `+226${chiffres.slice(-8)}`;
 }
+
+/* =====================================================================
+   Laboratoire — vocabulaire de la qualification biologique
+   ===================================================================== */
+
+export const ETAPE_LABO: Record<EtapeLabo, { mot: string; verbe: string; aide: string }> = {
+  reception: {
+    mot: "Réception",
+    verbe: "Contrôler l'échantillon",
+    aide: "Vérifiez que les tubes sont présents, étiquetés et exploitables.",
+  },
+  groupage: {
+    mot: "Groupage",
+    verbe: "Grouper",
+    aide: "Deux déterminations indépendantes doivent donner le même résultat.",
+  },
+  serologie: {
+    mot: "Sérologie",
+    verbe: "Saisir les résultats",
+    aide: "VIH, hépatites B et C et syphilis sont obligatoires avant libération.",
+  },
+  liberation: {
+    mot: "Libération",
+    verbe: "Libérer",
+    aide: "Le verdict est calculé par le dossier : vous le confirmez, vous ne le saisissez pas.",
+  },
+  terminee: { mot: "Terminée", verbe: "", aide: "" },
+};
+
+/** Les quatre étapes dans l'ordre, pour la frise de progression. */
+export const ETAPES_ORDRE: EtapeLabo[] = ["reception", "groupage", "serologie", "liberation"];
+
+export const MARQUEUR: Record<MarqueurSerologie, { mot: string; nomLong: string; obligatoire: boolean }> = {
+  vih: { mot: "VIH", nomLong: "Virus de l'immunodéficience humaine", obligatoire: true },
+  hepatite_b: { mot: "Hépatite B", nomLong: "Antigène HBs", obligatoire: true },
+  hepatite_c: { mot: "Hépatite C", nomLong: "Anticorps anti-VHC", obligatoire: true },
+  syphilis: { mot: "Syphilis", nomLong: "Tréponème pâle (TPHA)", obligatoire: true },
+  htlv: { mot: "HTLV", nomLong: "Virus T-lymphotropique humain", obligatoire: false },
+  paludisme: { mot: "Paludisme", nomLong: "Recherche de Plasmodium", obligatoire: false },
+};
+
+export const MARQUEURS_ORDRE: MarqueurSerologie[] =
+  ["vih", "hepatite_b", "hepatite_c", "syphilis", "htlv", "paludisme"];
+
+export const RESULTAT_SEROLOGIE: Record<ResultatSerologie, { mot: string; ton: Ton }> = {
+  negatif: { mot: "Négatif", ton: "seve" },
+  positif: { mot: "Positif", ton: "sang" },
+  ininterpretable: { mot: "À refaire", ton: "ocre" },
+};
+
+export const MOTIF_REFUS: Record<MotifRefusEchantillon, string> = {
+  tubes_absents: "Tubes absents",
+  etiquetage_illisible: "Étiquetage illisible ou discordant",
+  echantillon_hemolyse: "Échantillon hémolysé",
+  volume_insuffisant: "Volume insuffisant",
+  chaine_du_froid_rompue: "Chaîne du froid rompue",
+  autre: "Autre motif",
+};
+
+export const MOTIFS_ORDRE: MotifRefusEchantillon[] = [
+  "tubes_absents", "etiquetage_illisible", "echantillon_hemolyse",
+  "volume_insuffisant", "chaine_du_froid_rompue", "autre",
+];
 
 /** +22670000000 → « 70 00 00 00 », plus lisible à l'écran. */
 export function telephoneLisible(valeur: string | null | undefined): string {

@@ -19,6 +19,7 @@ import Pilule from "@/components/Pilule";
 import BlocGroupe from "@/components/BlocGroupe";
 import Tableau from "@/components/Tableau";
 import { EtatErreur, EtatVide, SqueletteLignes } from "@/components/Etats";
+import { Section, VideLigne } from "@/components/Mise";
 import { MessageErreur, MessageReussite } from "@/components/Messages";
 
 export default function Stock() {
@@ -39,8 +40,7 @@ export default function Stock() {
 
       <ResumeNiveaux lignes={stock.donnees} />
 
-      <section className="pile">
-        <h2 className="section-titre">Produits disponibles</h2>
+      <Section titre="Produits disponibles" compte={stock.donnees?.length}>
         {stock.chargement && <SqueletteLignes lignes={4} />}
         {stock.erreur && <EtatErreur texte={stock.erreur} surReessai={() => void stock.recharger()} />}
         {stock.donnees?.length === 0 && (
@@ -77,7 +77,7 @@ export default function Stock() {
             ]}
           />
         )}
-      </section>
+      </Section>
 
       <Peremption ressource={peremption} surDestruction={() => { void stock.recharger(); void peremption.recharger(); }} />
     </>
@@ -144,9 +144,7 @@ function Peremption({ ressource, surDestruction }: {
   }
 
   return (
-    <section className="pile">
-      <h2 className="section-titre">Péremption dans les 14 jours</h2>
-
+    <Section titre="Péremption dans les 14 jours" compte={ressource.donnees?.length}>
       {ressource.chargement && <SqueletteLignes lignes={2} />}
       {ressource.erreur && <EtatErreur texte={ressource.erreur} surReessai={() => void ressource.recharger()} />}
 
@@ -154,11 +152,9 @@ function Peremption({ ressource, surDestruction }: {
       <MessageReussite>{reussite}</MessageReussite>
 
       {ressource.donnees?.length === 0 && (
-        <EtatVide
-          Icone={CalendarX2}
-          titre="Rien ne périme dans les deux semaines"
-          texte="Les produits dont la date approche apparaîtront ici pour être utilisés en priorité, ou sortis du stock."
-        />
+        <VideLigne Icone={CalendarX2}>
+          Rien ne périme dans les deux semaines.
+        </VideLigne>
       )}
 
       {!!ressource.donnees?.length && (
@@ -205,6 +201,6 @@ function Peremption({ ressource, surDestruction }: {
           ]}
         />
       )}
-    </section>
+    </Section>
   );
 }

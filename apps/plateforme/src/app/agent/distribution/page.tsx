@@ -22,13 +22,13 @@ import { EnTetePage } from "@/components/Coquille";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import BlocGroupe from "@/components/BlocGroupe";
-import { EtatErreur, EtatVide, SqueletteLignes } from "@/components/Etats";
+import { EtatErreur, SqueletteLignes } from "@/components/Etats";
+import { Repli, Section, VideLigne } from "@/components/Mise";
 import { Encadre, MessageErreur, MessageReussite } from "@/components/Messages";
 
 export default function Distribution() {
   const demandes = useRessource<Demande[]>(() => api.demandes());
   const [siteId, setSiteId] = useState("");
-  const [nouvelle, setNouvelle] = useState(false);
 
   useEffect(() => { setSiteId(lireAgent()?.siteId ?? ""); }, []);
 
@@ -47,64 +47,56 @@ export default function Distribution() {
       <EnTetePage
         titre="Distribution"
         chapeau="Demandes entre sites, expéditions et délivrances aux services de soins."
-        actions={
-          <>
-            <Bouton
-              variante={nouvelle ? "secondaire" : "principal"}
-              icone={<PackagePlus size={18} aria-hidden="true" />}
-              onClick={() => setNouvelle((v) => !v)}
-            >
-              {nouvelle ? "Fermer" : "Demander des produits"}
-            </Bouton>
-            <Bouton variante="secondaire" onClick={() => void demandes.recharger()}>Actualiser</Bouton>
-          </>
-        }
+        actions={<Bouton variante="secondaire" onClick={() => void demandes.recharger()}>Actualiser</Bouton>}
       />
 
-      {nouvelle && (
-        <FormulaireDemande
-          surCreation={() => { setNouvelle(false); void demandes.recharger(); }}
-        />
-      )}
-
-      {demandes.chargement && <SqueletteLignes lignes={3} />}
+      {demandes.chargement && !demandes.donnees && <SqueletteLignes lignes={3} />}
       {demandes.erreur && <EtatErreur texte={demandes.erreur} surReessai={() => void demandes.recharger()} />}
 
       {demandes.donnees && (
         <>
-          <section className="pile">
-            <h2 className="section-titre">Demandes reçues — à préparer et expédier</h2>
+          {/* L'essentiel du métier : ce que d'autres sites attendent de nous. */}
+          <Section titre="Demandes reçues" compte={recues.length}>
             {recues.length === 0 ? (
-              <EtatVide
-                Icone={Truck}
-                titre="Aucune demande reçue"
-                texte="Quand un dépôt ou un hôpital vous demande des produits, la demande apparaît ici avec les unités attendues."
-              />
+              <VideLigne Icone={Truck}>
+                Aucune demande reçue. Quand un dépôt ou un hôpital vous demande des
+                produits, elle apparaît ici.
+              </VideLigne>
             ) : (
               recues.map((d) => (
                 <CarteDemande key={d.id} demande={d} role="fournisseur" surAction={() => void demandes.recharger()} />
               ))
             )}
-          </section>
+          </Section>
 
-          <section className="pile">
-            <h2 className="section-titre">Demandes envoyées — à réceptionner</h2>
+          <Section titre="Demandes envoyées" compte={envoyees.length}>
             {envoyees.length === 0 ? (
-              <EtatVide
-                Icone={ArrowDownToLine}
-                titre="Aucune demande envoyée"
-                texte="Les demandes que vous adressez à un autre site, et l'état de leur expédition, apparaissent ici."
-              />
+              <VideLigne Icone={ArrowDownToLine}>
+                Aucune demande en cours auprès d'un autre site.
+              </VideLigne>
             ) : (
               envoyees.map((d) => (
                 <CarteDemande key={d.id} demande={d} role="demandeur" surAction={() => void demandes.recharger()} />
               ))
             )}
-          </section>
+          </Section>
         </>
       )}
 
-      <Delivrance />
+      {/* Les deux formulaires sont repliés : ils ne servent pas à chaque passage. */}
+      <Repli
+        titre="Demander des produits à un autre site"
+        resume="Adresser une commande à un centre ou à un dépôt."
+      >
+        <FormulaireDemande surCreation={() => void demandes.recharger()} />
+      </Repli>
+
+      <Repli
+        titre="Délivrer un produit à un service"
+        resume="Dernière étape de la chaîne : le produit part vers un service de soins."
+      >
+        <Delivrance />
+      </Repli>
     </>
   );
 }
@@ -249,9 +241,7 @@ function FormulaireDemande({ surCreation }: { surCreation: () => void }) {
   }
 
   return (
-    <form className="bloc pile" onSubmit={envoyer}>
-      <h2 className="titre-s">Demander des produits à un autre site</h2>
-
+    <form className="pile" onSubmit={envoyer}>
       <div className="grille-2">
         <label className="champ">
           <span className="champ__etiquette">Site fournisseur</span>
@@ -354,34 +344,31 @@ function Delivrance() {
   }
 
   return (
-    <section className="pile">
-      <h2 className="section-titre">Délivrer un produit à un service</h2>
-      <form className="bloc pile" onSubmit={delivrer}>
-        <div className="grille-2">
-          <label className="champ">
-            <span className="champ__etiquette">Code du produit</span>
-            <input className="champ__saisie chiffres" value={code} required
-                   placeholder="OUA-26-04812-K-GR" autoComplete="off"
-                   onChange={(e) => { setCode(e.target.value); setErreur(""); }} />
-            <span className="champ__aide">Tirets et minuscules acceptés : le code est normalisé.</span>
-          </label>
-          <label className="champ">
-            <span className="champ__etiquette">Service destinataire</span>
-            <input className="champ__saisie" value={service} required
-                   placeholder="Urgences, maternité, pédiatrie…" autoComplete="off"
-                   onChange={(e) => { setService(e.target.value); setErreur(""); }} />
-          </label>
-        </div>
+    <form className="pile" onSubmit={delivrer}>
+      <div className="grille-2">
+        <label className="champ">
+          <span className="champ__etiquette">Code du produit</span>
+          <input className="champ__saisie chiffres" value={code} required
+                 placeholder="OUA-26-04812-K-GR" autoComplete="off"
+                 onChange={(e) => { setCode(e.target.value); setErreur(""); }} />
+          <span className="champ__aide">Tirets et minuscules acceptés : le code est normalisé.</span>
+        </label>
+        <label className="champ">
+          <span className="champ__etiquette">Service destinataire</span>
+          <input className="champ__saisie" value={service} required
+                 placeholder="Urgences, maternité, pédiatrie…" autoComplete="off"
+                 onChange={(e) => { setService(e.target.value); setErreur(""); }} />
+        </label>
+      </div>
 
-        <MessageErreur>{erreur}</MessageErreur>
-        <MessageReussite>{reussite}</MessageReussite>
+      <MessageErreur>{erreur}</MessageErreur>
+      <MessageReussite>{reussite}</MessageReussite>
 
-        <Bouton type="submit" icone={<Hospital size={18} aria-hidden="true" />}
-                enCours={enCours} motEnCours="Délivrance…"
-                disabled={!code.trim() || !service.trim()}>
-          Délivrer
-        </Bouton>
-      </form>
-    </section>
+      <Bouton type="submit" icone={<Hospital size={18} aria-hidden="true" />}
+              enCours={enCours} motEnCours="Délivrance…"
+              disabled={!code.trim() || !service.trim()}>
+        Délivrer
+      </Bouton>
+    </form>
   );
 }

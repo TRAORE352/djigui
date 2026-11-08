@@ -464,6 +464,106 @@ export interface Produit {
   creeLe: string;
 }
 
+// =====================================================================
+// Plateforme du CNTS — qualification biologique au laboratoire
+//
+// La chaîne réelle d'un laboratoire de qualification du don, en quatre
+// étapes. Une poche ne devient transfusable qu'au bout des quatre.
+//   1. réception  : les tubes d'échantillon sont-ils exploitables ?
+//   2. groupage   : ABO/RhD en DOUBLE détermination + RAI ;
+//   3. sérologie  : marqueurs des maladies transmissibles ;
+//   4. libération : verdict final, qui écrit dans `analyses`.
+// =====================================================================
+
+/** Étape où se trouve une poche dans la chaîne du laboratoire. */
+export type EtapeLabo = "reception" | "groupage" | "serologie" | "liberation" | "terminee";
+
+/** Pourquoi un échantillon est refusé à la réception. */
+export type MotifRefusEchantillon =
+  | "tubes_absents" | "etiquetage_illisible" | "echantillon_hemolyse"
+  | "volume_insuffisant" | "chaine_du_froid_rompue" | "autre";
+
+/** Marqueurs recherchés. VIH, hépatites B et C et syphilis sont obligatoires. */
+export type MarqueurSerologie =
+  | "vih" | "hepatite_b" | "hepatite_c" | "syphilis" | "htlv" | "paludisme";
+
+export type ResultatSerologie = "negatif" | "positif" | "ininterpretable";
+
+/** POST /poches/:code/reception-labo */
+export interface ReceptionLaboRequete {
+  conforme: boolean;
+  motif?: MotifRefusEchantillon | null;
+  precisions?: string;
+}
+
+/** POST /poches/:code/groupage — les deux déterminations doivent concorder. */
+export interface GroupageRequete {
+  determination1: GroupeSanguin;
+  determination2: GroupeSanguin;
+  raiPositive: boolean;
+  phenotype?: string;
+}
+
+export interface Groupage {
+  determination1: GroupeSanguin;
+  determination2: GroupeSanguin;
+  raiPositive: boolean;
+  phenotype: string;
+  technicien: string;
+  date: string;
+}
+
+/** POST /poches/:code/serologie — un ou plusieurs marqueurs à la fois. */
+export interface SerologieRequete {
+  resultats: { marqueur: MarqueurSerologie; resultat: ResultatSerologie }[];
+}
+
+export interface ResultatMarqueur {
+  marqueur: MarqueurSerologie;
+  resultat: ResultatSerologie;
+  technicien: string;
+  date: string;
+}
+
+/**
+ * GET /poches/:code/dossier — tout ce que le laboratoire sait d'une poche.
+ * C'est la vue qui pilote l'écran : elle dit où en est la poche et ce
+ * qu'il reste à faire.
+ */
+export interface DossierLabo {
+  code: string;
+  statut: StatutPoche;
+  etape: EtapeLabo;
+  datePrelevement: string;
+  volume: number | null;
+  numeroDonneur: string | null;
+  reception: {
+    conforme: boolean;
+    motif: MotifRefusEchantillon | null;
+    precisions: string;
+    technicien: string;
+    date: string;
+  } | null;
+  groupage: Groupage | null;
+  serologies: ResultatMarqueur[];
+  /** Marqueurs obligatoires encore manquants. Vide = prêt à libérer. */
+  marqueursManquants: MarqueurSerologie[];
+  /**
+   * Verdict calculé par le backend : « conforme » seulement si la
+   * réception est conforme, le groupage validé et tous les marqueurs
+   * obligatoires négatifs.
+   */
+  verdictPossible: "conforme" | "non_conforme" | "incomplet";
+}
+
+/** GET /poches/file-labo — la file d'attente, étape par étape. */
+export interface FileLabo {
+  aRecevoir: DossierLabo[];
+  aGrouper: DossierLabo[];
+  aTester: DossierLabo[];
+  aLiberer: DossierLabo[];
+}
+
 /**
  * GET /codes/:code — fiche de traçabilité (P9). Le code est normalisé
  * (majuscules, tirets ignorés) : « oua2604812k » est accepté.
