@@ -412,11 +412,52 @@ a { color: var(--primaire); text-decoration: none; }
 }
 .lateral__lien:hover { background: var(--fond); }
 .lateral__lien svg { flex-shrink: 0; color: var(--encre-2); }
-.lateral__lien--actif { background: var(--primaire-clair); color: var(--primaire-fonce); font-weight: 650; }
+.lateral__lien--actif {
+  position: relative;
+  background: var(--primaire-clair); color: var(--primaire-fonce); font-weight: 650;
+}
+/* Bordure latérale distincte : on sait où l'on est même en vision périphérique. */
+.lateral__lien--actif::before {
+  content: ""; position: absolute; left: calc(-1 * var(--e4));
+  top: 6px; bottom: 6px; width: 3px;
+  background: var(--primaire); border-radius: 0 3px 3px 0;
+}
 .lateral__lien--actif svg { color: var(--primaire); }
 .lateral__compte { margin-left: auto; font-size: var(--t-micro); font-weight: 700; color: var(--encre-2); }
 
 .lateral__pied { display: flex; flex-direction: column; gap: var(--e3); padding-top: var(--e4); border-top: 1px solid var(--trait); }
+
+/* Bloc profil : avatar, nom, rôle. Rien de tronqué, rien de cliquable
+   en dehors de la déconnexion. */
+.lateral__profil {
+  display: flex; align-items: center; gap: var(--e3);
+  padding: var(--e2) var(--e3); min-width: 0;
+}
+.lateral__avatar {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--primaire-clair); color: var(--primaire-fonce);
+  font-size: var(--t-petit); font-weight: 700; letter-spacing: 0.02em;
+}
+.lateral__identite { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.lateral__profil-nom {
+  font-size: var(--t-appui); font-weight: 650; line-height: 1.3; color: var(--encre);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lateral__profil-role {
+  font-size: var(--t-micro); color: var(--encre-2); line-height: 1.3;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.lateral__deconnexion {
+  display: flex; align-items: center; gap: var(--e3); width: 100%;
+  min-height: var(--cible); padding: 0 var(--e3);
+  background: transparent; border: 1px solid var(--trait); border-radius: var(--rayon-petit);
+  color: var(--encre-2); font-size: var(--t-appui); font-weight: 600;
+  text-align: left; cursor: pointer;
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+.lateral__deconnexion svg { flex-shrink: 0; }
+.lateral__deconnexion:hover { background: var(--sang-clair); border-color: #F3C3BF; color: var(--sang-fonce); }
 .lateral__agent { display: flex; flex-direction: column; gap: 2px; padding: 0 var(--e3); min-width: 0; }
 .lateral__agent span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -496,8 +537,21 @@ a { color: var(--primaire); text-decoration: none; }
   .lateral__lien { white-space: nowrap; }
   .lateral__pied { flex-direction: row; align-items: center; border-top: 0; padding-top: 0; margin-left: auto; }
   .lateral__agent { display: none; }
+  /* En barre horizontale, seul l'avatar reste : le nom prendrait la place
+     des onglets de navigation. */
+  .lateral__profil { padding: 0; }
+  .lateral__identite { display: none; }
+  .lateral__deconnexion { width: auto; }
+  .lateral__deconnexion span { display: none; }
+  .lateral__lien--actif::before { left: 0; right: 0; top: auto; bottom: -6px; width: auto; height: 3px; border-radius: 3px 3px 0 0; }
   .contenu { padding: var(--e5) var(--e4) var(--e7); gap: var(--e5); }
   .contenu__titre { font-size: var(--t-titre); }
+  .bord-entete__titre { font-size: var(--t-titre); }
+  .bord-entete { gap: var(--e3); }
+  /* Le point séparateur devient orphelin quand les jetons passent à la
+     ligne : il ne sépare plus rien. */
+  .bord-entete__sep { display: none; }
+  .bord-carte__valeur { font-size: 34px; }
 }
 
 /* =====================================================================
@@ -701,27 +755,155 @@ a { color: var(--primaire); text-decoration: none; }
    dans 1 100 px de blanc se lit moins bien qu'une carte cadrée. */
 .bord-grille {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 320px));
+  grid-template-columns: repeat(auto-fit, minmax(248px, 320px));
   justify-content: start;
   gap: var(--e4);
 }
-/* Chiffre cliquable : la carte EST le raccourci vers l'écran concerné. */
-.bord-carte {
-  display: flex; flex-direction: column; gap: var(--e2);
-  padding: var(--e5); text-align: left;
-  background: var(--surface); border: 1px solid var(--trait); border-radius: var(--rayon);
-  box-shadow: var(--ombre); color: var(--encre);
-  transition: border-color 140ms, transform 140ms;
+
+/* ---------------------------------------------------------------------
+   En-tête du tableau de bord : salutation à gauche, état du poste à
+   droite. Pas de fil d'Ariane textuel — la barre latérale dit déjà où
+   l'on se trouve.
+   --------------------------------------------------------------------- */
+.bord-entete {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--e4); flex-wrap: wrap;
 }
-.bord-carte:hover { border-color: var(--primaire); transform: translateY(-1px); }
-.bord-carte__haut { display: flex; align-items: center; gap: var(--e3); }
-.bord-carte__icone { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--fond); color: var(--encre-2); }
-.bord-carte__valeur { font-size: 34px; font-weight: 700; line-height: 1; letter-spacing: -0.02em; }
-.bord-carte--agir { border-left: 3px solid var(--ocre); }
+.bord-entete__gauche { display: flex; flex-direction: column; gap: var(--e3); min-width: 0; }
+.bord-entete__titre {
+  font-size: var(--t-grand); font-weight: 700;
+  letter-spacing: -0.015em; line-height: 1.15;
+}
+.bord-entete__contexte { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
+.bord-entete__sep { width: 4px; height: 4px; border-radius: 50%; background: var(--trait-fort); }
+.bord-entete__droite { display: flex; align-items: center; gap: var(--e2); }
+
+/* Jeton de contexte : rôle, centre. Information, pas action. */
+.bord-jeton {
+  display: inline-flex; align-items: center;
+  padding: 3px var(--e3); border-radius: 999px;
+  background: var(--primaire-clair); color: var(--primaire-fonce);
+  font-size: var(--t-petit); font-weight: 600; white-space: nowrap;
+}
+.bord-jeton--sobre {
+  background: var(--surface); color: var(--encre-2);
+  border: 1px solid var(--trait-fort);
+}
+
+/* Statut de session et horloge : discrets, en haut à droite. */
+.bord-statut {
+  display: inline-flex; align-items: center; gap: var(--e2);
+  padding: 5px var(--e3); border-radius: 999px;
+  background: var(--seve-clair); color: #066B48;
+  font-size: var(--t-petit); font-weight: 600; white-space: nowrap;
+}
+.bord-statut__point {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--seve); box-shadow: 0 0 0 3px rgba(11, 138, 93, 0.16);
+}
+.bord-horloge {
+  display: inline-flex; align-items: center; gap: var(--e2);
+  padding: 5px var(--e3); border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--trait);
+  color: var(--encre-2); font-size: var(--t-petit); font-weight: 600;
+}
+.bord-horloge svg { color: var(--encre-2); }
+
+/* ---------------------------------------------------------------------
+   Cartes du tableau de bord. Chiffre cliquable : la carte EST le
+   raccourci vers l'écran concerné. Le poids visuel suit l'urgence —
+   une carte à zéro ne doit pas capter autant l'œil qu'une urgence.
+   --------------------------------------------------------------------- */
+.bord-carte {
+  position: relative; overflow: hidden;
+  display: flex; flex-direction: column; gap: var(--e2);
+  padding: var(--e5); padding-left: calc(var(--e5) + var(--e1));
+  text-align: left;
+  background: var(--surface); border: 1px solid var(--trait); border-radius: var(--rayon);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05); color: var(--encre);
+  transition: border-color 140ms, transform 140ms, box-shadow 140ms;
+}
+/* La bordure latérale est un pseudo-élément : elle ne décale pas le texte
+   quand elle change d'épaisseur selon le ton. */
+.bord-carte::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+  width: 4px; background: var(--trait);
+}
+.bord-carte:hover { border-color: var(--trait-fort); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 24, 40, 0.08); }
+.bord-carte__haut { display: flex; align-items: center; gap: var(--e2); flex-wrap: nowrap; }
+.bord-carte__icone {
+  display: grid; place-items: center; width: 32px; height: 32px;
+  border-radius: 9px; background: var(--fond); color: var(--encre-2); flex-shrink: 0;
+}
+.bord-carte__libelle { font-size: var(--t-appui); font-weight: 650; }
+.bord-carte__corps { display: flex; align-items: center; gap: var(--e3); min-height: 44px; }
+.bord-carte__valeur {
+  font-size: 40px; font-weight: 800; line-height: 1; letter-spacing: -0.03em;
+}
+.bord-carte__detail { font-size: var(--t-petit); color: var(--encre-2); }
+.bord-carte__aller {
+  display: inline-flex; align-items: center; gap: var(--e1);
+  margin-top: var(--e1); font-size: var(--t-micro); font-weight: 650;
+  color: var(--encre-2); opacity: 0; transform: translateX(-4px);
+  transition: opacity 140ms, transform 140ms;
+}
+.bord-carte:hover .bord-carte__aller,
+.bord-carte:focus-visible .bord-carte__aller { opacity: 1; transform: none; }
+
+/* Badge d'urgence : il nomme la priorité, il ne la devine pas. Il siège
+   sur la ligne du chiffre — c'est ce chiffre qu'il qualifie, et le titre
+   garde ainsi toute sa largeur (plus de troncature). */
+.bord-badge {
+  align-self: center;
+  padding: 3px var(--e3); border-radius: 999px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+  text-transform: uppercase; white-space: nowrap;
+}
+.bord-badge--urgent { background: var(--sang); color: #fff; }
+/* Ocre foncé spécifique au badge : l'ocre de la charte mesure 4,48:1 sur
+   son fond clair — juste sous le seuil WCAG AA de 4,5:1. */
+.bord-badge--agir { background: var(--ocre-clair); color: #934408; border: 1px solid #EBD2B4; }
+
+/* Urgence : rouge sang institutionnel, chiffre appuyé. */
+.bord-carte--urgent { border-color: #F3C3BF; background: #FFFCFC; }
+.bord-carte--urgent::before { background: var(--sang); }
+.bord-carte--urgent .bord-carte__icone { background: var(--sang-clair); color: var(--sang-fonce); }
+.bord-carte--urgent .bord-carte__valeur { color: var(--sang-fonce); }
+.bord-carte--urgent:hover { border-color: var(--sang); }
+
+/* À traiter : ocre chaud. */
+.bord-carte--agir { border-color: #EBD2B4; background: #FFFDFA; }
+.bord-carte--agir::before { background: var(--ocre); }
 .bord-carte--agir .bord-carte__icone { background: var(--ocre-clair); color: var(--ocre); }
-.bord-carte--urgent { border-left: 3px solid var(--sang); }
-.bord-carte--urgent .bord-carte__icone { background: var(--sang-clair); color: var(--sang); }
-.bord-carte--calme .bord-carte__valeur { color: var(--encre-2); }
+.bord-carte--agir .bord-carte__valeur { color: var(--ocre); }
+.bord-carte--agir:hover { border-color: var(--ocre); }
+
+/* Sous contrôle : poids visuel réduit, et un signal rassurant plutôt
+   qu'un zéro muet. Fond gris très clair, pas d'opacité globale — elle
+   abîmerait le contraste du texte (WCAG). */
+.bord-carte--calme { background: #FAFBFC; border-color: var(--trait); box-shadow: none; }
+.bord-carte--calme::before { background: var(--trait); }
+.bord-carte--calme .bord-carte__libelle { font-weight: 600; color: #4A5666; }
+.bord-carte--calme .bord-carte__icone { background: #F0F2F5; color: #8A95A3; }
+.bord-carte--calme:hover { background: var(--surface); border-color: var(--trait-fort); }
+.bord-carte--calme:hover::before { background: var(--seve); }
+.bord-carte__rassurant {
+  display: inline-flex; align-items: center; gap: var(--e2);
+  font-size: var(--t-appui); font-weight: 650; color: #066B48;
+}
+.bord-carte__rassurant svg { color: var(--seve); flex-shrink: 0; }
+
+/* Raccourcis de bas de page : un seul bouton plein, le reste en contour.
+   L'action du terrain porte la couleur institutionnelle du sang — le bleu
+   primaire reste celui des formulaires, il ne doit pas concurrencer. */
+.bord-actions { display: flex; align-items: center; gap: var(--e3); flex-wrap: wrap; }
+.bord-actions .bouton { min-width: 180px; }
+.bord-actions .bouton--principal { background: var(--sang); border-color: var(--sang); }
+.bord-actions .bouton--principal:hover:not(:disabled) { background: var(--sang-fonce); border-color: var(--sang-fonce); }
+@media (max-width: 560px) {
+  .bord-actions { flex-direction: column; align-items: stretch; }
+  .bord-actions .bouton { width: 100%; min-width: 0; }
+}
 
 /* Un bouton d'action ne s'étire pas sur toute la largeur d'un formulaire
    large : au-delà de ~320 px, il cesse de ressembler à un bouton. */

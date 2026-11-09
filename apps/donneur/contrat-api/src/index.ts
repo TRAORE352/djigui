@@ -339,6 +339,8 @@ export interface AgentConnecte {
   email: string;
   roles: Role[];
   siteId: string;
+  /** Nom du centre de rattachement, pour le badge de contexte de l'en-tête. */
+  siteNom?: string;
 }
 
 export interface AgentConnexionReponse {

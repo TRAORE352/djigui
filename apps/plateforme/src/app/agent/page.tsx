@@ -6,17 +6,25 @@
  * maintenant ? » Chaque chiffre est un bouton vers l'écran qui permet
  * d'agir ; aucun chiffre n'est là pour décorer.
  *
+ * Hiérarchie visuelle (refonte) :
+ *   · en-tête épuré — salutation, badge de contexte, horloge à droite ;
+ *   · « À faire maintenant » — cartes accentuées, bordure latérale colorée,
+ *     chiffre en gros, badge « Priorité haute » sur l'urgent ;
+ *   · « Sous contrôle » — cartes atténuées, signal vert rassurant ;
+ *   · « Autres écrans » — un seul bouton plein (accueillir un donneur),
+ *     le reste en style secondaire.
+ *
  * Les cartes sont filtrées par rôle : un technicien de laboratoire ne
  * voit pas les demandes de la distribution.
  */
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Bell, Boxes, CalendarX2, CircleCheck, FlaskConical, PackageCheck, Truck,
+  ArrowRight, Bell, Boxes, CalendarX2, CheckCircle2, CircleCheck, Clock,
+  FlaskConical, Truck, UserPlus,
 } from "lucide-react";
 import type { AgentConnecte, Demande, FileLabo, LigneStock, Produit, Role } from "@dds/contrat-api";
 import { api } from "@/lib/api";
-import { EnTetePage } from "@/components/Coquille";
 import { Section, VideLigne } from "@/components/Mise";
 import { SqueletteLignes } from "@/components/Etats";
 import { LIBELLE_ROLE } from "@/lib/navigation";
@@ -163,13 +171,39 @@ export default function TableauDeBordAgent() {
   const prenom = prenomDe(agent.nomComplet);
   const aFaire = cartes?.filter((c) => c.ton !== "calme") ?? [];
   const calmes = cartes?.filter((c) => c.ton === "calme") ?? [];
+  const metier = agent.roles.map((r) => LIBELLE_ROLE[r] ?? r).join(", ");
 
   return (
     <>
-      <EnTetePage
-        titre={`${salutation()} ${prenom}`}
-        chapeau={`${agent.roles.map((r) => LIBELLE_ROLE[r] ?? r).join(" · ")}${heure ? ` — il est ${heure}` : ""}`}
-      />
+      {/* En-tête épuré : plus de fil d'Ariane textuel sous le titre. Le
+          contexte tient dans un badge, l'heure part à droite. */}
+      <header className="bord-entete">
+        <div className="bord-entete__gauche">
+          <h1 className="bord-entete__titre">{salutation()} {prenom}</h1>
+          <p className="bord-entete__contexte">
+            <span className="bord-jeton">{metier}</span>
+            {agent.siteNom && (
+              <>
+                <span className="bord-entete__sep" aria-hidden="true" />
+                <span className="bord-jeton bord-jeton--sobre">{agent.siteNom}</span>
+              </>
+            )}
+          </p>
+        </div>
+
+        <div className="bord-entete__droite">
+          <span className="bord-statut">
+            <span className="bord-statut__point" aria-hidden="true" />
+            En ligne
+          </span>
+          {heure && (
+            <span className="bord-horloge" title="Heure du poste">
+              <Clock size={15} aria-hidden="true" />
+              <span className="chiffres">{heure}</span>
+            </span>
+          )}
+        </div>
+      </header>
 
       {!cartes && <SqueletteLignes lignes={2} />}
 
@@ -177,7 +211,7 @@ export default function TableauDeBordAgent() {
         <>
           <Section titre="À faire maintenant" compte={aFaire.length}>
             {aFaire.length === 0 ? (
-              <VideLigne Icone={CircleCheck}>
+              <VideLigne Icone={CheckCircle2}>
                 Rien n'attend d'action de votre part. Les écrans restent accessibles
                 dans le menu de gauche.
               </VideLigne>
@@ -199,11 +233,19 @@ export default function TableauDeBordAgent() {
       )}
 
       <Section titre="Autres écrans">
-        <div className="rang" style={{ flexWrap: "wrap" }}>
-          <Raccourci adresse="/agent/accueil" mot="Accueillir un donneur" />
-          <Raccourci adresse="/agent/tracabilite" mot="Rechercher un code" />
-          {agent.roles.some((r) => ["agent_labo"].includes(r)) && (
-            <Raccourci adresse="/agent/laboratoire" mot="Laboratoire" />
+        <div className="bord-actions">
+          {/* Action la plus fréquente sur le terrain : seule en bouton plein. */}
+          <Link href="/agent/accueil" className="bouton bouton--principal">
+            <UserPlus size={18} aria-hidden="true" />
+            Accueillir un donneur
+          </Link>
+          <Link href="/agent/tracabilite" className="bouton bouton--secondaire">
+            Rechercher un code
+          </Link>
+          {agent.roles.includes("agent_labo") && (
+            <Link href="/agent/laboratoire" className="bouton bouton--secondaire">
+              Laboratoire
+            </Link>
           )}
         </div>
       </Section>
@@ -213,20 +255,39 @@ export default function TableauDeBordAgent() {
 
 function CarteBord({ carte }: { carte: Carte }) {
   const { Icone } = carte;
+  const calme = carte.ton === "calme";
   return (
     <Link href={carte.adresse} className={`bord-carte bord-carte--${carte.ton}`}>
       <span className="bord-carte__haut">
-        <span className="bord-carte__icone"><Icone size={17} aria-hidden="true" /></span>
-        <span className="appui">{carte.libelle}</span>
+        <span className="bord-carte__icone">
+          <Icone size={17} aria-hidden="true" />
+        </span>
+        <span className="bord-carte__libelle">{carte.libelle}</span>
       </span>
-      <strong className="bord-carte__valeur chiffres">{carte.valeur}</strong>
-      <span className="petit">{carte.detail}</span>
+
+      <span className="bord-carte__corps">
+        {calme ? (
+          <span className="bord-carte__rassurant">
+            <CheckCircle2 size={18} aria-hidden="true" />
+            Tout est à jour
+          </span>
+        ) : (
+          <>
+            <strong className="bord-carte__valeur chiffres">{carte.valeur}</strong>
+            {carte.ton === "urgent"
+              ? <span className="bord-badge bord-badge--urgent">Priorité haute</span>
+              : <span className="bord-badge bord-badge--agir">À traiter</span>}
+          </>
+        )}
+      </span>
+
+      <span className="bord-carte__detail">{carte.detail}</span>
+      <span className="bord-carte__aller">
+        Ouvrir l'écran
+        <ArrowRight size={14} aria-hidden="true" />
+      </span>
     </Link>
   );
-}
-
-function Raccourci({ adresse, mot }: { adresse: string; mot: string }) {
-  return <Link href={adresse} className="bouton bouton--secondaire">{mot}</Link>;
 }
 
 /** Bonjour avant 18 h, bonsoir après : le centre travaille aussi le soir. */

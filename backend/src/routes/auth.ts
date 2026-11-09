@@ -304,8 +304,17 @@ routeAuth.post("/nouveau-mot-de-passe", async (req, res) => {
 // Connexion d'un agent (e-mail + mot de passe) — Annexe C
 routeAuth.post("/agent/connexion", async (req, res) => {
   const d = valider(schemaAgentConnexion, req.body);
-  const { rows } = await requete<{ id: string; nom: string; prenom: string; email: string; mot_de_passe: string; actif: boolean; site_id: string }>(
-    "select id, nom, prenom, email, mot_de_passe, actif, site_id from utilisateurs where email = $1",
+  // Le nom du site est joint dès la connexion : l'en-tête de la plateforme
+  // affiche « Centre de transfusion … » sans un second aller-retour réseau.
+  const { rows } = await requete<{
+    id: string; nom: string; prenom: string; email: string; mot_de_passe: string;
+    actif: boolean; site_id: string; site_nom: string | null;
+  }>(
+    `select u.id, u.nom, u.prenom, u.email, u.mot_de_passe, u.actif, u.site_id,
+            s.nom as site_nom
+       from utilisateurs u
+       left join sites s on s.id = u.site_id
+      where u.email = $1`,
     [d.email],
   );
   const agent = rows[0];
@@ -320,7 +329,10 @@ routeAuth.post("/agent/connexion", async (req, res) => {
   res.json({
     donnees: {
       jeton,
-      utilisateur: { id: agent.id, nomComplet: `${agent.nom} ${agent.prenom}`, email: agent.email, roles, siteId: agent.site_id },
+      utilisateur: {
+        id: agent.id, nomComplet: `${agent.nom} ${agent.prenom}`, email: agent.email,
+        roles, siteId: agent.site_id, siteNom: agent.site_nom ?? undefined,
+      },
     },
   });
 });

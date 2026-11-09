@@ -96,16 +96,24 @@ export default function Coquille({ espace, children }: { espace: Espace; childre
           })}
         </nav>
 
+        {/* Profil : avatar, nom, rôle. Les rôles multiples ne sont plus
+            concaténés en une ligne tronquée (« Laborat… ») : on affiche le
+            rôle principal, le détail reste dans l'info-bulle. */}
         <div className="lateral__pied">
-          <span className="lateral__agent">
-            <span className="fort petit">{agent.nomComplet}</span>
-            <span className="petit">{agent.roles.map((r) => LIBELLE_ROLE[r] ?? r).join(" · ")}</span>
-          </span>
+          <div className="lateral__profil">
+            <span className="lateral__avatar" aria-hidden="true">{initiales(agent.nomComplet)}</span>
+            <span className="lateral__identite">
+              <span className="lateral__profil-nom">{agent.nomComplet}</span>
+              <span className="lateral__profil-role" title={rolesLisibles(agent.roles)}>
+                {rolePrincipal(agent.roles, espace)}
+              </span>
+            </span>
+          </div>
           <button
-            className="lateral__lien"
+            className="lateral__deconnexion"
             onClick={() => { fermerSession(); routeur.replace(CONNEXION[espace]); }}
           >
-            <LogOut size={19} aria-hidden="true" />
+            <LogOut size={18} aria-hidden="true" />
             <span>Se déconnecter</span>
           </button>
         </div>
@@ -130,6 +138,32 @@ function AccesRefuse({ section }: { section: Section }) {
       </div>
     </>
   );
+}
+
+/** Initiales de l'avatar : deux lettres maximum, jamais vides. */
+function initiales(nomComplet: string): string {
+  const mots = nomComplet.trim().split(/\s+/).filter(Boolean);
+  if (mots.length === 0) return "?";
+  if (mots.length === 1) return mots[0].slice(0, 2).toUpperCase();
+  return (mots[0][0] + mots[mots.length - 1][0]).toUpperCase();
+}
+
+/**
+ * Rôle affiché sous le nom. Un agent cumule souvent plusieurs rôles ; les
+ * concaténer tronque la ligne. On nomme donc le métier d'ensemble, et le
+ * détail reste accessible en info-bulle.
+ */
+function rolePrincipal(roles: AgentConnecte["roles"], espace: Espace): string {
+  if (espace === "admin") return "Administrateur CNTS";
+  const agents = roles.filter((r) => r.startsWith("agent_"));
+  if (agents.length === 0) return "Agent";
+  if (agents.length === 1) return `Agent · ${LIBELLE_ROLE[agents[0]] ?? agents[0]}`;
+  return `Agent · ${agents.length} postes`;
+}
+
+/** Liste complète des rôles, pour l'attribut title. */
+function rolesLisibles(roles: AgentConnecte["roles"]): string {
+  return roles.map((r) => LIBELLE_ROLE[r] ?? r).join(" · ");
 }
 
 /** En-tête d'un écran de travail : titre, phrase d'explication, actions. */
