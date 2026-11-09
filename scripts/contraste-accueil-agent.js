@@ -8,7 +8,7 @@
  * Seuils : 4,5:1 texte courant, 3:1 gros texte (≥ 24 px, ou ≥ 18,66 px
  * en gras). Le texte d'un bouton désactivé est hors périmètre WCAG.
  */
-const { chromium } = require('/root/node_modules/playwright-core');
+const { lancerNavigateur, contexteFr } = require('./navigateur-banc');
 
 const BASE = process.env.BASE || 'http://localhost:3101';
 
@@ -20,17 +20,14 @@ const AGENT = {
 
 const DONNEUR = {
   id: 'd1', numeroDonneur: 'DN-2026-00418', nom: 'OUÉDRAOGO', prenom: 'Salimata',
-  sexe: 'F', dateNaissance: '1994-03-12', telephone: '+22670112233',
+  sexe: 'F', dateNaissance: '1994-03-12', telephone: '+226****2233',
   groupeSanguin: 'O-', actif: true, enPause: false, origine: 'application',
   zone: { id: 'z1', nom: 'Gounghin', ville: 'Ouagadougou' },
 };
 
 (async () => {
-  const b = await chromium.launch({
-    executablePath: '/root/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome',
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
-  const ctx = await b.newContext({ viewport: { width: 1440, height: 950 } });
+  const b = await lancerNavigateur();
+  const ctx = await contexteFr(b, { viewport: { width: 1440, height: 950 } });
   await ctx.addInitScript((a) => {
     localStorage.setItem('dds:jeton-agent', 'jeton-de-scene');
     localStorage.setItem('dds:agent', JSON.stringify(a));

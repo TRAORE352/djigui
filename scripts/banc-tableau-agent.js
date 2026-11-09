@@ -9,7 +9,7 @@
  *
  * Usage : BASE=http://localhost:3101 node scripts/banc-tableau-agent.js /root/bord-apres
  */
-const { chromium } = require('/root/node_modules/playwright-core');
+const { lancerNavigateur, contexteFr } = require('./navigateur-banc');
 const fs = require('fs');
 
 const BASE = process.env.BASE || 'http://localhost:3101';
@@ -51,16 +51,13 @@ const SCENES = {
 
 (async () => {
   fs.mkdirSync(DIR, { recursive: true });
-  const b = await chromium.launch({
-    executablePath: '/root/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome',
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
+  const b = await lancerNavigateur();
 
   const refus = [];
 
   for (const [nom, scene] of Object.entries(SCENES)) {
     for (const vue of [{ k: 'desktop', w: 1440, h: 950 }, { k: 'mobile', w: 390, h: 844 }]) {
-      const ctx = await b.newContext({
+      const ctx = await contexteFr(b, {
         viewport: { width: vue.w, height: vue.h },
         deviceScaleFactor: 2,
       });

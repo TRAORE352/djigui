@@ -183,13 +183,13 @@ function FileEtape({ dossiers, etape, ouverte, surOuvrir, surAction }: {
 function Frise({ etape }: { etape: EtapeLabo }) {
   const position = ETAPES_ORDRE.indexOf(etape);
   return (
-    <div className="etapes">
+    <div className="frise">
       {ETAPES_ORDRE.map((e, i) => {
         const faite = etape === "terminee" || (position >= 0 && i < position);
         const active = e === etape;
         return (
-          <span key={e} className={`etape${faite ? " etape--faite" : active ? " etape--active" : ""}`}>
-            <span className="etape__num">{faite ? "✓" : i + 1}</span>
+          <span key={e} className={`frise__etape${faite ? " frise__etape--faite" : active ? " frise__etape--active" : ""}`}>
+            <span className="frise__num">{faite ? "✓" : i + 1}</span>
             {ETAPE_LABO[e].mot}
           </span>
         );

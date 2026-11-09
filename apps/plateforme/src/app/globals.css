@@ -819,24 +819,30 @@ a { color: var(--primaire); text-decoration: none; }
 
 /* =====================================================================
    Laboratoire — frise des quatre étapes de la qualification
+
+   Préfixe `frise-` et non `etape` : le composant <Etape> (étapes
+   numérotées d'un formulaire) possède déjà `.etape`, défini plus haut.
+   Deux blocs portant le même nom, le second gagne — la frise, en
+   `inline-flex`, écrasait silencieusement la mise en page en colonne des
+   étapes 1-2-3 de l'écran des appels au don.
    ===================================================================== */
-.etapes { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
-.etape {
+.frise { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
+.frise__etape {
   display: inline-flex; align-items: center; gap: var(--e2);
   padding: var(--e2) var(--e3); border-radius: 999px;
   background: var(--fond); color: var(--encre-2);
   font-size: var(--t-petit); font-weight: 600; white-space: nowrap;
 }
-.etape__num {
+.frise__num {
   display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%;
   background: var(--trait-fort); color: var(--surface);
   font-size: 11px; font-weight: 700;
 }
-.etape--faite { background: var(--seve-clair); color: var(--seve); }
-.etape--faite .etape__num { background: var(--seve); }
-.etape--active { background: var(--primaire); color: #fff; }
-.etape--active .etape__num { background: rgba(255, 255, 255, 0.3); color: #fff; }
-.etape__lien { color: var(--trait-fort); flex-shrink: 0; }
+.frise__etape--faite { background: var(--seve-clair); color: #066B48; }
+.frise__etape--faite .frise__num { background: var(--seve); }
+.frise__etape--active { background: var(--primaire); color: #fff; }
+.frise__etape--active .frise__num { background: rgba(255, 255, 255, 0.3); color: #fff; }
+.frise__lien { color: var(--trait-fort); flex-shrink: 0; }
 
 /* Grille de saisie des marqueurs sérologiques.
    Le nom du marqueur est AU-DESSUS des boutons, pas à côté : côte à côte,
@@ -1065,6 +1071,122 @@ a { color: var(--primaire); text-decoration: none; }
 .zones {
   display: grid; gap: var(--e2);
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+/* --- Barre de sélection rapide des quartiers ----------------------- */
+.zones__barre {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--e3); flex-wrap: wrap;
+  padding-bottom: var(--e3); border-bottom: 1px solid var(--trait);
+}
+.zones__compte { font-size: var(--t-appui); font-weight: 650; color: var(--encre); }
+.zones__actions { display: flex; align-items: center; gap: var(--e1); }
+/* Action textuelle : ni bouton plein ni lien de navigation. */
+.lien-action {
+  min-height: 32px; padding: 0 var(--e2);
+  background: transparent; border: 0; border-radius: var(--rayon-petit);
+  color: var(--primaire-fonce); font-size: var(--t-petit); font-weight: 650;
+  cursor: pointer; white-space: nowrap;
+}
+.lien-action:hover:not(:disabled) { background: var(--primaire-clair); }
+.lien-action:disabled { color: var(--encre-2); opacity: 0.5; cursor: not-allowed; }
+
+/* --- Carte d'estimation des donneurs joignables -------------------- */
+.estimation {
+  display: flex; align-items: center; gap: var(--e3);
+  padding: var(--e4); border-radius: var(--rayon);
+  font-size: var(--t-appui);
+}
+.estimation--vide, .estimation--attente {
+  background: var(--fond); border: 1px dashed var(--trait-fort); color: var(--encre-2);
+}
+.estimation--vide svg, .estimation--attente svg { flex: none; color: var(--encre-2); }
+.estimation--pleine { background: var(--seve-clair); border: 1px solid #B7E0CE; flex-wrap: wrap; }
+.estimation--zero { background: var(--ocre-clair); border: 1px solid #EBD2B4; flex-wrap: wrap; }
+.estimation__icone {
+  display: grid; place-items: center; flex: none;
+  width: 40px; height: 40px; border-radius: 10px;
+  background: var(--surface);
+}
+.estimation--pleine .estimation__icone { color: #066B48; }
+.estimation--zero .estimation__icone { color: #934408; }
+.estimation__corps { display: flex; align-items: baseline; gap: var(--e2); }
+.estimation__chiffre { font-size: 30px; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+.estimation--pleine .estimation__chiffre { color: #066B48; }
+.estimation--zero .estimation__chiffre { color: #934408; }
+.estimation__mot { font-size: var(--t-appui); font-weight: 650; color: var(--encre); }
+.estimation__note {
+  flex: 1 1 260px; min-width: 0;
+  font-size: var(--t-petit); color: #4A5666;
+}
+
+/* --- Modèles de message -------------------------------------------- */
+.modeles { display: flex; flex-direction: column; gap: var(--e2); }
+.modeles__titre {
+  font-size: var(--t-micro); font-weight: 700; color: var(--encre-2);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.modeles__liste { display: flex; gap: var(--e2); flex-wrap: wrap; }
+.modele {
+  min-height: 34px; padding: 0 var(--e3);
+  background: var(--surface); border: 1px solid var(--trait-fort); border-radius: 999px;
+  color: var(--encre); font-size: var(--t-petit); font-weight: 600;
+  cursor: pointer; white-space: nowrap;
+  transition: border-color 120ms, background 120ms;
+}
+.modele:hover { border-color: var(--primaire); background: var(--primaire-clair); }
+/* `:hover` compte pour une classe : `.modele:hover` (0-2-0) l'emporte sur
+   `.modele--actif` (0-1-0) et repeignait le modèle choisi en bleu pâle
+   sous un texte blanc — illisible dès que la souris le survolait. On
+   remonte donc la spécificité de l'état choisi. */
+.modele--actif, .modele--actif:hover {
+  border-color: var(--primaire-fonce); background: var(--primaire-fonce); color: #fff;
+}
+
+/* --- Degré d'urgence : trois badges, pas une liste déroulante ------
+   Le niveau porte une couleur (vert, ocre, rouge) : la lire dans un
+   `select` demande d'ouvrir la liste, alors que trois badges le disent
+   sans clic. */
+.champ--nu { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+.urgences { display: flex; gap: var(--e2); flex-wrap: wrap; }
+.urgence {
+  display: inline-flex; align-items: center; gap: var(--e2);
+  min-height: var(--cible); padding: 0 var(--e4);
+  background: var(--surface); border: 1.5px solid var(--trait-fort); border-radius: 999px;
+  font-size: var(--t-appui); font-weight: 600; color: var(--encre-2);
+  cursor: pointer; transition: border-color 120ms, background 120ms, color 120ms;
+}
+/* La case radio reste focalisable au clavier, mais c'est le badge qu'on voit. */
+.urgence input { position: absolute; opacity: 0; width: 0; height: 0; }
+.urgence:has(input:focus-visible) { outline: 2px solid var(--primaire); outline-offset: 2px; }
+.urgence__point { width: 9px; height: 9px; border-radius: 50%; background: var(--trait-fort); flex: none; }
+.urgence--normale .urgence__point { background: var(--seve); }
+.urgence--urgente .urgence__point { background: var(--ocre); }
+.urgence--critique .urgence__point { background: var(--sang); }
+.urgence--choisie { color: var(--encre); }
+.urgence--normale.urgence--choisie { border-color: var(--seve); background: var(--seve-clair); color: #066B48; }
+.urgence--urgente.urgence--choisie { border-color: var(--ocre); background: var(--ocre-clair); color: #934408; }
+.urgence--critique.urgence--choisie { border-color: var(--sang); background: var(--sang-clair); color: var(--sang-fonce); }
+
+/* --- Avertissement de formulaire incomplet ------------------------- */
+.avertissement {
+  display: flex; align-items: flex-start; gap: var(--e3);
+  padding: var(--e3) var(--e4); border-radius: var(--rayon-petit);
+  background: var(--ocre-clair); border: 1px solid #EBD2B4;
+  color: #7A3806; font-size: var(--t-appui); font-weight: 500;
+}
+.avertissement svg { flex: none; color: #934408; margin-top: 1px; }
+
+/* --- Ligne d'envoi -------------------------------------------------- */
+.envoi { display: flex; align-items: center; gap: var(--e4); flex-wrap: wrap; }
+.envoi__bouton { min-width: 260px; min-height: 52px; font-size: var(--t-corps); }
+.envoi__portee {
+  display: inline-flex; align-items: center; gap: var(--e2);
+  font-size: var(--t-appui); font-weight: 600; color: #066B48;
+}
+.envoi__portee svg { color: var(--seve); }
+@media (max-width: 560px) {
+  .envoi__bouton { width: 100%; min-width: 0; }
 }
 
 /* Pile large : espacement généreux entre les étapes d'un écran. */

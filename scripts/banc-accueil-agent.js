@@ -11,7 +11,7 @@
  * interactions (clic, saisie, soumission) sont réelles, et les mesures
  * sont lues dans le DOM, pas estimées.
  */
-const { chromium } = require('/root/node_modules/playwright-core');
+const { lancerNavigateur, contexteFr } = require('./navigateur-banc');
 const fs = require('fs');
 
 const BASE = process.env.BASE || 'http://localhost:3101';
@@ -25,13 +25,13 @@ const AGENT = {
 
 const DONNEUR = {
   id: 'd1', numeroDonneur: 'DN-2026-00418', nom: 'OUÉDRAOGO', prenom: 'Salimata',
-  sexe: 'F', dateNaissance: '1994-03-12', telephone: '+22670112233',
+  sexe: 'F', dateNaissance: '1994-03-12', telephone: '+226****2233',
   groupeSanguin: 'O-', actif: true, enPause: false, origine: 'application',
   zone: { id: 'z1', nom: 'Gounghin', ville: 'Ouagadougou' },
 };
 
 async function nouveauContexte(b, vue, options = {}) {
-  const ctx = await b.newContext({ viewport: vue, deviceScaleFactor: 2 });
+  const ctx = await contexteFr(b, { viewport: vue, deviceScaleFactor: 2 });
   await ctx.addInitScript(([a, prefs]) => {
     localStorage.setItem('dds:jeton-agent', 'jeton-de-scene');
     localStorage.setItem('dds:agent', JSON.stringify(a));
@@ -81,10 +81,7 @@ async function capturer(p, chemin, largeur) {
 
 (async () => {
   fs.mkdirSync(DIR, { recursive: true });
-  const b = await chromium.launch({
-    executablePath: '/root/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome',
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
+  const b = await lancerNavigateur();
   const refus = [];
   const ok = (c, m) => { console.log((c ? '  OK  ' : ' ECHEC') + '  ' + m); if (!c) refus.push(m); };
 

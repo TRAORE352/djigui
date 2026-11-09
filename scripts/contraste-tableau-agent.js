@@ -8,7 +8,7 @@
  * Seuils : 4,5:1 pour le texte courant, 3:1 pour le gros texte
  * (≥ 24 px, ou ≥ 18,66 px en gras).
  */
-const { chromium } = require('/root/node_modules/playwright-core');
+const { lancerNavigateur, contexteFr } = require('./navigateur-banc');
 
 const BASE = process.env.BASE || 'http://localhost:3101';
 
@@ -29,11 +29,8 @@ const SCENE = {
 };
 
 (async () => {
-  const b = await chromium.launch({
-    executablePath: '/root/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome',
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
-  const ctx = await b.newContext({ viewport: { width: 1440, height: 950 } });
+  const b = await lancerNavigateur();
+  const ctx = await contexteFr(b, { viewport: { width: 1440, height: 950 } });
   await ctx.addInitScript((a) => {
     localStorage.setItem('dds:jeton-agent', 'jeton-de-scene');
     localStorage.setItem('dds:agent', JSON.stringify(a));
