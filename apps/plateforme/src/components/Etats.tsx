@@ -22,15 +22,21 @@ export function SqueletteLignes({ lignes = 4 }: { lignes?: number }) {
 }
 
 export function EtatVide({
-  titre, texte, Icone = Inbox, action,
+  titre, texte, Icone = Inbox, action, ton = "pointille",
 }: {
   titre: string;
   texte?: string;
   Icone?: ComponentType<{ size?: number; "aria-hidden"?: "true" }>;
   action?: ReactNode;
+  /**
+   * `pointille` (défaut) : bordure en tirets, pour un emplacement qui
+   * attend qu'on le remplisse. `doux` : carte pleine et sobre, quand cet
+   * état est le repos normal de l'écran plutôt qu'un manque.
+   */
+  ton?: "pointille" | "doux";
 }) {
   return (
-    <div className="etat-vide">
+    <div className={`etat-vide${ton === "doux" ? " etat-vide--doux" : ""}`}>
       <span className="etat-vide__icone"><Icone size={22} aria-hidden="true" /></span>
       <span className="etat-vide__titre">{titre}</span>
       {texte && <span className="etat-vide__texte">{texte}</span>}

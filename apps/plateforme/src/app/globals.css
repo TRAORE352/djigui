@@ -11,7 +11,10 @@
   --sang-fonce: #B42318;
   --sang-clair: #FEE4E2;
   --encre: #1B2733;
-  --encre-2: #64748B;
+  /* Gris de second plan. #64748B, la valeur d'origine, ne mesure que
+     4,44:1 sur le fond gris de l'application — sous le seuil WCAG AA.
+     Cette teinte plus dense tient 5:1 sur le fond ET sur le blanc. */
+  --encre-2: #5D6B80;
   --seve: #0B8A5D;
   --seve-clair: #E7F5EF;
   --ocre: #B45309;
@@ -108,9 +111,12 @@ a { color: var(--primaire); text-decoration: none; }
 
 /* Badges */
 .pilule { display: inline-flex; align-items: center; gap: var(--e1); padding: 2px var(--e3); border-radius: 999px; font-size: var(--t-petit); font-weight: 600; }
-.pilule--seve { background: var(--seve-clair); color: var(--seve); }
-.pilule--ocre { background: var(--ocre-clair); color: var(--ocre); }
-.pilule--sang { background: var(--sang-clair); color: var(--sang); }
+/* Le texte d'une pilule est petit : il lui faut des teintes plus denses
+   que la couleur d'accent, qui sert aux aplats et aux bordures. Mesurées
+   sur leur propre fond clair, ces trois-là passent WCAG AA. */
+.pilule--seve { background: var(--seve-clair); color: #066B48; }
+.pilule--ocre { background: var(--ocre-clair); color: #934408; }
+.pilule--sang { background: var(--sang-clair); color: var(--sang-fonce); }
 .pilule--neutre { background: var(--trait); color: var(--encre-2); }
 .pilule--primaire { background: var(--primaire-clair); color: var(--primaire); }
 
@@ -478,16 +484,50 @@ a { color: var(--primaire); text-decoration: none; }
 .contenu__entete { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--e4); flex-wrap: wrap; }
 .contenu__titre { font-size: var(--t-grand); font-weight: 700; letter-spacing: -0.015em; line-height: 1.15; }
 .contenu__chapeau { font-size: var(--t-appui); color: var(--encre-2); max-width: 62ch; margin-top: var(--e1); }
+/* Action d'en-tête : ancrée en haut à droite, bordure nette même en
+   variante secondaire — elle reste une action forte, jamais un lien. */
+.entete-action { border-width: 1.5px; }
+.entete-action.bouton--secondaire { border-color: var(--primaire); color: var(--primaire-fonce); }
+.entete-action.bouton--secondaire:hover:not(:disabled) { background: var(--primaire-clair); }
 
 /* =====================================================================
    Explication d'écran : à quoi sert cette page, quand s'en sert-on.
    ===================================================================== */
 .explication {
+  position: relative;
   display: flex; gap: var(--e4); align-items: flex-start;
   padding: var(--e5);
   background: var(--primaire-clair);
   border-radius: var(--rayon);
 }
+
+/* --- Bandeau replié : une ligne, et on récupère la hauteur ---------- */
+.explication--replie {
+  align-items: center; gap: var(--e3);
+  padding: var(--e3) var(--e4);
+  background: var(--surface); border: 1px solid var(--trait);
+}
+.explication__puce {
+  display: grid; place-items: center; flex: none;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: var(--primaire-clair); color: var(--primaire);
+}
+.explication__resume {
+  flex: 1; min-width: 0;
+  font-size: var(--t-appui); color: var(--encre-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* Bouton de bascule : discret, mais une vraie cible tactile. */
+.explication__bascule {
+  display: inline-flex; align-items: center; gap: var(--e1); flex: none;
+  min-height: 32px; padding: 0 var(--e2);
+  background: transparent; border: 0; border-radius: var(--rayon-petit);
+  color: var(--primaire-fonce); font-size: var(--t-petit); font-weight: 650;
+  cursor: pointer; white-space: nowrap;
+}
+.explication__bascule:hover { background: rgba(1, 101, 255, 0.08); }
+.explication__bascule--haut { align-self: flex-start; margin-left: auto; }
+.explication__fleche { transform: rotate(180deg); }
 .explication__icone {
   display: grid; place-items: center; flex: none;
   width: 40px; height: 40px; border-radius: 10px;
@@ -503,11 +543,13 @@ a { color: var(--primaire); text-decoration: none; }
 }
 .explication__details > div { display: flex; align-items: baseline; gap: var(--e2); }
 .explication__details dt {
-  font-size: var(--t-micro); font-weight: 700; color: var(--primaire);
+  /* Bleu foncé plutôt que le bleu primaire : sur le fond bleu clair du
+     bandeau, 12 px en primaire ne mesurent que 4,36:1. */
+  font-size: var(--t-micro); font-weight: 700; color: var(--primaire-fonce);
   text-transform: uppercase; letter-spacing: 0.06em; flex: none;
 }
 .explication__details dd {
-  margin: 0; font-size: var(--t-appui); color: var(--encre-2); max-width: 54ch;
+  margin: 0; font-size: var(--t-appui); color: #4A5666; max-width: 54ch;
 }
 
 /* --- Étapes numérotées -------------------------------------------- */
@@ -580,9 +622,100 @@ a { color: var(--primaire); text-decoration: none; }
   padding: var(--e8) var(--e5); text-align: center;
   background: var(--surface); border: 1px dashed var(--trait-fort); border-radius: var(--rayon);
 }
+/* Repos normal de l'écran, pas un manque : carte pleine, trait continu,
+   et une hauteur mesurée — l'agent travaille au-dessus, pas ici. */
+.etat-vide--doux {
+  padding: var(--e7) var(--e5);
+  background: linear-gradient(180deg, var(--surface), #FBFCFD);
+  border: 1px solid var(--trait); border-radius: var(--rayon);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.04);
+}
+.etat-vide--doux .etat-vide__icone { background: var(--primaire-clair); color: var(--primaire); }
 .etat-vide__icone { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--fond); color: var(--encre-2); }
 .etat-vide__titre { font-size: var(--t-corps); font-weight: 650; }
 .etat-vide__texte { font-size: var(--t-appui); color: var(--encre-2); max-width: 46ch; }
+
+/* =====================================================================
+   Recherche d'un donneur au guichet.
+
+   C'est le geste répété cent fois par jour : il porte le poids visuel le
+   plus fort de l'écran. Champ haut (56 px), loupe intégrée, anneau de
+   focus net, et un bouton plein qui dit clairement où cliquer après la
+   saisie des 8 chiffres.
+   ===================================================================== */
+.recherche-donneur {
+  display: flex; align-items: flex-end; gap: var(--e4); flex-wrap: wrap;
+  padding: var(--e5);
+  background: var(--surface);
+  border: 1px solid var(--trait); border-left: 4px solid var(--primaire);
+  border-radius: var(--rayon);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+}
+.recherche-donneur__champ { display: flex; flex-direction: column; gap: var(--e2); flex: 1; min-width: 260px; }
+.recherche-donneur__etiquette { font-size: var(--t-appui); font-weight: 650; color: var(--encre); }
+
+/* Groupe de saisie : la loupe et le bouton d'effacement vivent DANS le
+   cadre, qui porte seul la bordure et le focus. */
+.recherche-donneur__saisie {
+  display: flex; align-items: center; gap: var(--e3);
+  min-height: 56px; padding: 0 var(--e3) 0 var(--e4);
+  background: var(--surface);
+  border: 1.5px solid var(--trait-fort); border-radius: var(--rayon);
+  transition: border-color 140ms, box-shadow 140ms;
+}
+.recherche-donneur__saisie:focus-within {
+  border-color: var(--primaire);
+  box-shadow: 0 0 0 4px rgba(1, 101, 255, 0.16);
+}
+.recherche-donneur__loupe { flex: none; color: var(--encre-2); }
+.recherche-donneur__saisie:focus-within .recherche-donneur__loupe { color: var(--primaire); }
+.recherche-donneur__saisie input {
+  flex: 1; min-width: 0;
+  border: 0; background: none; outline: none;
+  font: inherit; font-size: var(--t-lead); font-weight: 600;
+  letter-spacing: 0.06em; color: var(--encre);
+}
+.recherche-donneur__saisie input::placeholder { color: #9AA5B4; font-weight: 500; letter-spacing: 0.04em; }
+.recherche-donneur__vider {
+  display: grid; place-items: center; flex: none;
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 0; background: var(--fond); color: var(--encre-2); cursor: pointer;
+}
+.recherche-donneur__vider:hover { background: var(--trait); color: var(--encre); }
+.recherche-donneur__aide {
+  display: flex; align-items: center; gap: var(--e2);
+  font-size: var(--t-petit); color: var(--encre-2);
+}
+/* Compteur de saisie : il dit pourquoi le bouton est encore inactif. */
+.recherche-donneur__compte {
+  padding: 1px var(--e2); border-radius: 999px;
+  background: var(--fond); color: var(--encre-2);
+  font-size: var(--t-micro); font-weight: 700;
+}
+/* Le bouton s'aligne sur la saisie, pas sur le texte d'aide qui la suit.
+   La marge basse vaut exactement la hauteur de ce texte plus son
+   interligne — mesurée, pas estimée : 13 px × 1.5 + 8 px d'écart. */
+.recherche-donneur__bouton { min-height: 56px; min-width: 180px; margin-bottom: 28px; }
+@media (max-width: 640px) {
+  .recherche-donneur { padding: var(--e4); }
+  .recherche-donneur__bouton { width: 100%; margin-bottom: 0; }
+}
+
+/* --- Mobile : le bandeau passe en pile -----------------------------
+   En ligne, l'icône, le texte et le bouton se disputent 390 px et le
+   texte se comprime en colonne d'un mot. On empile, et les libellés
+   « Quand / Ensuite » passent au-dessus de leur phrase. */
+@media (max-width: 640px) {
+  .explication { flex-wrap: wrap; padding: var(--e4); gap: var(--e3); }
+  .explication__texte { flex-basis: 100%; order: 3; }
+  .explication__bascule--haut { order: 2; margin-left: auto; }
+  .explication__icone { order: 1; width: 32px; height: 32px; }
+  .explication__details > div { flex-direction: column; gap: 2px; }
+  .explication__details { gap: var(--e3); }
+  .explication--replie { flex-wrap: nowrap; }
+  .explication--replie .explication__resume { white-space: normal; }
+  .explication--replie .explication__bascule { font-size: var(--t-micro); }
+}
 
 /* Carte d'indicateur cliquable (raccourcis du poste de travail) */
 .raccourci {

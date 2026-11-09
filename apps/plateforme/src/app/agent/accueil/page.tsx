@@ -12,7 +12,7 @@
  * que l'agent voie, sans recharger, où il en est.
  */
 import { useEffect, useState } from "react";
-import { CalendarClock, CheckCircle2, KeyRound, Search, UserPlus, UserRound } from "lucide-react";
+import { CalendarClock, CheckCircle2, KeyRound, Search, UserPlus, UserRound, X } from "lucide-react";
 import type {
   Canal, DonneurAgent, GroupeSanguin, Passage, Poche, Sexe, Zone,
 } from "@dds/contrat-api";
@@ -64,6 +64,7 @@ export default function AccueilPrelevement() {
         actions={
           <Bouton
             variante={formulaire ? "secondaire" : "principal"}
+            className="entete-action"
             icone={<UserPlus size={18} aria-hidden="true" />}
             onClick={() => { setFormulaire((v) => !v); setDonneur(null); setInconnu(false); }}
           >
@@ -74,26 +75,54 @@ export default function AccueilPrelevement() {
 
       <Explication
         Icone={UserRound}
+        cle="accueil"
+        resume="Retrouvez le donneur, vérifiez qu'il peut donner, enregistrez la poche."
         role="C'est ici que commence chaque don. Vous retrouvez le donneur qui se présente, vous vérifiez qu'il peut donner aujourd'hui, puis vous enregistrez la poche prélevée."
         quand="Au comptoir, dès qu'un donneur arrive — qu'il vienne suite à un appel ou de lui-même."
         ensuite="La poche part au laboratoire, qui déterminera son groupe sanguin et vérifiera qu'elle est transfusable."
       />
 
-      <form className="bloc rang" style={{ flexWrap: "wrap" }} onSubmit={rechercher}>
-        <label className="champ" style={{ flex: 1, minWidth: 220 }}>
-          <span className="champ__etiquette">Numéro du donneur</span>
-          <input
-            className="champ__saisie chiffres"
-            inputMode="tel"
-            autoComplete="off"
-            placeholder="70 00 00 00"
-            value={telephone}
-            onChange={(e) => { setTelephone(e.target.value); setErreur(""); setInconnu(false); }}
-          />
-          <span className="champ__aide">Les 8 chiffres du numéro, sans l'indicatif.</span>
+      {/* Zone de recherche : c'est le geste répété cent fois par jour, il
+          porte donc le poids visuel le plus fort de l'écran. */}
+      <form className="recherche-donneur" onSubmit={rechercher}>
+        <label className="recherche-donneur__champ" htmlFor="numero-donneur">
+          <span className="recherche-donneur__etiquette">Numéro du donneur</span>
+          <span className="recherche-donneur__saisie">
+            <Search size={20} aria-hidden="true" className="recherche-donneur__loupe" />
+            <input
+              id="numero-donneur"
+              className="chiffres"
+              inputMode="tel"
+              autoComplete="off"
+              autoFocus
+              placeholder="70 00 00 00"
+              aria-describedby="aide-numero"
+              value={telephone}
+              onChange={(e) => { setTelephone(e.target.value); setErreur(""); setInconnu(false); }}
+            />
+            {telephone && (
+              <button
+                type="button"
+                className="recherche-donneur__vider"
+                aria-label="Effacer le numéro"
+                onClick={() => { setTelephone(""); setErreur(""); setInconnu(false); }}
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            )}
+          </span>
+          <span className="recherche-donneur__aide" id="aide-numero">
+            Les 8 chiffres du numéro, sans l'indicatif.
+            {telephone && !huitChiffres && (
+              <span className="recherche-donneur__compte chiffres">
+                {telephone.replace(/\D/g, "").length}/8
+              </span>
+            )}
+          </span>
         </label>
         <Bouton
           type="submit"
+          className="recherche-donneur__bouton"
           icone={<Search size={18} aria-hidden="true" />}
           enCours={recherche}
           motEnCours="Recherche…"
@@ -134,6 +163,7 @@ export default function AccueilPrelevement() {
       {!donneur && !formulaire && !inconnu && !erreur && (
         <EtatVide
           Icone={Search}
+          ton="doux"
           titre="Aucun donneur affiché"
           texte="Saisissez le numéro du donneur qui se présente. Sa fiche, son éligibilité et ses actions apparaîtront ici."
         />
