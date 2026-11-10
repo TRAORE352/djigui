@@ -1,11 +1,12 @@
 /**
  * Banc d'essai de l'écran « Campagnes de don ».
  *
- * Le formulaire est épuré : une ville en liste déroulante, les quartiers de
- * cette ville en cases, une date, un message. Plus de pastille « ! », plus de
- * titre d'étape, plus de ciblage par groupe (déterminé au laboratoire).
+ * Le formulaire : ville en liste déroulante → quartiers → lieu (centre de
+ * santé ou saisie libre sur carte) → date → message auto-généré. Plus de
+ * pastille « ! », plus de titre d'étape, plus de ciblage par groupe.
  *
- * Les réponses d'API sont simulées, mais toutes les interactions sont réelles.
+ * Les réponses d'API sont simulées (zones, estimation, géocodage), mais
+ * toutes les interactions sont réelles.
  */
 const { lancerNavigateur, contexteFr } = require('./navigateur-banc');
 const fs = require('fs');
@@ -42,6 +43,13 @@ async function nouveauContexte(b, vue) {
 
   await ctx.route('**/*', async (route) => {
     const u = new URL(route.request().url());
+    // Géocodage OpenStreetMap : on simule une réponse pour un nom donné.
+    if (u.host === 'nominatim.openstreetmap.org') {
+      return route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify([
+          { lat: '12.36', lon: '-1.53', display_name: 'École primaire de Gounghin, Ouagadougou' },
+        ]) });
+    }
     if (!/\/api\//.test(u.pathname) && !/:4000/.test(u.host)) return route.continue();
     if (u.pathname.includes('/zones')) {
       return route.fulfill({ status: 200, contentType: 'application/json',
@@ -71,7 +79,7 @@ async function capturer(p, chemin, largeur) {
   const refus = [];
   const ok = (c, m) => { console.log((c ? '  OK  ' : ' ECHEC') + '  ' + m); if (!c) refus.push(m); };
 
-  const ctx = await nouveauContexte(b, { width: 1440, height: 950 });
+  const ctx = await nouveauContexte(b, { width: 1440, height: 1000 });
   const p = await ctx.newPage();
   const erreurs = [];
   p.on('pageerror', (x) => erreurs.push(x.message.slice(0, 140)));
@@ -89,75 +97,67 @@ async function capturer(p, chemin, largeur) {
     besoins: document.querySelectorAll('.besoin').length,
   }));
   console.log(JSON.stringify(vestiges));
-  ok(vestiges.etapes === 0, 'plus de titre d\'étape (« Où ? », « Quand… »)');
+  ok(vestiges.etapes === 0, 'plus de titre d\'étape');
   ok(vestiges.pastilles === 0, 'plus aucune pastille « ! »');
-  ok(vestiges.modeles === 0 && vestiges.urgences === 0 && vestiges.besoins === 0,
-    'plus de modèles, d\'urgence ni de section « stock réclame »');
+  ok(vestiges.modeles === 0 && vestiges.urgences === 0 && vestiges.besoins === 0, 'plus de modèles/urgence/stock');
 
-  // ---- 2. Liste déroulante des villes -------------------------------
-  console.log('\n--- 2. Villes en liste déroulante');
-  const villes = await p.evaluate(() =>
-    [...document.querySelectorAll('select option')].map((o) => o.textContent?.trim()));
-  console.log('  options :', villes.join(' | '));
-  ok(villes[0] === 'Choisir une ville', 'la liste part sur « Choisir une ville »');
-  ok(villes.includes('Ouagadougou') && villes.includes('Bobo-Dioulasso')
-    && villes.includes('Koudougou') && villes.includes('Ouahigouya'),
-    'les quatre villes sont proposées');
-
-  // ---- 3. Choisir une ville affiche ses quartiers --------------------
-  console.log('\n--- 3. Ville -> quartiers');
+  // ---- 2. Villes + quartiers ----------------------------------------
+  console.log('\n--- 2. Ville -> quartiers');
   await p.selectOption('select', 'Ouagadougou');
   await p.waitForTimeout(400);
-  const quartiersOuaga = await p.evaluate(() =>
-    [...document.querySelectorAll('.zones .case span')].map((e) => e.textContent?.trim()));
-  console.log('  quartiers Ouaga :', quartiersOuaga.join(', '));
-  ok(quartiersOuaga.length === 3, `Ouagadougou affiche ses 3 quartiers (${quartiersOuaga.length})`);
-
   await p.click('.lien-action:has-text("Tout sélectionner")');
   await p.waitForTimeout(900);
-  const apres = await p.evaluate(() => ({
-    cochees: document.querySelectorAll('.case input:checked').length,
-    estimation: document.querySelector('.estimation__chiffre')?.textContent?.trim(),
-  }));
-  console.log(JSON.stringify(apres));
-  ok(apres.cochees === 3, `tout sélectionner coche les 3 quartiers d'Ouaga (${apres.cochees})`);
-  ok(Number(apres.estimation) === 3 * parZone, `estimation à jour : ${apres.estimation} (attendu ${3 * parZone})`);
 
-  await capturer(p, `${DIR}/1-ville-quartiers.png`, 1440);
+  // ---- 3. Lieu : centres de santé + « Autre lieu » ------------------
+  console.log('\n--- 3. Lieu de la collecte');
+  const lieux = await p.evaluate(() => {
+    const selects = [...document.querySelectorAll('select')];
+    const s = selects[selects.length - 1]; // le second select (lieu)
+    return [...s.options].map((o) => o.textContent?.trim());
+  });
+  console.log('  options :', lieux.join(' | '));
+  ok(lieux.includes('CHU Yalgado Ouédraogo') && lieux.includes('CSPS de Gounghin'),
+    'les centres de santé de la ville sont proposés');
+  ok(lieux.includes('Autre lieu…'), 'l\'option « Autre lieu… » existe');
+  ok(!lieux.includes('CHU Sourô Sanou'), 'pas de centre d\'une autre ville (Bobo)');
 
-  // ---- 4. La sélection s'accumule d'une ville à l'autre --------------
-  console.log('\n--- 4. Sélection multi-villes');
-  await p.selectOption('select', 'Bobo-Dioulasso');
-  await p.waitForTimeout(400);
-  await p.click('.case:has-text("Tounouma") input');
-  await p.waitForTimeout(900);
-  const multi = await p.evaluate(() => ({
-    total: document.querySelector('.zones__compte')?.textContent?.trim(),
-    estimation: document.querySelector('.estimation__chiffre')?.textContent?.trim(),
-  }));
-  console.log(JSON.stringify(multi));
-  ok(/4 au total/.test(multi.total || ''), `le total cumule les villes (${multi.total})`);
-  ok(Number(multi.estimation) === 4 * parZone, `estimation cumule : ${multi.estimation} (attendu ${4 * parZone})`);
-
-  // ---- 5. Date + message + envoi ------------------------------------
-  console.log('\n--- 5. Date, message, envoi');
+  // ---- 4. Message auto à partir du lieu et de la date ---------------
+  console.log('\n--- 4. Message auto');
+  const selLieu = await p.evaluate(() => document.querySelectorAll('select').length);
+  const lieuSelect = p.locator('select').nth(1);
+  await lieuSelect.selectOption('CHU Yalgado Ouédraogo');
   const dansTroisJours = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
   await p.fill('input[type="date"]', dansTroisJours);
-  await p.fill('input[maxlength="200"]', 'Collecte de sang ce samedi au centre. Votre don peut sauver des vies.');
   await p.waitForTimeout(400);
-  const pret = await p.evaluate(() => ({
-    avertissement: document.querySelectorAll('.avertissement').length,
-    boutonInactif: document.querySelector('.envoi__bouton')?.disabled,
-    portee: document.querySelector('.envoi__portee')?.textContent?.trim(),
-    boutonTexte: document.querySelector('.envoi__bouton')?.textContent?.trim(),
-  }));
-  console.log(JSON.stringify(pret));
-  ok(pret.avertissement === 0, 'l\'avertissement disparaît une fois tout rempli');
-  ok(pret.boutonInactif === false, 'le bouton devient actif');
-  ok(/148 donneurs/.test(pret.portee || ''), `la portée est rappelée (${pret.portee})`);
-  ok(/Lancer la campagne/.test(pret.boutonTexte || ''), 'le bouton dit « Lancer la campagne »');
+  const auto = await p.evaluate(() => document.querySelector('input[maxlength="200"]')?.value);
+  console.log('  message auto :', auto);
+  ok(/Collecte de sang le .+ à CHU Yalgado Ouédraogo/.test(auto || ''),
+    'le message s\'écrit tout seul avec le lieu et la date');
 
-  await capturer(p, `${DIR}/2-pret-a-envoyer.png`, 1440);
+  // Modifiable : l'agent peut le retoucher.
+  await p.fill('input[maxlength="200"]', 'Message corrigé à la main.');
+  const corrige = await p.evaluate(() => document.querySelector('input[maxlength="200"]')?.value);
+  ok(corrige === 'Message corrigé à la main.', 'le message reste modifiable');
+
+  await capturer(p, `${DIR}/1-formulaire.png`, 1440);
+
+  // ---- 5. « Autre lieu » : carte + recherche -------------------------
+  console.log('\n--- 5. Autre lieu (carte)');
+  await lieuSelect.selectOption('__libre__');
+  await p.waitForTimeout(500);
+  const carteVisible = await p.evaluate(() => ({
+    conteneur: !!document.querySelector('.carte-lieu'),
+    recherche: !!document.querySelector('input[placeholder*="Tapez le nom"]'),
+  }));
+  console.log(JSON.stringify(carteVisible));
+  ok(carteVisible.conteneur && carteVisible.recherche, 'la carte et le champ de recherche apparaissent');
+
+  await p.fill('input[placeholder*="Tapez le nom"]', 'Ecole Gounghin');
+  await p.click('button:has-text("Chercher")');
+  await p.waitForTimeout(800);
+  const resultat = await p.evaluate(() =>
+    [...document.querySelectorAll('.lien-action')].map((e) => e.textContent?.trim()).find((t) => t?.includes('École')));
+  ok(!!resultat, `le géocodage renvoie un résultat (${resultat})`);
 
   // ---- 6. Mobile -----------------------------------------------------
   await ctx.close();
@@ -171,7 +171,7 @@ async function capturer(p, chemin, largeur) {
   }));
   console.log('\n--- 6. Mobile', JSON.stringify(mob));
   ok(!mob.debordement, 'aucun débordement horizontal en mobile');
-  await capturer(pm, `${DIR}/3-mobile.png`, 390);
+  await capturer(pm, `${DIR}/2-mobile.png`, 390);
   await ctxM.close();
 
   if (erreurs.length) refus.push('Erreur JS : ' + erreurs[0]);

@@ -2,15 +2,13 @@
 /**
  * P7 — Campagnes de don.
  *
- * L'agent lance une campagne de don de sang : il choisit une ville, puis les
- * quartiers de cette ville, la date de collecte et le message. La campagne
- * cible TOUS les donneurs éligibles des quartiers retenus — on ne trie jamais
- * par groupe sanguin, qui n'est connu qu'après le prélèvement, au laboratoire.
+ * L'agent lance une campagne de don de sang : il choisit une ville, les
+ * quartiers de cette ville, le lieu de la collecte, la date et le message.
+ * La campagne cible TOUS les donneurs éligibles des quartiers retenus — on ne
+ * trie jamais par groupe sanguin, déterminé au laboratoire après le prélèvement.
  *
- * Le backend n'expose pas de liste des campagnes du site : on garde donc sur
- * le poste les identifiants des campagnes lancées ici, pour y revenir après
- * un rechargement. C'est un confort local, pas une source de vérité — chaque
- * suivi est toujours relu auprès du serveur.
+ * Le message s'écrit tout seul à partir du lieu et de la date, et reste
+ * modifiable.
  */
 import { useCallback, useEffect, useState } from "react";
 import { BellRing, CheckCheck, LoaderCircle, Megaphone, TriangleAlert, Users } from "lucide-react";
@@ -18,14 +16,24 @@ import type { SuiviAlerte, Zone } from "@dds/contrat-api";
 import { api } from "@/lib/api";
 import { messageDe } from "@/lib/erreurs";
 import { dateCourte } from "@/lib/metier";
+import { lieuxDeLaVille } from "@/lib/lieux";
 import { EnTetePage } from "@/components/Coquille";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import Tableau from "@/components/Tableau";
+import RechercheLieu from "@/components/RechercheLieu";
 import { EtatVide, SqueletteLignes } from "@/components/Etats";
 import { MessageErreur, MessageReussite } from "@/components/Messages";
 
 const CLE_SUIVIES = "dds:campagnes-lancees";
+
+/** Message auto-généré à partir du lieu et de la date de collecte. */
+function composerMessage(lieu: string, date: string): string {
+  const d = new Intl.DateTimeFormat("fr-FR", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  }).format(new Date(`${date}T00:00:00`));
+  return `Collecte de sang le ${d} à ${lieu}. Votre don peut sauver des vies.`;
+}
 
 function lireSuivies(): string[] {
   if (typeof window === "undefined") return [];
@@ -55,7 +63,7 @@ export default function Campagnes() {
     <>
       <EnTetePage
         titre="Campagnes de don"
-        chapeau="Choisissez une ville, une date et un message : les donneurs éligibles sont prévenus."
+        chapeau="Choisissez une ville, un lieu, une date : le message s'écrit tout seul."
       />
 
       <Composer surLancement={surLancement} />
@@ -85,8 +93,11 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
   const [zones, setZones] = useState<Zone[]>([]);
   const [ville, setVille] = useState("");
   const [zoneIds, setZoneIds] = useState<string[]>([]);
+  const [lieu, setLieu] = useState("");
+  const [libre, setLibre] = useState(false);
   const [date, setDate] = useState("");
   const [message, setMessage] = useState("");
+  const [touche, setTouche] = useState(false);
   const [estimation, setEstimation] = useState<number | null>(null);
   const [estimationEnCours, setEstimationEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
@@ -124,6 +135,20 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
     return () => { vivant = false; clearTimeout(minuteur); };
   }, [zoneIds]);
 
+  // Le message s'écrit tout seul dès que le lieu et la date sont connus,
+  // tant que l'agent ne l'a pas retouché à la main.
+  useEffect(() => {
+    if (touche) return;
+    if (!lieu || !date) return;
+    setMessage(composerMessage(lieu, date));
+  }, [lieu, date, touche]);
+
+  function changerVille(v: string) {
+    setVille(v);
+    setLieu(""); setLibre(false);
+    setErreur("");
+  }
+
   function basculerZone(id: string) {
     setZoneIds((liste) => liste.includes(id) ? liste.filter((x) => x !== id) : [...liste, id]);
     setErreur("");
@@ -143,14 +168,14 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
     e.preventDefault();
     setErreur(""); setReussite("");
     if (zoneIds.length === 0) { setErreur("Choisissez au moins un quartier."); return; }
+    if (!lieu) { setErreur("Choisissez le lieu de la collecte."); return; }
     if (!date) { setErreur("Choisissez la date de la collecte."); return; }
     if (!message.trim()) { setErreur("Écrivez le message à envoyer."); return; }
     setEnCours(true);
     try {
       const campagne = await api.lancerAlerte({
         // Une campagne ne mentionne jamais de groupe : elle s'adresse à tous
-        // les donneurs éligibles. Le groupe est déterminé au laboratoire,
-        // après le prélèvement.
+        // les donneurs éligibles. Le groupe est déterminé au laboratoire.
         groupeSanguin: null,
         urgence: "normale",
         objectifDonneurs: Math.max(1, estimation ?? 1),
@@ -160,7 +185,8 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
       });
       surLancement(campagne.id);
       setReussite("Campagne lancée. Les donneurs des quartiers choisis vont recevoir le message.");
-      setMessage(""); setZoneIds([]); setVille(""); setDate(""); setEstimation(null);
+      setMessage(""); setZoneIds([]); setVille(""); setLieu(""); setLibre(false);
+      setDate(""); setTouche(false); setEstimation(null);
     } catch (p) {
       setErreur(messageDe(p));
     } finally {
@@ -168,11 +194,11 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
     }
   }
 
-  // La collecte ne se planifie pas dans le passé.
   const minDate = new Date().toISOString().slice(0, 10);
 
   const manquants = [
     zoneIds.length === 0 && "choisir un quartier",
+    !lieu && "choisir un lieu",
     !date && "choisir la date",
     !message.trim() && "écrire le message",
   ].filter(Boolean) as string[];
@@ -182,11 +208,7 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
       <div className="bloc pile">
         <label className="champ">
           <span className="champ__etiquette">Ville</span>
-          <select
-            className="champ__saisie"
-            value={ville}
-            onChange={(e) => { setVille(e.target.value); setErreur(""); }}
-          >
+          <select className="champ__saisie" value={ville} onChange={(e) => changerVille(e.target.value)}>
             <option value="">Choisir une ville</option>
             {villes.map((v) => <option key={v} value={v}>{v}</option>)}
           </select>
@@ -201,20 +223,10 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
                   : `${quartiers.length} quartiers`}
               </span>
               <div className="zones__actions">
-                <button
-                  type="button"
-                  className="lien-action"
-                  disabled={toutesChoisies}
-                  onClick={toutSelectionner}
-                >
+                <button type="button" className="lien-action" disabled={toutesChoisies} onClick={toutSelectionner}>
                   Tout sélectionner
                 </button>
-                <button
-                  type="button"
-                  className="lien-action"
-                  disabled={quartiersChoisis === 0}
-                  onClick={toutDeselectionner}
-                >
+                <button type="button" className="lien-action" disabled={quartiersChoisis === 0} onClick={toutDeselectionner}>
                   Tout désélectionner
                 </button>
               </div>
@@ -231,11 +243,31 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
           </>
         )}
 
-        <EstimationZones
-          nbZones={zoneIds.length}
-          estimation={estimation}
-          enCours={estimationEnCours}
-        />
+        <EstimationZones nbZones={zoneIds.length} estimation={estimation} enCours={estimationEnCours} />
+      </div>
+
+      <div className="bloc pile">
+        <label className="champ">
+          <span className="champ__etiquette">Lieu de la collecte</span>
+          <select
+            className="champ__saisie"
+            value={libre ? "__libre__" : lieu}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "__libre__") { setLibre(true); setLieu(""); }
+              else { setLibre(false); setLieu(v); }
+              setErreur("");
+            }}
+          >
+            <option value="">Choisir un centre de santé</option>
+            {lieuxDeLaVille(ville).map((l) => <option key={l} value={l}>{l}</option>)}
+            <option value="__libre__">Autre lieu…</option>
+          </select>
+        </label>
+
+        {libre && (
+          <RechercheLieu onChoisir={(nom) => { setLieu(nom); setErreur(""); }} />
+        )}
       </div>
 
       <div className="bloc pile">
@@ -258,8 +290,8 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
             value={message}
             required
             maxLength={200}
-            placeholder="Collecte de sang au centre ce samedi. Votre don peut sauver des vies."
-            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Le message s'écrit tout seul une fois le lieu et la date choisis."
+            onChange={(e) => { setMessage(e.target.value); setTouche(true); }}
           />
           <span className="champ__aide chiffres">{200 - message.length} caractères restants</span>
         </label>

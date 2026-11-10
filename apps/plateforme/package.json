@@ -10,12 +10,14 @@
   },
   "dependencies": {
     "@dds/contrat-api": "file:./contrat-api",
+    "leaflet": "^1.9.4",
     "lucide-react": "1.50.0",
     "next": "16.4.5",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.22",
     "@types/node": "22.18.0",
     "@types/react": "19.2.0",
     "@types/react-dom": "19.2.0",
