@@ -74,7 +74,10 @@ export const SECTIONS_AGENT: Section[] = [
   {
     adresse: "/agent/tracabilite",
     mot: "Traçabilité",
-    resume: "Du donneur au receveur : l'histoire complète d'un code.",
+    // Écran suspendu : l'histoire d'une poche passe par le laboratoire,
+    // lui-même en attente de validation. Le lien reste visible (le poste
+    // existe) mais la page annonce l'attente plutôt qu'une frise à trous.
+    resume: "Du donneur au receveur. Écran en cours de préparation.",
     Icone: ScanLine,
     roles: [],
   },

@@ -277,9 +277,6 @@ export default function TableauDeBordAgent() {
             <UserPlus size={18} aria-hidden="true" />
             Accueillir un donneur
           </Link>
-          <Link href="/agent/tracabilite" className="bouton bouton--secondaire">
-            Rechercher un code
-          </Link>
           {agent.roles.includes("agent_labo") && (
             <Link href="/agent/laboratoire" className="bouton bouton--secondaire">
               Laboratoire

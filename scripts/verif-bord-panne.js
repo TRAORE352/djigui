@@ -33,7 +33,13 @@ const CHROME = '/root/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome';
 
   const b = await chromium.launch({
     executablePath: CHROME,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+    /*
+     * `--single-process` : dans ce conteneur, le processus de rendu
+     * séparé crashe au `newPage()` (« Target crashed ») alors que la
+     * mémoire et /dev/shm sont sains. Tout faire dans un seul processus
+     * contourne le problème sans rien changer au rendu mesuré.
+     */
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process'],
   });
   const ctx = await b.newContext({ viewport: { width: 1440, height: 1000 } });
   await ctx.addInitScript(([j, a]) => {

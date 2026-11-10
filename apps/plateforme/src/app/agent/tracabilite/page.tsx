@@ -1,169 +1,74 @@
 "use client";
 /**
- * P9 — Traçabilité.
+ * P9 — Traçabilité : écran mis en attente.
  *
- * Un code, toute l'histoire : du donneur au service qui a reçu le produit.
- * C'est l'écran qu'on ouvre quand quelque chose doit être prouvé — donc il
- * montre tout, dans l'ordre chronologique, sans rien résumer.
+ * ┌───────────────────────────────────────────────────────────────────┐
+ * │ POUR RESTAURER L'ÉCRAN COMPLET                                    │
+ * │                                                                   │
+ * │   git show 2bfb6e1:apps/plateforme/src/app/agent/tracabilite/\    │
+ * │     page.tsx > apps/plateforme/src/app/agent/tracabilite/page.tsx │
+ * │                                                                   │
+ * │ Rien n'a été perdu : la recherche par code, la frise              │
+ * │ chronologique des événements (inscription, passage, prélèvement,  │
+ * │ analyse, préparation, expédition, réception, délivrance,          │
+ * │ destruction) et l'API qui la sert existent entièrement dans       │
+ * │ l'historique. Seul l'affichage est suspendu.                      │
+ * └───────────────────────────────────────────────────────────────────┘
+ *
+ * Pourquoi cette page est en attente : la traçabilité est l'écran qu'on
+ * ouvre quand quelque chose doit être PROUVÉ. Or son histoire passe par
+ * le laboratoire (analyse, préparation des produits), dont l'écran est
+ * lui-même suspendu le temps de valider la chaîne de qualification avec
+ * les biologistes. Une frise à trous sur un écran de preuve est pire
+ * qu'un écran absent : elle ferait conclure à tort qu'une étape n'a pas
+ * eu lieu.
+ *
+ * L'agent se concentre aujourd'hui sur l'accueil et le prélèvement, les
+ * appels au don et la distribution. Rien n'est perdu pendant ce temps :
+ * le backend continue d'écrire chaque événement, et la frise sera
+ * complète et rétroactive à la réouverture.
  */
-import { useState } from "react";
-import { ScanLine, Search } from "lucide-react";
-import type { FicheTracabilite } from "@dds/contrat-api";
-import { api } from "@/lib/api";
-import { messageDe } from "@/lib/erreurs";
-import { STATUT_POCHE, dateCourte } from "@/lib/metier";
-import { dateHeure } from "@/lib/format";
+import Link from "next/link";
+import { ArrowLeft, ScanLine } from "lucide-react";
 import { EnTetePage } from "@/components/Coquille";
-import Aide, { AvecAide } from "@/components/Aide";
-import Explication from "@/components/Explication";
-import Bouton from "@/components/Bouton";
-import Pilule from "@/components/Pilule";
-import BlocGroupe from "@/components/BlocGroupe";
-import { EtatVide } from "@/components/Etats";
-import { MessageErreur } from "@/components/Messages";
-
-/** Les types d'événements écrits par le backend, en français. */
-const EVENEMENT: Record<string, string> = {
-  inscription: "Inscription du donneur",
-  passage: "Venue au centre",
-  prelevement: "Prélèvement",
-  analyse: "Analyse au laboratoire",
-  preparation: "Préparation des produits",
-  expedition: "Expédition vers un autre site",
-  reception: "Réception sur le site",
-  delivrance: "Délivrance à un service",
-  destruction: "Sortie du stock",
-};
 
 export default function Tracabilite() {
-  const [code, setCode] = useState("");
-  const [fiche, setFiche] = useState<FicheTracabilite | null>(null);
-  const [erreur, setErreur] = useState("");
-  const [enCours, setEnCours] = useState(false);
-
-  async function rechercher(e: React.FormEvent) {
-    e.preventDefault();
-    setErreur(""); setFiche(null); setEnCours(true);
-    try {
-      setFiche(await api.fiche(code.trim()));
-    } catch (p) {
-      setErreur(messageDe(p));
-    } finally {
-      setEnCours(false);
-    }
-  }
-
   return (
     <>
       <EnTetePage
         titre="Traçabilité"
-        chapeau="Saisissez ou scannez le code d'une poche ou d'un produit pour voir son histoire complète."
+        chapeau="Du donneur au receveur : l'histoire complète d'un code."
       />
 
-      <Explication
-        Icone={ScanLine}
-        role="Retrouver toute l'histoire d'une poche à partir de son code : quel donneur, quel jour, quelles analyses, et vers quel hôpital elle est partie."
-        quand="En cas de problème sur un patient, lors d'un contrôle, ou pour répondre à une question d'un hôpital."
-        ensuite="C'est une consultation : rien n'est modifié depuis cet écran."
-      />
+      <section className="travaux" aria-labelledby="travaux-titre">
+        <span className="travaux__icone" aria-hidden="true">
+          <ScanLine size={28} />
+        </span>
 
-      <form className="bloc rang" style={{ flexWrap: "wrap" }} onSubmit={rechercher}>
-        <label className="champ" style={{ flex: 1, minWidth: 240 }}>
-          <AvecAide etiquette="Code de la poche ou du produit" aide="Les tirets et la casse sont ignorés, la saisie oua2604812k fonctionne aussi. Le code d'un produit dérivé se termine par GR, PL ou PQ.">
-            <span className="champ__etiquette">Code de la poche ou du produit</span>
-          </AvecAide>
-          <input
-            className="champ__saisie chiffres"
-            value={code}
-            autoComplete="off"
-            placeholder="OUA-26-04812-K"
-            onChange={(e) => { setCode(e.target.value); setErreur(""); }}
-          />
-        </label>
-        <Aide etiquette="Consulter">
-          Affiche toute l&apos;histoire du code, du donneur jusqu&apos;au service receveur. C&apos;est une consultation, rien n&apos;est modifié depuis cet écran.
-        </Aide>
-        <Bouton type="submit" icone={<Search size={18} aria-hidden="true" />}
-                enCours={enCours} motEnCours="Recherche…" disabled={!code.trim()}>
-          Consulter
-        </Bouton>
-      </form>
+        <h2 id="travaux-titre" className="travaux__titre">
+          Écran en cours de préparation
+        </h2>
 
-      <MessageErreur>{erreur}</MessageErreur>
+        <p className="travaux__texte">
+          L&apos;histoire d&apos;une poche passe par le laboratoire, dont la
+          chaîne de qualification est encore en cours de validation avec les
+          biologistes du centre. Tant qu&apos;elle n&apos;est pas figée, cet
+          écran afficherait une histoire incomplète — ce qui n&apos;est pas
+          acceptable sur un écran qui sert à prouver.
+        </p>
 
-      {!fiche && !erreur && (
-        <EtatVide
-          Icone={ScanLine}
-          titre="Aucun code consulté"
-          texte="Chaque poche porte un code unique généré au prélèvement ; chaque produit en dérive. Les deux sont acceptés ici."
-        />
-      )}
+        <p className="travaux__note">
+          Aucun événement n&apos;est perdu. Les inscriptions, venues,
+          prélèvements et distributions continuent d&apos;être enregistrés : la
+          traçabilité sera complète, y compris pour les poches
+          d&apos;aujourd&apos;hui, dès l&apos;ouverture de cet écran.
+        </p>
 
-      {fiche && <Fiche fiche={fiche} />}
+        <Link href="/agent" className="bouton bouton--secondaire">
+          <ArrowLeft size={18} aria-hidden="true" />
+          Retour au tableau de bord
+        </Link>
+      </section>
     </>
-  );
-}
-
-function Fiche({ fiche }: { fiche: FicheTracabilite }) {
-  const statut = STATUT_POCHE[fiche.statut as keyof typeof STATUT_POCHE];
-
-  return (
-    <section className="pile">
-      <div className="bloc pile">
-        <div className="rang-espace" style={{ flexWrap: "wrap" }}>
-          <div className="rang">
-            {fiche.groupeSanguin
-              ? <BlocGroupe groupe={fiche.groupeSanguin} taille="l" />
-              : <span className="bloc-groupe bloc-groupe--l" style={{ background: "var(--trait)", color: "var(--encre-2)" }}>?</span>}
-            <div className="pile-s" style={{ gap: 0 }}>
-              <span className="titre chiffres" style={{ letterSpacing: "0.03em" }}>{fiche.code}</span>
-              <span className="appui">{fiche.type === "poche" ? "Poche de sang total" : "Produit sanguin"}</span>
-            </div>
-          </div>
-          <Pilule ton={statut?.ton ?? "neutre"}>{statut?.mot ?? fiche.statut.replace(/_/g, " ")}</Pilule>
-        </div>
-
-        <div className="fiche">
-          <div className="pile-s" style={{ gap: 2 }}>
-            <span className="fiche__cle">Groupe sanguin</span>
-            <span className="fiche__valeur">{fiche.groupeSanguin ?? "Non encore déterminé"}</span>
-          </div>
-          <div className="pile-s" style={{ gap: 2 }}>
-            <span className="fiche__cle">Donneur</span>
-            <span className="fiche__valeur chiffres">{fiche.donneur?.numeroDonneur ?? "—"}</span>
-          </div>
-          <div className="pile-s" style={{ gap: 2 }}>
-            <span className="fiche__cle">Site d'origine</span>
-            <span className="fiche__valeur">{fiche.site}</span>
-          </div>
-          <div className="pile-s" style={{ gap: 2 }}>
-            <span className="fiche__cle">Date de prélèvement</span>
-            <span className="fiche__valeur">{dateCourte(fiche.date)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="bloc pile">
-        <h2 className="section-titre">Histoire du produit</h2>
-        {fiche.evenements.length === 0 ? (
-          <p className="appui">Aucun événement enregistré pour ce code.</p>
-        ) : (
-          <ol className="chrono" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-            {fiche.evenements.map((e, i) => (
-              <li key={i} className="chrono__etape">
-                <span className="chrono__puce" aria-hidden="true" />
-                <div className="chrono__corps">
-                  <span className="fort">{EVENEMENT[e.type] ?? e.type.replace(/_/g, " ")}</span>
-                  <span className="appui">{dateHeure(e.date)}</span>
-                  <span className="petit">
-                    {[e.agent, e.site].filter(Boolean).join(" · ") || "—"}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
-    </section>
   );
 }
