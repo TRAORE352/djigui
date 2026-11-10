@@ -8,8 +8,8 @@
  */
 import type { Role } from "@dds/contrat-api";
 import {
-  Activity, BadgeCheck, Bell, Boxes, Building2, FlaskConical, Hospital, LayoutDashboard,
-  ScanLine, SlidersHorizontal, Truck, UserRound, Users,
+  Activity, BadgeCheck, Bell, Boxes, Building2, Hospital, LayoutDashboard,
+  SlidersHorizontal, Truck, UserRound, Users,
 } from "lucide-react";
 import type { ComponentType } from "react";
 
@@ -40,17 +40,6 @@ export const SECTIONS_AGENT: Section[] = [
     roles: ["agent_accueil", "agent_prelevement"],
   },
   {
-    adresse: "/agent/laboratoire",
-    mot: "Laboratoire",
-    // Écran suspendu en attendant la validation de la chaîne de
-    // qualification avec les biologistes du CNTS. Le lien reste visible
-    // (le poste existe, l'agent doit le trouver) mais la page annonce
-    // l'attente au lieu de promettre une fonction absente.
-    resume: "Qualification biologique des poches. Écran en cours de préparation.",
-    Icone: FlaskConical,
-    roles: ["agent_labo"],
-  },
-  {
     adresse: "/agent/stock",
     mot: "Stock",
     resume: "Stock calculé par type et par groupe, et produits proches de la péremption.",
@@ -77,16 +66,6 @@ export const SECTIONS_AGENT: Section[] = [
     resume: "Envoyer du sang aux hôpitaux et aux dépôts qui en demandent.",
     Icone: Truck,
     roles: ["agent_stock", "agent_depot"],
-  },
-  {
-    adresse: "/agent/tracabilite",
-    mot: "Traçabilité",
-    // Écran suspendu : l'histoire d'une poche passe par le laboratoire,
-    // lui-même en attente de validation. Le lien reste visible (le poste
-    // existe) mais la page annonce l'attente plutôt qu'une frise à trous.
-    resume: "Du donneur au receveur. Écran en cours de préparation.",
-    Icone: ScanLine,
-    roles: [],
   },
 ];
 

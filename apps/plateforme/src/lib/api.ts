@@ -3,14 +3,14 @@
  * parle au backend. Les types viennent de @dds/contrat-api.
  */
 import type {
-  AgentCompte, AgentConnexionReponse, Analyse, BesoinStock, CreerAgentRequete, CreerCentreRequete,
+  AgentCompte, AgentConnexionReponse, BesoinStock, CreerAgentRequete, CreerCentreRequete,
   CreerPocheRequete, CreerZoneRequete, DelivranceRequete, Demande,
-  DemandeRequete, DonneurAgent, DossierLabo, EnregistrerAnalyseRequete, EnregistrerPassageRequete,
+  DemandeRequete, DonneurAgent, EnregistrerPassageRequete,
   EntreeStock, EntreeStockRequete,
-  EstimationAlerteReponse, Expedition, ExpeditionRequete, FicheTracabilite, FileLabo,
-  GroupageRequete, InscriptionSurPlaceRequete, LancerAlerteRequete, LigneStock, ModifierRegleRequete,
-  Passage, Poche, PreparerPocheRequete, Produit, ReceptionLaboRequete, Regle,
-  ReinitialisationMotDePasseReponse, Reponse, ReponseErreur, SerologieRequete,
+  EstimationAlerteReponse, Expedition, ExpeditionRequete,
+  InscriptionSurPlaceRequete, LancerAlerteRequete, LigneStock, ModifierRegleRequete,
+  Passage, Poche, Produit, Regle,
+  ReinitialisationMotDePasseReponse, Reponse, ReponseErreur,
   SiteAdmin, SitePartenaire, Statistiques, SuiviAlerte,
 } from "@dds/contrat-api";
 import { lireJeton } from "./session";
@@ -72,34 +72,16 @@ export const api = {
   creerPoche: (corps: CreerPocheRequete) =>
     appel<Poche>("POST", "/poches", corps),
 
-  pochesAanalyser: () =>
-    appel<Poche[]>("GET", "/poches?statut=a_analyser"),
-
-  /** Poches qualifiées conformes, en attente de préparation des produits (P5). */
-  pochesAPreparer: () =>
-    appel<Poche[]>("GET", "/poches?statut=conforme"),
-
-  // --- Chaîne du laboratoire (qualification biologique) ---
-  fileLabo: () => appel<FileLabo>("GET", "/poches/file-labo"),
-  dossierLabo: (code: string) =>
-    appel<DossierLabo>("GET", `/poches/${encodeURIComponent(code)}/dossier`),
-  receptionLabo: (code: string, corps: ReceptionLaboRequete) =>
-    appel<DossierLabo>("POST", `/poches/${encodeURIComponent(code)}/reception-labo`, corps),
-  groupage: (code: string, corps: GroupageRequete) =>
-    appel<DossierLabo>("POST", `/poches/${encodeURIComponent(code)}/groupage`, corps),
-  serologie: (code: string, corps: SerologieRequete) =>
-    appel<DossierLabo>("POST", `/poches/${encodeURIComponent(code)}/serologie`, corps),
-  libererPoche: (code: string) =>
-    appel<DossierLabo>("POST", `/poches/${encodeURIComponent(code)}/liberation`),
-
-  analyser: (code: string, corps: EnregistrerAnalyseRequete) =>
-    appel<Analyse>("POST", `/poches/${encodeURIComponent(code)}/analyse`, corps),
-
-  preparer: (code: string, corps: PreparerPocheRequete) =>
-    appel<Produit[]>("POST", `/poches/${encodeURIComponent(code)}/preparation`, corps),
-
-  fiche: (code: string) =>
-    appel<FicheTracabilite>("GET", `/codes/${encodeURIComponent(code)}`),
+  /*
+   * La chaîne de qualification biologique (file-labo → libération,
+   * analyse, préparation) et la fiche de traçabilité n'ont plus
+   * d'appelant dans l'espace agent : les écrans Laboratoire et
+   * Traçabilité sont suspendus en attendant la validation des
+   * biologistes. Les routes backend existent toujours — le serveur
+   * continue d'écrire l'historique, qui sera rétroactif à la réouverture
+   * — seul le client frontend a perdu ses appels. Voir
+   * navigation.ts (SECTIONS_AGENT) pour réouvrir.
+   */
 
   reinitialiser: (id: string) =>
     appel<ReinitialisationMotDePasseReponse>("POST", `/donneurs/${encodeURIComponent(id)}/reinitialisation`),

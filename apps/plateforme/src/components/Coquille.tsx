@@ -38,12 +38,22 @@ export default function Coquille({ espace, children }: { espace: Espace; childre
       routeur.replace(CONNEXION[espace]);
       return;
     }
-    // Un compte ne peut être que dans SON espace. Un agent qui ouvre une
-    // adresse de l'espace CNTS est renvoyé à la connexion CNTS, pas
-    // glissé en douce dans l'autre espace.
+    /*
+     * Un compte ne peut être que dans SON espace. Un agent qui ouvre une
+     * adresse de l'espace CNTS est renvoyé à la connexion CNTS, pas
+     * glissé en douce dans l'autre espace.
+     *
+     * `agent_labo` est volontairement EXCLU : les écrans du laboratoire
+     * ont été retirés de l'espace agent (la chaîne de qualification
+     * reste côté serveur, prête pour sa réouverture). Un compte qui n'a
+     * que ce rôle n'a aujourd'hui aucun écran — le laisser entrer
+     * l'enfermerait dans une coquille vide, sans menu ni explication.
+     * Mieux vaut un refus net à la connexion.
+     */
+    const ROLES_SANS_ECRAN: readonly string[] = ["agent_labo"];
     const autorise = espace === "admin"
       ? a.roles.includes("admin")
-      : a.roles.some((r) => r.startsWith("agent_"));
+      : a.roles.some((r) => r.startsWith("agent_") && !ROLES_SANS_ECRAN.includes(r));
     if (!autorise) {
       fermerSession();
       routeur.replace(CONNEXION[espace]);

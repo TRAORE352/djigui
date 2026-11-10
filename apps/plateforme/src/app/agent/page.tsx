@@ -21,9 +21,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight, Bell, Boxes, CalendarX2, CheckCircle2, Clock,
-  FlaskConical, Truck, UserPlus,
+  Truck, UserPlus,
 } from "lucide-react";
-import type { AgentConnecte, Demande, FileLabo, LigneStock, Produit, Role } from "@dds/contrat-api";
+import type { AgentConnecte, Demande, LigneStock, Produit, Role } from "@dds/contrat-api";
 import { api, ErreurApi, messageDe } from "@/lib/api";
 import { Section, VideLigne } from "@/components/Mise";
 import { EtatErreur, SqueletteLignes } from "@/components/Etats";
@@ -81,16 +81,12 @@ export default function TableauDeBordAgent() {
           return defaut;
         });
 
-      let labo: FileLabo | null = null;
       let stock: LigneStock[] | null = null;
       let peremption: Produit[] | null = null;
       let demandes: Demande[] | null = null;
 
       try {
-        [labo, stock, peremption, demandes] = await Promise.all([
-          peut("agent_labo")
-            ? sansErreur(api.fileLabo(), { aRecevoir: [], aGrouper: [], aTester: [], aLiberer: [] } as FileLabo)
-            : Promise.resolve(null),
+        [stock, peremption, demandes] = await Promise.all([
           peut("agent_stock", "agent_depot") ? sansErreur(api.stock(), [] as LigneStock[]) : Promise.resolve(null),
           peut("agent_stock", "agent_depot") ? sansErreur(api.produitsPeremption(), [] as Produit[]) : Promise.resolve(null),
           peut("agent_stock", "agent_depot") ? sansErreur(api.demandes(), [] as Demande[]) : Promise.resolve(null),
@@ -106,33 +102,6 @@ export default function TableauDeBordAgent() {
       setEchec(null);
 
       const liste: Carte[] = [];
-
-      if (labo) {
-        /*
-         * L'écran du laboratoire est suspendu le temps de valider la
-         * chaîne de qualification avec les biologistes. On garde UNE
-         * carte, parce que le technicien doit savoir combien de poches
-         * l'attendent, mais on n'affiche plus le détail par étape ni la
-         * carte « à libérer » : annoncer un travail à faire en renvoyant
-         * sur un écran fermé fait tourner l'agent en rond.
-         *
-         * Le ton reste « calme » pour la même raison : rien n'est
-         * actionnable aujourd'hui, donc rien ne doit crier.
-         */
-        const enAttente =
-          labo.aRecevoir.length + labo.aGrouper.length +
-          labo.aTester.length + labo.aLiberer.length;
-        liste.push({
-          cle: "labo-encours",
-          libelle: "Poches en attente de qualification",
-          valeur: enAttente,
-          detail: "écran du laboratoire en cours de préparation",
-          adresse: "/agent/laboratoire",
-          Icone: FlaskConical,
-          ton: "calme",
-          roles: ["agent_labo"],
-        });
-      }
 
       if (stock) {
         const critiques = stock.filter((l) => l.niveau === "critique");
@@ -277,11 +246,6 @@ export default function TableauDeBordAgent() {
             <UserPlus size={18} aria-hidden="true" />
             Accueillir un donneur
           </Link>
-          {agent.roles.includes("agent_labo") && (
-            <Link href="/agent/laboratoire" className="bouton bouton--secondaire">
-              Laboratoire
-            </Link>
-          )}
         </div>
       </Section>
     </>
@@ -303,12 +267,12 @@ function CarteBord({ carte }: { carte: Carte }) {
       <span className="bord-carte__corps">
         {calme ? (
           /*
-           * Une carte « calme » dont le compteur n'est pas nul ne doit
-           * PAS dire « Tout est à jour » : la file du laboratoire peut
-           * contenir 27 poches en attente alors que l'écran est
-           * temporairement fermé. Afficher le chiffre reste honnête ;
-           * le ton gris dit simplement qu'il n'y a rien à faire
-           * maintenant.
+           * Une carte « calme » signale « rien à faire maintenant », son
+           * compteur est donc normalement nul et on peut dire « Tout est
+           * à jour ». Mais si une carte est un jour marquée calme alors
+           * que son compteur n'est pas nul (un écran fermé, par exemple),
+           * elle ne doit PAS mentir : on affiche le chiffre avec un badge
+           * neutre « En attente » plutôt que « Tout est à jour ».
            */
           carte.valeur > 0 ? (
             <>
