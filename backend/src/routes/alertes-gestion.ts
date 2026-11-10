@@ -125,7 +125,7 @@ routeAlertesGestion.post("/:id/cloture", ...GESTION, async (req, res) => {
 
 async function lireSuivi(id: string): Promise<SuiviAlerte | null> {
   const { rows } = await requete<{
-    id: string; groupe_sanguin: string; urgence: string; objectif_donneurs: number;
+    id: string; groupe_sanguin: string | null; urgence: string; objectif_donneurs: number;
     date_limite: Date; statut: string; message: string; cree_le: Date;
   }>(
     "select id, groupe_sanguin, urgence, objectif_donneurs, date_limite, statut, message, cree_le from alertes where id = $1",

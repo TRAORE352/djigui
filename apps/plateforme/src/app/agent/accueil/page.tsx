@@ -497,7 +497,7 @@ function InscriptionSurPlace({ telephoneInitial, surInscription }: {
           </select>
         </label>
         <label className="champ">
-          <AvecAide etiquette="Zone d'habitation" aide="Sert à prévenir le donneur quand un appel au don concerne son quartier. Facultatif.">
+          <AvecAide etiquette="Zone d'habitation" aide="Sert à prévenir le donneur quand une campagne de don concerne son quartier. Facultatif.">
             <span className="champ__etiquette">Zone d'habitation</span>
           </AvecAide>
           <select className="champ__saisie" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>

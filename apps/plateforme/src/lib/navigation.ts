@@ -55,8 +55,8 @@ export const SECTIONS_AGENT: Section[] = [
   },
   {
     adresse: "/agent/alertes",
-    mot: "Appels au don",
-    resume: "Prévenir les donneurs d'une zone qu'on a besoin d'eux, et suivre qui répond.",
+    mot: "Campagnes",
+    resume: "Inviter les donneurs d'une zone à venir donner un jour donné.",
     Icone: Bell,
     roles: ["agent_stock", "agent_depot"],
   },

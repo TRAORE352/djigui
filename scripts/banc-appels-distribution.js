@@ -1,5 +1,5 @@
 /**
- * Captures des écrans « Appels au don » et « Distribution ».
+ * Captures des écrans « Campagnes » et « Distribution ».
  *
  * Compte utilisé : stock@cnts.bf (rôles agent_stock + agent_depot), les
  * seuls qui ouvrent ces deux pages depuis la séparation des espaces.

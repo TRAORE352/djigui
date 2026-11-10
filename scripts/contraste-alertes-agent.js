@@ -1,11 +1,11 @@
 /**
- * Mesure des contrastes WCAG de l'écran « Appels au don ».
+ * Mesure des contrastes WCAG de l'écran « Campagnes de don ».
  * Même méthode que les autres écrans : couleurs calculées, fond effectif
  * remonté, formule WCAG 2.1. Seuils 4,5:1 (texte) et 3:1 (gros texte).
  */
 const { lancerNavigateur, contexteFr } = require('./navigateur-banc');
 
-const BASE = process.env.BASE || 'http://localhost:3101';
+const BASE = process.env.BASE || 'http://localhost:3001';
 const ZONES = [
   { id: 'z1', nom: 'Dassasgho', ville: 'Ouagadougou' },
   { id: 'z2', nom: 'Gounghin', ville: 'Ouagadougou' },
@@ -58,15 +58,10 @@ const ZONES = [
   const vide = await mesurer([
     ['titre de page', '.contenu__titre'],
     ['titre étape', '.etape__titre'],
-    ['résumé étape', '.etape__resume'],
     ['numéro étape', '.etape__numero'],
     ['compte quartiers', '.zones__compte'],
     ['tout sélectionner', '.lien-action'],
     ['estimation vide', '.estimation--vide'],
-    ['titre modèles', '.modeles__titre'],
-    ['modèle inactif', '.modele'],
-    ['urgence non choisie', '.urgence:not(.urgence--choisie)'],
-    ['urgence choisie', '.urgence--choisie'],
     ['étiquette champ', '.champ__etiquette'],
     ['aide champ', '.champ__aide'],
     ['avertissement', '.avertissement'],
@@ -76,14 +71,9 @@ const ZONES = [
 
   await p.click('.lien-action:has-text("Tout sélectionner")');
   await p.waitForTimeout(900);
-  await p.click('.modele:first-child');
-  await p.waitForTimeout(300);
   const rempli = await mesurer([
     ['estimation chiffre', '.estimation__chiffre'],
     ['estimation mot', '.estimation__mot'],
-    ['estimation note', '.estimation__note'],
-    ['modèle actif', '.modele--actif'],
-    ['urgence critique', '.urgence--critique.urgence--choisie'],
   ]);
 
   let echecs = 0;

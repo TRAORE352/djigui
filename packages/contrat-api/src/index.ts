@@ -185,7 +185,8 @@ export interface Venue { creneau: Creneau | null; moyen: MoyenDeplacement | null
 /** GET /donneurs/moi/alertes (D9) et GET /donneurs/moi/alertes/:id (D10). */
 export interface Alerte {
   id: string;
-  groupeSanguin: GroupeSanguin;
+  /** null = appel ouvert à tous les donneurs (campagne sans groupe précis). */
+  groupeSanguin: GroupeSanguin | null;
   centre: CentreResume;
   message: string;
   statut: StatutAlerte;
@@ -653,7 +654,8 @@ export interface LancerAlerteRequete {
 /** GET /alertes/:id — suivi des réponses en direct. */
 export interface SuiviAlerte {
   id: string;
-  groupeSanguin: GroupeSanguin;
+  /** null = campagne ouverte à tous les donneurs, sans mention de groupe. */
+  groupeSanguin: GroupeSanguin | null;
   urgence: "normale" | "urgente" | "critique";
   objectifDonneurs: number;
   dateLimite: string;

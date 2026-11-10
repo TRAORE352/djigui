@@ -15,7 +15,7 @@ import { Chargement, ErreurChargement } from "@/components/Etats";
 import { Encadre } from "@/components/Messages";
 import ReponseAlerte, { alerteOuverte } from "@/components/ReponseAlerte";
 import { api } from "@/lib/api";
-import { dateHeure, numeroLisible } from "@/lib/format";
+import { dateHeure, dateLongue, numeroLisible } from "@/lib/format";
 import { useChargement } from "@/lib/useChargement";
 
 export default function DetailAlerte() {
@@ -42,7 +42,11 @@ export default function DetailAlerte() {
 
       <div className="rang" style={{ gap: "var(--e4)" }}>
         <BlocGroupe groupe={alerte.groupeSanguin} taille="l" />
-        <h1 className="titre-s">Le centre recherche des donneurs {alerte.groupeSanguin}</h1>
+        <h1 className="titre-s">
+          {alerte.groupeSanguin
+            ? `Le centre recherche des donneurs ${alerte.groupeSanguin}`
+            : "Le centre vous invite à donner"}
+        </h1>
       </div>
 
       <div className="bulle">
@@ -67,7 +71,7 @@ export default function DetailAlerte() {
 
       {ouverte ? (
         <Encadre ton={heuresRestantes < 24 ? "sang" : "ocre"} icone={<Clock size={18} aria-hidden="true" />}>
-          <span>Répondez avant le <span className="fort">{dateHeure(alerte.dateLimite)}</span>. Après, le centre n’attend plus de réponse.</span>
+          <span>Répondez avant le <span className="fort">{dateLongue(alerte.dateLimite)}</span>. Après, le centre n’attend plus de réponse.</span>
         </Encadre>
       ) : !alerte.maReponse ? (
         <Etat>Le délai de réponse est passé.</Etat>

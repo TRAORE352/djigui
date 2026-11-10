@@ -6,7 +6,7 @@ import { instantISO } from "./format.js";
 /** Ligne brute lue en base pour une alerte (noms de colonnes SQL). */
 export interface LigneAlerte {
   id: string;
-  groupe_sanguin: string;
+  groupe_sanguin: string | null;
   message: string;
   statut: string;
   cree_le: Date;
@@ -52,7 +52,7 @@ export function formaterAlerte(l: LigneAlerte): Alerte {
   const moyen = l.moyen_deplacement as MoyenDeplacement | null;
   return {
     id: l.id,
-    groupeSanguin: l.groupe_sanguin as GroupeSanguin,
+    groupeSanguin: l.groupe_sanguin as GroupeSanguin | null,
     centre: {
       id: l.site_id,
       nom: l.site_nom,

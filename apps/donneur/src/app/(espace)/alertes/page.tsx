@@ -14,7 +14,7 @@ import EnTete from "@/components/EnTete";
 import { Chargement, ErreurChargement, EtatVide } from "@/components/Etats";
 import ReponseAlerte, { alerteOuverte } from "@/components/ReponseAlerte";
 import { api } from "@/lib/api";
-import { dateHeure, depuis } from "@/lib/format";
+import { dateLongue, depuis } from "@/lib/format";
 import { useChargement } from "@/lib/useChargement";
 
 export default function Alertes() {
@@ -93,7 +93,7 @@ function CarteAlerte({ alerte, surReponse, attenuee }: { alerte: Alerte; surRepo
         <div className="ligne__corps">
           <span className="fort">{alerte.centre.nom}</span>
           <span className="petit">Reçue {depuis(alerte.creeLe)}</span>
-          {attend && <span className="petit" style={{ color: "var(--sang)" }}>Répondre avant le {dateHeure(alerte.dateLimite)}</span>}
+          {attend && <span className="petit" style={{ color: "var(--sang)" }}>Répondre avant le {dateLongue(alerte.dateLimite)}</span>}
         </div>
         <ChevronRight size={20} aria-label="Voir le détail" style={{ color: "var(--encre-2)", marginTop: 12 }} />
       </Link>

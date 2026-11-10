@@ -44,7 +44,7 @@ export default function Stock() {
         Icone={Boxes}
         role="L'état des réserves de votre site : combien de poches disponibles, de quel groupe, et lesquelles vont bientôt périmer."
         quand="Chaque matin, et avant de répondre à une demande d'hôpital."
-        ensuite="Si un groupe passe au rouge, lancez un appel au don depuis « Appels au don »."
+        ensuite="Si vos réserves baissent, lancez une campagne de don depuis « Campagnes »."
       />
 
       <ResumeNiveaux lignes={stock.donnees} />
