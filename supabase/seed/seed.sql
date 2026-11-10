@@ -2,7 +2,7 @@
 -- Seed : données de test (semaine 3).
 --
 -- Contenu (cahier des charges, calendrier S3) :
---   - zones et sites de Ouagadougou ;
+--   - zones (4 villes du Burkina Faso) et sites de Ouagadougou ;
 --   - les 3 types de produits ;
 --   - les valeurs provisoires de l'Annexe E (règles) ;
 --   - les premiers comptes d'agents (en attendant l'espace administrateur).
@@ -16,14 +16,34 @@
 -- Script rejouable : ON CONFLICT DO NOTHING partout.
 -- =====================================================================
 
--- ---------- Zones (Ouagadougou) ----------
+-- ---------- Zones (4 villes du Burkina Faso) ----------
 insert into zones (nom, ville) values
+  -- Ouagadougou
   ('Kamsonghin', 'Ouagadougou'),
   ('Tanghin', 'Ouagadougou'),
   ('Dassasgho', 'Ouagadougou'),
   ('Gounghin', 'Ouagadougou'),
   ('Paspanga', 'Ouagadougou'),
-  ('Koulouba', 'Ouagadougou')
+  ('Koulouba', 'Ouagadougou'),
+  -- Bobo-Dioulasso
+  ('Accart-ville', 'Bobo-Dioulasso'),
+  ('Bolomakoté', 'Bobo-Dioulasso'),
+  ('Dafra', 'Bobo-Dioulasso'),
+  ('Dô', 'Bobo-Dioulasso'),
+  ('Konsa', 'Bobo-Dioulasso'),
+  ('Tounouma', 'Bobo-Dioulasso'),
+  -- Koudougou
+  ('Secteur 1', 'Koudougou'),
+  ('Secteur 2', 'Koudougou'),
+  ('Secteur 3', 'Koudougou'),
+  ('Secteur 4', 'Koudougou'),
+  ('Secteur 5', 'Koudougou'),
+  -- Ouahigouya
+  ('Secteur 1', 'Ouahigouya'),
+  ('Secteur 2', 'Ouahigouya'),
+  ('Secteur 3', 'Ouahigouya'),
+  ('Secteur 4', 'Ouahigouya'),
+  ('Secteur 5', 'Ouahigouya')
 on conflict (nom, ville) do nothing;
 
 -- ---------- Sites ----------

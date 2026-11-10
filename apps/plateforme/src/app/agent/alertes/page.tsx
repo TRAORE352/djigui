@@ -2,10 +2,10 @@
 /**
  * P7 — Campagnes de don.
  *
- * L'agent lance une campagne de don de sang : il choisit la zone, la date de
- * collecte et le message. La campagne cible TOUS les donneurs éligibles de la
- * zone — on ne trie jamais par groupe sanguin, qui n'est connu qu'après le
- * prélèvement, au laboratoire.
+ * L'agent lance une campagne de don de sang : il choisit une ville, puis les
+ * quartiers de cette ville, la date de collecte et le message. La campagne
+ * cible TOUS les donneurs éligibles des quartiers retenus — on ne trie jamais
+ * par groupe sanguin, qui n'est connu qu'après le prélèvement, au laboratoire.
  *
  * Le backend n'expose pas de liste des campagnes du site : on garde donc sur
  * le poste les identifiants des campagnes lancées ici, pour y revenir après
@@ -19,13 +19,11 @@ import { api } from "@/lib/api";
 import { messageDe } from "@/lib/erreurs";
 import { dateCourte } from "@/lib/metier";
 import { EnTetePage } from "@/components/Coquille";
-import Aide, { AvecAide } from "@/components/Aide";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import Tableau from "@/components/Tableau";
 import { EtatVide, SqueletteLignes } from "@/components/Etats";
 import { MessageErreur, MessageReussite } from "@/components/Messages";
-import { Etape } from "@/components/Explication";
 
 const CLE_SUIVIES = "dds:campagnes-lancees";
 
@@ -57,20 +55,13 @@ export default function Campagnes() {
     <>
       <EnTetePage
         titre="Campagnes de don"
-        chapeau="Choisissez une zone, une date et un message : les donneurs éligibles sont prévenus."
+        chapeau="Choisissez une ville, une date et un message : les donneurs éligibles sont prévenus."
       />
 
       <Composer surLancement={surLancement} />
 
       <section className="pile">
-        <h2 className="section-titre">
-          <AvecAide
-            etiquette="Campagnes lancées"
-            aide="Les campagnes lancées depuis ce poste. Les réponses sont relues auprès du serveur toutes les trente secondes."
-          >
-            <span>Campagnes lancées</span>
-          </AvecAide>
-        </h2>
+        <h2 className="section-titre">Campagnes lancées</h2>
         {suivies.length === 0 ? (
           <EtatVide
             Icone={BellRing}
@@ -91,12 +82,13 @@ export default function Campagnes() {
    ===================================================================== */
 
 function Composer({ surLancement }: { surLancement: (id: string) => void }) {
-  const [zoneIds, setZoneIds] = useState<string[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
-  const [estimation, setEstimation] = useState<number | null>(null);
-  const [estimationEnCours, setEstimationEnCours] = useState(false);
+  const [ville, setVille] = useState("");
+  const [zoneIds, setZoneIds] = useState<string[]>([]);
   const [date, setDate] = useState("");
   const [message, setMessage] = useState("");
+  const [estimation, setEstimation] = useState<number | null>(null);
+  const [estimationEnCours, setEstimationEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
   const [reussite, setReussite] = useState("");
   const [enCours, setEnCours] = useState(false);
@@ -105,13 +97,15 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
     api.zones().then((z) => setZones(z as Zone[])).catch(() => setZones([]));
   }, []);
 
+  const villes = [...new Set(zones.map((z) => z.ville))];
+  const quartiers = zones.filter((z) => z.ville === ville);
+  const quartiersChoisis = quartiers.filter((z) => zoneIds.includes(z.id)).length;
+  const toutesChoisies = quartiers.length > 0 && quartiersChoisis === quartiers.length;
+
   /**
-   * Estimation automatique à chaque changement de sélection.
-   *
-   * L'agent ne doit pas cliquer pour savoir combien de monde il joint : le
-   * chiffre fait partie de la décision. On attend 400 ms (le temps de cocher
-   * plusieurs quartiers d'un trait) et on ignore toute réponse dépassée par
-   * une sélection plus récente.
+   * Estimation automatique à chaque changement de sélection. On attend 400 ms
+   * (le temps de cocher plusieurs quartiers) et on ignore toute réponse
+   * dépassée par une sélection plus récente.
    */
   useEffect(() => {
     if (zoneIds.length === 0) { setEstimation(null); setEstimationEnCours(false); return; }
@@ -135,12 +129,20 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
     setErreur("");
   }
 
-  const toutesChoisies = zones.length > 0 && zoneIds.length === zones.length;
+  function toutSelectionner() {
+    setZoneIds((liste) => [...new Set([...liste, ...quartiers.map((z) => z.id)])]);
+    setErreur("");
+  }
+
+  function toutDeselectionner() {
+    setZoneIds((liste) => liste.filter((id) => !quartiers.some((z) => z.id === id)));
+    setErreur("");
+  }
 
   async function lancer(e: React.FormEvent) {
     e.preventDefault();
     setErreur(""); setReussite("");
-    if (zoneIds.length === 0) { setErreur("Choisissez au moins une zone."); return; }
+    if (zoneIds.length === 0) { setErreur("Choisissez au moins un quartier."); return; }
     if (!date) { setErreur("Choisissez la date de la collecte."); return; }
     if (!message.trim()) { setErreur("Écrivez le message à envoyer."); return; }
     setEnCours(true);
@@ -157,8 +159,8 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
         zoneIds,
       });
       surLancement(campagne.id);
-      setReussite("Campagne lancée. Les donneurs des zones choisies vont recevoir le message.");
-      setMessage(""); setZoneIds([]); setDate(""); setEstimation(null);
+      setReussite("Campagne lancée. Les donneurs des quartiers choisis vont recevoir le message.");
+      setMessage(""); setZoneIds([]); setVille(""); setDate(""); setEstimation(null);
     } catch (p) {
       setErreur(messageDe(p));
     } finally {
@@ -169,156 +171,135 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
   // La collecte ne se planifie pas dans le passé.
   const minDate = new Date().toISOString().slice(0, 10);
 
-  // Ce qui manque encore, nommé à l'endroit où le corriger.
   const manquants = [
-    zoneIds.length === 0 && "choisir une zone",
+    zoneIds.length === 0 && "choisir un quartier",
     !date && "choisir la date",
     !message.trim() && "écrire le message",
   ].filter(Boolean) as string[];
 
   return (
     <form className="pile-g" onSubmit={lancer}>
-      <Etape
-        numero={1}
-        titre="Où ?"
-        aide="La campagne part vers tous les donneurs éligibles de ces quartiers. Le tri ne se fait jamais par groupe sanguin : il est déterminé au laboratoire, après le prélèvement."
-      >
-        <div className="bloc pile">
-          {zones.length === 0 ? (
-            <p className="champ__aide">Chargement des zones…</p>
-          ) : (
-            <>
-              {/* Sélection rapide : un centre qui appelle toute la ville ne
-                  doit pas cocher six cases une par une. */}
-              <div className="zones__barre">
-                <span className="zones__compte">
-                  {zoneIds.length === 0
-                    ? `${zones.length} quartiers disponibles`
-                    : `${zoneIds.length} sur ${zones.length} choisis`}
-                </span>
-                <div className="zones__actions">
-                  <button
-                    type="button"
-                    className="lien-action"
-                    disabled={toutesChoisies}
-                    onClick={() => { setZoneIds(zones.map((z) => z.id)); setErreur(""); }}
-                  >
-                    Tout sélectionner
-                  </button>
-                  <button
-                    type="button"
-                    className="lien-action"
-                    disabled={zoneIds.length === 0}
-                    onClick={() => { setZoneIds([]); setErreur(""); }}
-                  >
-                    Tout désélectionner
-                  </button>
-                </div>
-              </div>
+      <div className="bloc pile">
+        <label className="champ">
+          <span className="champ__etiquette">Ville</span>
+          <select
+            className="champ__saisie"
+            value={ville}
+            onChange={(e) => { setVille(e.target.value); setErreur(""); }}
+          >
+            <option value="">Choisir une ville</option>
+            {villes.map((v) => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
 
-              <div className="zones">
-                {zones.map((z) => (
-                  <label key={z.id} className="case">
-                    <input type="checkbox" checked={zoneIds.includes(z.id)} onChange={() => basculerZone(z.id)} />
-                    <span>{z.nom}</span>
-                  </label>
-                ))}
-              </div>
-            </>
-          )}
-
-          <EstimationZones
-            nbZones={zoneIds.length}
-            estimation={estimation}
-            enCours={estimationEnCours}
-          />
-        </div>
-      </Etape>
-
-      <Etape
-        numero={2}
-        titre="Quand, et quoi dire ?"
-        aide="Le jour de la collecte, puis le message que chaque donneur lira sur son téléphone."
-      >
-        <div className="bloc pile">
-          <label className="champ">
-            <AvecAide
-              etiquette="Date de la collecte"
-              aide="Le jour où les donneurs sont attendus au centre. Ils peuvent répondre jusqu'à la fin de cette journée."
-            >
-              <span className="champ__etiquette">Date de la collecte</span>
-            </AvecAide>
-            <input
-              className="champ__saisie"
-              type="date"
-              required
-              min={minDate}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </label>
-
-          <label className="champ">
-            <AvecAide
-              etiquette="Message aux donneurs"
-              aide="Le texte que chaque donneur recevra. Une phrase simple, comme vous la diriez au guichet."
-            >
-              <span className="champ__etiquette">Message aux donneurs</span>
-            </AvecAide>
-            <input
-              className="champ__saisie"
-              value={message}
-              required
-              maxLength={200}
-              placeholder="Collecte de sang au centre ce samedi. Votre don peut sauver des vies."
-              onChange={(e) => setMessage(e.target.value)}
-            />
-            <span className="champ__aide chiffres">{200 - message.length} caractères restants</span>
-          </label>
-
-          <MessageErreur>{erreur}</MessageErreur>
-          <MessageReussite>{reussite}</MessageReussite>
-
-          {/* Ce qui manque est dit AVANT le bouton, pas après : on ne laisse
-              pas l'agent cliquer sur un bouton mort en cherchant pourquoi. */}
-          {manquants.length > 0 && (
-            <p className="avertissement" role="status">
-              <TriangleAlert size={18} aria-hidden="true" />
-              <span>Pour lancer la campagne : {manquants.join(", ")}.</span>
-            </p>
-          )}
-
-          <div className="envoi">
-            <Bouton
-              type="submit"
-              className="envoi__bouton"
-              icone={<Megaphone size={18} aria-hidden="true" />}
-              enCours={enCours}
-              motEnCours="Envoi en cours…"
-              disabled={manquants.length > 0}
-            >
-              Lancer la campagne
-            </Bouton>
-            {estimation !== null && estimation > 0 && manquants.length === 0 && (
-              <span className="envoi__portee">
-                <Users size={16} aria-hidden="true" />
-                {estimation} donneur{estimation > 1 ? "s" : ""} vont recevoir ce message
+        {ville && (
+          <>
+            <div className="zones__barre">
+              <span className="zones__compte">
+                {quartiersChoisis > 0
+                  ? `${quartiersChoisis} sur ${quartiers.length} · ${zoneIds.length} au total`
+                  : `${quartiers.length} quartiers`}
               </span>
-            )}
-          </div>
+              <div className="zones__actions">
+                <button
+                  type="button"
+                  className="lien-action"
+                  disabled={toutesChoisies}
+                  onClick={toutSelectionner}
+                >
+                  Tout sélectionner
+                </button>
+                <button
+                  type="button"
+                  className="lien-action"
+                  disabled={quartiersChoisis === 0}
+                  onClick={toutDeselectionner}
+                >
+                  Tout désélectionner
+                </button>
+              </div>
+            </div>
+
+            <div className="zones">
+              {quartiers.map((z) => (
+                <label key={z.id} className="case">
+                  <input type="checkbox" checked={zoneIds.includes(z.id)} onChange={() => basculerZone(z.id)} />
+                  <span>{z.nom}</span>
+                </label>
+              ))}
+            </div>
+          </>
+        )}
+
+        <EstimationZones
+          nbZones={zoneIds.length}
+          estimation={estimation}
+          enCours={estimationEnCours}
+        />
+      </div>
+
+      <div className="bloc pile">
+        <label className="champ">
+          <span className="champ__etiquette">Date de la collecte</span>
+          <input
+            className="champ__saisie"
+            type="date"
+            required
+            min={minDate}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+        </label>
+
+        <label className="champ">
+          <span className="champ__etiquette">Message</span>
+          <input
+            className="champ__saisie"
+            value={message}
+            required
+            maxLength={200}
+            placeholder="Collecte de sang au centre ce samedi. Votre don peut sauver des vies."
+            onChange={(e) => setMessage(e.target.value)}
+          />
+          <span className="champ__aide chiffres">{200 - message.length} caractères restants</span>
+        </label>
+
+        <MessageErreur>{erreur}</MessageErreur>
+        <MessageReussite>{reussite}</MessageReussite>
+
+        {manquants.length > 0 && (
+          <p className="avertissement" role="status">
+            <TriangleAlert size={18} aria-hidden="true" />
+            <span>Pour lancer la campagne : {manquants.join(", ")}.</span>
+          </p>
+        )}
+
+        <div className="envoi">
+          <Bouton
+            type="submit"
+            className="envoi__bouton"
+            icone={<Megaphone size={18} aria-hidden="true" />}
+            enCours={enCours}
+            motEnCours="Envoi en cours…"
+            disabled={manquants.length > 0}
+          >
+            Lancer la campagne
+          </Bouton>
+          {estimation !== null && estimation > 0 && manquants.length === 0 && (
+            <span className="envoi__portee">
+              <Users size={16} aria-hidden="true" />
+              {estimation} donneur{estimation > 1 ? "s" : ""} vont recevoir ce message
+            </span>
+          )}
         </div>
-      </Etape>
+      </div>
     </form>
   );
 }
 
 /**
  * Carte d'estimation : combien de donneurs seront réellement joints.
- *
- * Le chiffre est une décision, pas une statistique : il dit à l'agent si sa
- * sélection de quartiers suffit. Zéro n'est pas une erreur — c'est un cas
- * métier fréquent (tous les donneurs du secteur ont donné récemment), et il
- * doit s'expliquer.
+ * Zéro n'est pas une erreur — c'est un cas métier fréquent, et il s'explique.
  */
 function EstimationZones({ nbZones, estimation, enCours }: {
   nbZones: number;
@@ -329,7 +310,7 @@ function EstimationZones({ nbZones, estimation, enCours }: {
     return (
       <p className="estimation estimation--vide">
         <Users size={18} aria-hidden="true" />
-        <span>Cochez un quartier pour voir combien de donneurs sont joignables.</span>
+        <span>Choisissez un quartier pour voir combien de donneurs sont joignables.</span>
       </p>
     );
   }
@@ -357,11 +338,6 @@ function EstimationZones({ nbZones, estimation, enCours }: {
             : `donneur${estimation > 1 ? "s" : ""} joignable${estimation > 1 ? "s" : ""}`}
         </span>
       </span>
-      <Aide etiquette="Donneurs joignables">
-        {vide
-          ? "Les donneurs de ces quartiers ont tous donné trop récemment, ou sont en pause. Cochez d'autres zones pour élargir la campagne."
-          : "Les donneurs en pause, et ceux qui ont donné trop récemment, sont déjà retirés de ce total."}
-      </Aide>
     </div>
   );
 }
@@ -384,8 +360,6 @@ function Suivi({ id }: { id: string }) {
     }
   }, [id]);
 
-  // Les réponses arrivent au fil de l'eau : on relit toutes les 30 secondes
-  // tant que la campagne est ouverte, et on s'arrête dès qu'elle est clôturée.
   useEffect(() => {
     void charger();
     const minuteur = setInterval(() => { void charger(); }, 30_000);
@@ -410,8 +384,6 @@ function Suivi({ id }: { id: string }) {
   if (erreur) return <div className="bloc"><MessageErreur>{erreur}</MessageErreur></div>;
   if (!alerte) return <SqueletteLignes lignes={1} />;
 
-  // Trois états distincts : clôturée à la main, terminée parce que la date
-  // est passée, ou en cours.
   const expire = new Date(alerte.dateLimite).getTime() < Date.now();
   const statut = alerte.statut !== "ouverte"
     ? { mot: "Clôturée", ton: "neutre" as const }
@@ -466,9 +438,6 @@ function Suivi({ id }: { id: string }) {
                   enCours={cloture} onClick={() => void clore()}>
             Clôturer la campagne
           </Bouton>
-          <Aide etiquette="Clôturer la campagne">
-            Arrête les relances auprès des donneurs. Ceux qui sont déjà venus restent enregistrés, et le suivi reste consultable.
-          </Aide>
         </div>
       )}
     </div>
