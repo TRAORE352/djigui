@@ -27,13 +27,24 @@ async function appel<T>(methode: string, chemin: string, corps?: unknown): Promi
   try {
     res = await fetch(`${API_URL}${chemin}`, {
       method: methode,
+      /*
+       * Sans ce délai, un serveur qui accepte la connexion mais ne
+       * répond jamais (base de données bloquée, par exemple) laisse la
+       * promesse pendante POUR TOUJOURS : l'écran reste sur son
+       * squelette de chargement, sans erreur ni issue. 15 s dépassées,
+       * on préfère une erreur franche que l'écran sait afficher.
+       */
+      signal: AbortSignal.timeout(15_000),
       headers: {
         "Content-Type": "application/json",
         ...(entete ? { Authorization: entete } : {}),
       },
       body: corps === undefined ? undefined : JSON.stringify(corps),
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "TimeoutError") {
+      throw new ErreurApi("Le serveur met trop de temps à répondre.", "DELAI_DEPASSE");
+    }
     throw new ErreurApi("Pas de connexion au serveur.", "RESEAU");
   }
   const contenu = (await res.json().catch(() => null)) as Reponse<unknown> | ReponseErreur | null;

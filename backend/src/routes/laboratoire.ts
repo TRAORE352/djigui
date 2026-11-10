@@ -67,42 +67,48 @@ async function lirePoche(code: string): Promise<LignePoche> {
   return poche;
 }
 
+/*
+ * Les trois lectures d'un dossier (réception, groupage, sérologies) sont
+ * INDÉPENDANTES : les enchaîner avec trois `await` successifs triplait
+ * la latence réseau pour CHAQUE poche. Un `Promise.all` les envoie
+ * ensemble — on paie la plus lente des trois, au lieu de leur somme.
+ */
 async function construireDossier(poche: LignePoche): Promise<DossierLabo> {
-  const { rows: rec } = await requete<{
-    conforme: boolean; motif: string | null; precisions: string;
-    technicien: string; cree_le: Date;
-  }>(
-    `select r.conforme, r.motif, r.precisions,
-            coalesce(u.prenom || ' ' || u.nom, '') as technicien, r.cree_le
-     from receptions_laboratoire r
-     left join utilisateurs u on u.id = r.technicien_id
-     where r.poche_id = $1`,
-    [poche.id],
-  );
-
-  const { rows: grp } = await requete<{
-    determination_1: string; determination_2: string; rai_positive: boolean;
-    phenotype: string; technicien: string; cree_le: Date;
-  }>(
-    `select g.determination_1, g.determination_2, g.rai_positive, g.phenotype,
-            coalesce(u.prenom || ' ' || u.nom, '') as technicien, g.cree_le
-     from groupages g
-     left join utilisateurs u on u.id = g.technicien_id
-     where g.poche_id = $1`,
-    [poche.id],
-  );
-
-  const { rows: sero } = await requete<{
-    marqueur: string; resultat: string; technicien: string; cree_le: Date;
-  }>(
-    `select s.marqueur, s.resultat,
-            coalesce(u.prenom || ' ' || u.nom, '') as technicien, s.cree_le
-     from serologies s
-     left join utilisateurs u on u.id = s.technicien_id
-     where s.poche_id = $1
-     order by s.cree_le`,
-    [poche.id],
-  );
+  const [{ rows: rec }, { rows: grp }, { rows: sero }] = await Promise.all([
+    requete<{
+      conforme: boolean; motif: string | null; precisions: string;
+      technicien: string; cree_le: Date;
+    }>(
+      `select r.conforme, r.motif, r.precisions,
+              coalesce(u.prenom || ' ' || u.nom, '') as technicien, r.cree_le
+       from receptions_laboratoire r
+       left join utilisateurs u on u.id = r.technicien_id
+       where r.poche_id = $1`,
+      [poche.id],
+    ),
+    requete<{
+      determination_1: string; determination_2: string; rai_positive: boolean;
+      phenotype: string; technicien: string; cree_le: Date;
+    }>(
+      `select g.determination_1, g.determination_2, g.rai_positive, g.phenotype,
+              coalesce(u.prenom || ' ' || u.nom, '') as technicien, g.cree_le
+       from groupages g
+       left join utilisateurs u on u.id = g.technicien_id
+       where g.poche_id = $1`,
+      [poche.id],
+    ),
+    requete<{
+      marqueur: string; resultat: string; technicien: string; cree_le: Date;
+    }>(
+      `select s.marqueur, s.resultat,
+              coalesce(u.prenom || ' ' || u.nom, '') as technicien, s.cree_le
+       from serologies s
+       left join utilisateurs u on u.id = s.technicien_id
+       where s.poche_id = $1
+       order by s.cree_le`,
+      [poche.id],
+    ),
+  ]);
 
   const reception = rec[0]
     ? {
@@ -194,9 +200,20 @@ routeLabo.get("/file-labo", LABO, async (req, res) => {
     [agent.siteId],
   );
 
+  /*
+   * Les dossiers sont construits EN PARALLÈLE. La boucle séquentielle
+   * précédente attendait chaque poche avant de passer à la suivante :
+   * avec 27 poches en file, la réponse dépassait 25 secondes et le
+   * tableau de bord expirait avant de l'obtenir.
+   *
+   * Le parallélisme est borné par la taille du pool (10 connexions) :
+   * au-delà, les requêtes attendent simplement leur tour, ce qui est le
+   * comportement voulu — on sature la base sans la noyer.
+   */
+  const dossiers = await Promise.all(rows.map(construireDossier));
+
   const file: FileLabo = { aRecevoir: [], aGrouper: [], aTester: [], aLiberer: [] };
-  for (const poche of rows) {
-    const dossier = await construireDossier(poche);
+  for (const dossier of dossiers) {
     if (dossier.etape === "reception") file.aRecevoir.push(dossier);
     else if (dossier.etape === "groupage") file.aGrouper.push(dossier);
     else if (dossier.etape === "serologie") file.aTester.push(dossier);

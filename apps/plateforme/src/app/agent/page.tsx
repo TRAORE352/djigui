@@ -20,13 +20,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowRight, Bell, Boxes, CalendarX2, CheckCircle2, CircleCheck, Clock,
+  ArrowRight, Bell, Boxes, CalendarX2, CheckCircle2, Clock,
   FlaskConical, Truck, UserPlus,
 } from "lucide-react";
 import type { AgentConnecte, Demande, FileLabo, LigneStock, Produit, Role } from "@dds/contrat-api";
-import { api } from "@/lib/api";
+import { api, ErreurApi, messageDe } from "@/lib/api";
 import { Section, VideLigne } from "@/components/Mise";
-import { SqueletteLignes } from "@/components/Etats";
+import { EtatErreur, SqueletteLignes } from "@/components/Etats";
 import { LIBELLE_ROLE } from "@/lib/navigation";
 import { lireAgent } from "@/lib/session";
 
@@ -46,6 +46,14 @@ type Carte = {
 export default function TableauDeBordAgent() {
   const [agent, setAgent] = useState<AgentConnecte | null>(null);
   const [cartes, setCartes] = useState<Carte[] | null>(null);
+  /*
+   * Le chargement peut échouer (serveur ou base indisponible). Sans cet
+   * état, `cartes` restait `null` indéfiniment et l'écran affichait un
+   * squelette gris sans fin : l'agent ne savait ni ce qui se passait ni
+   * quoi faire. On garde la cause pour l'afficher, avec un réessai.
+   */
+  const [echec, setEchec] = useState<string | null>(null);
+  const [essai, setEssai] = useState(0);
   const [heure, setHeure] = useState("");
 
   useEffect(() => { setAgent(lireAgent()); }, []);
@@ -57,47 +65,71 @@ export default function TableauDeBordAgent() {
     async function charger(a: AgentConnecte) {
       const peut = (...r: Role[]) => r.some((x) => a.roles.includes(x));
 
-      // Chaque appel est protégé : un refus de droits ne doit pas vider
-      // tout le tableau de bord, juste masquer la carte concernée.
-      const sansErreur = <T,>(p: Promise<T>, defaut: T) => p.catch(() => defaut);
+      /*
+       * Un refus de DROITS ne doit pas vider tout le tableau de bord :
+       * on masque seulement la carte concernée. Mais une PANNE (réseau,
+       * délai dépassé, base injoignable) doit remonter, sinon l'écran
+       * affiche sereinement des compteurs à zéro alors qu'il ne sait
+       * rien — pire qu'une erreur : un mensonge rassurant.
+       */
+      const sansErreur = <T,>(p: Promise<T>, defaut: T) =>
+        p.catch((probleme: unknown) => {
+          const code = probleme instanceof ErreurApi ? probleme.code : null;
+          if (code === "RESEAU" || code === "DELAI_DEPASSE" || code === "SERVICE_INDISPONIBLE") {
+            throw probleme;
+          }
+          return defaut;
+        });
 
-      const [labo, stock, peremption, demandes] = await Promise.all([
-        peut("agent_labo")
-          ? sansErreur(api.fileLabo(), { aRecevoir: [], aGrouper: [], aTester: [], aLiberer: [] } as FileLabo)
-          : Promise.resolve(null),
-        peut("agent_stock", "agent_depot") ? sansErreur(api.stock(), [] as LigneStock[]) : Promise.resolve(null),
-        peut("agent_stock", "agent_depot") ? sansErreur(api.produitsPeremption(), [] as Produit[]) : Promise.resolve(null),
-        peut("agent_stock", "agent_depot") ? sansErreur(api.demandes(), [] as Demande[]) : Promise.resolve(null),
-      ]);
+      let labo: FileLabo | null = null;
+      let stock: LigneStock[] | null = null;
+      let peremption: Produit[] | null = null;
+      let demandes: Demande[] | null = null;
+
+      try {
+        [labo, stock, peremption, demandes] = await Promise.all([
+          peut("agent_labo")
+            ? sansErreur(api.fileLabo(), { aRecevoir: [], aGrouper: [], aTester: [], aLiberer: [] } as FileLabo)
+            : Promise.resolve(null),
+          peut("agent_stock", "agent_depot") ? sansErreur(api.stock(), [] as LigneStock[]) : Promise.resolve(null),
+          peut("agent_stock", "agent_depot") ? sansErreur(api.produitsPeremption(), [] as Produit[]) : Promise.resolve(null),
+          peut("agent_stock", "agent_depot") ? sansErreur(api.demandes(), [] as Demande[]) : Promise.resolve(null),
+        ]);
+      } catch (probleme) {
+        // `sansErreur` neutralise les refus de droits ; ce qui remonte
+        // ici est une panne globale (réseau, délai, base injoignable).
+        if (vivant) { setEchec(messageDe(probleme)); setCartes(null); }
+        return;
+      }
 
       if (!vivant) return;
+      setEchec(null);
 
       const liste: Carte[] = [];
 
       if (labo) {
-        const aFaire = labo.aRecevoir.length + labo.aGrouper.length + labo.aTester.length;
+        /*
+         * L'écran du laboratoire est suspendu le temps de valider la
+         * chaîne de qualification avec les biologistes. On garde UNE
+         * carte, parce que le technicien doit savoir combien de poches
+         * l'attendent, mais on n'affiche plus le détail par étape ni la
+         * carte « à libérer » : annoncer un travail à faire en renvoyant
+         * sur un écran fermé fait tourner l'agent en rond.
+         *
+         * Le ton reste « calme » pour la même raison : rien n'est
+         * actionnable aujourd'hui, donc rien ne doit crier.
+         */
+        const enAttente =
+          labo.aRecevoir.length + labo.aGrouper.length +
+          labo.aTester.length + labo.aLiberer.length;
         liste.push({
           cle: "labo-encours",
-          libelle: "Poches à qualifier",
-          valeur: aFaire,
-          detail: aFaire === 0
-            ? "aucune poche en attente au laboratoire"
-            : `${labo.aRecevoir.length} à réceptionner · ${labo.aGrouper.length} à grouper · ${labo.aTester.length} en sérologie`,
+          libelle: "Poches en attente de qualification",
+          valeur: enAttente,
+          detail: "écran du laboratoire en cours de préparation",
           adresse: "/agent/laboratoire",
           Icone: FlaskConical,
-          ton: aFaire === 0 ? "calme" : "agir",
-          roles: ["agent_labo"],
-        });
-        liste.push({
-          cle: "labo-liberer",
-          libelle: "Dossiers à libérer",
-          valeur: labo.aLiberer.length,
-          detail: labo.aLiberer.length === 0
-            ? "aucun dossier complet en attente"
-            : "examens terminés, verdict à confirmer",
-          adresse: "/agent/laboratoire",
-          Icone: CircleCheck,
-          ton: labo.aLiberer.length === 0 ? "calme" : "urgent",
+          ton: "calme",
           roles: ["agent_labo"],
         });
       }
@@ -154,7 +186,7 @@ export default function TableauDeBordAgent() {
     void charger(agent);
     const minuteur = setInterval(() => { void charger(agent); }, 60_000);
     return () => { vivant = false; clearInterval(minuteur); };
-  }, [agent]);
+  }, [agent, essai]);
 
   useEffect(() => {
     const maj = () => setHeure(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
@@ -205,7 +237,13 @@ export default function TableauDeBordAgent() {
         </div>
       </header>
 
-      {!cartes && <SqueletteLignes lignes={2} />}
+      {/* Une panne de chargement se dit, avec une issue : sinon l'écran
+          reste gris et l'agent attend quelque chose qui ne viendra pas. */}
+      {echec && (
+        <EtatErreur texte={echec} surReessai={() => { setEchec(null); setEssai((n) => n + 1); }} />
+      )}
+
+      {!cartes && !echec && <SqueletteLignes lignes={2} />}
 
       {cartes && (
         <>
@@ -267,10 +305,25 @@ function CarteBord({ carte }: { carte: Carte }) {
 
       <span className="bord-carte__corps">
         {calme ? (
-          <span className="bord-carte__rassurant">
-            <CheckCircle2 size={18} aria-hidden="true" />
-            Tout est à jour
-          </span>
+          /*
+           * Une carte « calme » dont le compteur n'est pas nul ne doit
+           * PAS dire « Tout est à jour » : la file du laboratoire peut
+           * contenir 27 poches en attente alors que l'écran est
+           * temporairement fermé. Afficher le chiffre reste honnête ;
+           * le ton gris dit simplement qu'il n'y a rien à faire
+           * maintenant.
+           */
+          carte.valeur > 0 ? (
+            <>
+              <strong className="bord-carte__valeur chiffres">{carte.valeur}</strong>
+              <span className="bord-badge bord-badge--calme">En attente</span>
+            </>
+          ) : (
+            <span className="bord-carte__rassurant">
+              <CheckCircle2 size={18} aria-hidden="true" />
+              Tout est à jour
+            </span>
+          )
         ) : (
           <>
             <strong className="bord-carte__valeur chiffres">{carte.valeur}</strong>

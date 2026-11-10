@@ -38,6 +38,9 @@ export type CodeErreur =
   | "DONNEES_INVALIDES"
   | "NON_CONNECTE"
   | "INTROUVABLE"
+  // Panne d'infrastructure (base de données injoignable) : à distinguer
+  // d'un bug applicatif, car l'utilisateur doit simplement réessayer.
+  | "SERVICE_INDISPONIBLE"
   | "ERREUR_SERVEUR";
 
 // =====================================================================

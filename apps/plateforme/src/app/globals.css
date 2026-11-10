@@ -1111,6 +1111,13 @@ a { color: var(--primaire); text-decoration: none; }
 /* Ocre foncé spécifique au badge : l'ocre de la charte mesure 4,48:1 sur
    son fond clair — juste sous le seuil WCAG AA de 4,5:1. */
 .bord-badge--agir { background: var(--ocre-clair); color: #934408; border: 1px solid #EBD2B4; }
+/* Gris sobre : le travail existe et le chiffre le dit, mais rien n'est
+   actionnable maintenant. Le badge doit donc informer sans alerter. */
+.bord-badge--calme {
+  background: var(--fond);
+  color: var(--encre-2);
+  border: 1px solid var(--trait-fort);
+}
 
 /* Urgence : rouge sang institutionnel, chiffre appuyé. */
 .bord-carte--urgent { border-color: #F3C3BF; background: #FFFCFC; }
@@ -1366,4 +1373,50 @@ a { color: var(--primaire); text-decoration: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .aide__panneau { animation: none; }
+}
+
+/* =====================================================================
+   Écran en attente d'ouverture
+   ---------------------------------------------------------------------
+   Un écran suspendu doit le DIRE : sans ce bloc, une page vide se lit
+   comme une panne, et l'agent recharge, réessaie, puis appelle. On
+   annonce l'attente, on explique pourquoi, et on rassure sur la suite
+   de la chaîne qui, elle, continue de tourner.
+   ===================================================================== */
+.travaux {
+  display: flex; flex-direction: column; align-items: center;
+  gap: var(--e4); padding: var(--e8) var(--e6);
+  background: var(--surface);
+  border: 1px solid var(--trait); border-radius: var(--rayon);
+  box-shadow: var(--ombre);
+  text-align: center;
+}
+.travaux__icone {
+  display: grid; place-items: center;
+  width: 64px; height: 64px; border-radius: 50%;
+  background: var(--primaire-clair); color: var(--primaire);
+}
+.travaux__titre {
+  margin: 0;
+  font-size: var(--t-titre-s); font-weight: 650; letter-spacing: -0.01em;
+  color: var(--encre);
+}
+.travaux__texte {
+  margin: 0; max-width: 54ch;
+  font-size: var(--t-corps); color: var(--encre-2); line-height: 1.65;
+  text-wrap: pretty;
+}
+/* La note se détache du texte principal : ce n'est pas la même
+   information. L'une explique l'attente, l'autre rassure sur le reste
+   de la chaîne. */
+.travaux__note {
+  margin: 0; max-width: 54ch;
+  padding: var(--e3) var(--e4);
+  background: var(--fond); border-radius: var(--rayon-petit);
+  font-size: var(--t-appui); color: var(--encre-2); line-height: 1.6;
+  text-wrap: pretty;
+}
+@media (max-width: 640px) {
+  .travaux { padding: var(--e6) var(--e4); }
+  .travaux__icone { width: 52px; height: 52px; }
 }
