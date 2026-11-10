@@ -718,6 +718,18 @@ export interface Expedition {
 export interface DelivranceRequete {
   code: string;
   service: string;
+  /** Nom de l'agent de santé qui reçoit la poche (traçabilité). */
+  nomAgent: string;
+}
+
+/** POST /delivrances — réponse : les détails du produit pour imprimer le reçu. */
+export interface DelivranceReponse {
+  code: string;
+  typeProduit: "GR" | "PL" | "PQ";
+  groupeSanguin: GroupeSanguin;
+  service: string;
+  nomAgent: string;
+  statut: string;
 }
 
 // ---------------------------------------------------------------------

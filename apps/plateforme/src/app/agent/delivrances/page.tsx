@@ -2,31 +2,23 @@
 /**
  * P10 — Délivrances aux services de soins.
  *
- * C'est le geste le plus fréquent d'un centre : un médecin ou un
- * infirmier vient chercher une poche, l'agent l'enregistre. Il méritait
- * son propre écran plutôt qu'un formulaire replié au bas de la
- * distribution — qui, elle, traite des échanges ENTRE sites.
+ * C'est le geste le plus fréquent d'un centre : un agent de santé vient
+ * chercher une poche, l'agent l'enregistre et remet un reçu. L'écran reste
+ * lisible et sans ambiguïté : la délivrance est DÉFINITIVE.
  *
- * Deux choses à l'écran, et rien d'autre :
- *   · le formulaire de délivrance, ouvert d'emblée ;
- *   · ce qui est disponible, pour que l'agent trouve un code sans
- *     quitter la page (il n'a pas toujours l'étiquette sous les yeux).
- *
- * La délivrance est DÉFINITIVE : le produit ne revient pas au stock.
- * L'écran doit donc être lisible et sans ambiguïté, pas rapide à tout
- * prix.
+ * Deux choses à l'écran : le formulaire de délivrance (ouvert d'emblée) et
+ * ce qui est disponible, pour trouver un code sans quitter la page.
  */
 import { useState } from "react";
-import { Hospital, PackageSearch } from "lucide-react";
-import type { Produit } from "@dds/contrat-api";
+import { Hospital, PackageSearch, Printer } from "lucide-react";
+import type { DelivranceReponse, Produit } from "@dds/contrat-api";
 import { api } from "@/lib/api";
 import { messageDe } from "@/lib/erreurs";
 import { TYPE_PRODUIT, dateCourte } from "@/lib/metier";
 import { SERVICES_SANTE } from "@/lib/services";
 import { useRessource } from "@/lib/useRessource";
+import { lireAgent } from "@/lib/session";
 import { EnTetePage } from "@/components/Coquille";
-import Explication from "@/components/Explication";
-import Aide, { AvecAide } from "@/components/Aide";
 import Bouton from "@/components/Bouton";
 import BlocGroupe from "@/components/BlocGroupe";
 import Tableau from "@/components/Tableau";
@@ -37,9 +29,14 @@ import { MessageErreur, MessageReussite } from "@/components/Messages";
 /** Au-delà, la page devient un mur de codes : on pagine. */
 const PAR_PAGE = 15;
 
+type Recu = DelivranceReponse & { date: string; siteNom: string };
+
 export default function Delivrances() {
   const [code, setCode] = useState("");
   const [service, setService] = useState("");
+  const [nomAgent, setNomAgent] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [recu, setRecu] = useState<Recu | null>(null);
   const [erreur, setErreur] = useState("");
   const [reussite, setReussite] = useState("");
   const [enCours, setEnCours] = useState(false);
@@ -47,17 +44,10 @@ export default function Delivrances() {
   const [filtre, setFiltre] = useState("");
   const [limite, setLimite] = useState(PAR_PAGE);
 
-  // La liste sert aussi de preuve : après une délivrance, l'unité en
-  // disparaît. L'agent voit l'effet de son geste sans rien recharger.
   const disponibles = useRessource<Produit[]>(() => api.produitsDisponibles());
 
-  /*
-   * Tri par péremption CROISSANTE : la première unité proposée est
-   * celle qui se perdra en premier. C'est la règle du métier (premier
-   * périmé, premier sorti) — l'écran doit la rendre naturelle plutôt
-   * que de compter sur la vigilance de l'agent. Les unités sans date
-   * passent en dernier.
-   */
+  // Tri par péremption CROISSANTE : la première unité proposée est celle qui
+  // se perdra en premier (premier périmé, premier sorti).
   const q = filtre.trim().toLowerCase();
   const filtres = (disponibles.donnees ?? [])
     .filter((p) => !q
@@ -71,11 +61,10 @@ export default function Delivrances() {
     e.preventDefault();
     setErreur(""); setReussite(""); setEnCours(true);
     try {
-      const r = await api.delivrer({ code: code.trim(), service: service.trim() });
-      setReussite(
-        `Produit ${r.code} délivré au service « ${r.service} ». La traçabilité est bouclée.`,
-      );
-      // Le code se vide, PAS le service : un agent délivre souvent
+      const r = await api.delivrer({ code: code.trim(), service, nomAgent: nomAgent.trim() });
+      setRecu({ ...r, date, siteNom: lireAgent()?.siteNom ?? "" });
+      setReussite(`Produit ${r.code} délivré au service « ${r.service} ».`);
+      // Le code se vide, PAS le service ni le nom : un agent délivre souvent
       // plusieurs poches d'affilée au même service.
       setCode("");
       void disponibles.recharger();
@@ -85,6 +74,8 @@ export default function Delivrances() {
       setEnCours(false);
     }
   }
+
+  const manquants = [!code.trim() && "le code", !service && "le service", !nomAgent.trim() && "le nom de l'agent"].filter(Boolean);
 
   return (
     <>
@@ -98,23 +89,11 @@ export default function Delivrances() {
         }
       />
 
-      <Explication
-        Icone={Hospital}
-        role="Enregistrer qu'une poche quitte votre stock pour un service de soins : urgences, maternité, bloc…"
-        quand="Au moment où le médecin ou l'infirmier emporte la poche."
-        ensuite="Le produit sort du stock et la traçabilité est close : le geste ne s'annule pas."
-      />
-
       <Section titre="Délivrer un produit">
         <form className="bloc pile-m" onSubmit={delivrer}>
           <div className="grille-2">
             <label className="champ">
-              <AvecAide
-                etiquette="Code du produit"
-                aide="Le code figure sur l'étiquette de la poche. Les minuscules et les tirets sont acceptés."
-              >
-                <span className="champ__etiquette">Code du produit</span>
-              </AvecAide>
+              <span className="champ__etiquette">Code du produit</span>
               <input
                 className="champ__saisie chiffres" value={code} required
                 placeholder="OUA-26-04812-K-GR" autoComplete="off"
@@ -123,12 +102,7 @@ export default function Delivrances() {
             </label>
 
             <label className="champ">
-              <AvecAide
-                etiquette="Service destinataire"
-                aide="Le service de soins qui reçoit le produit. C'est le dernier maillon enregistré dans la traçabilité."
-              >
-                <span className="champ__etiquette">Service destinataire</span>
-              </AvecAide>
+              <span className="champ__etiquette">Service destinataire</span>
               <select
                 className="champ__saisie" value={service} required
                 onChange={(e) => { setService(e.target.value); setErreur(""); }}
@@ -136,6 +110,23 @@ export default function Delivrances() {
                 <option value="">Choisir un service</option>
                 {SERVICES_SANTE.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
+            </label>
+
+            <label className="champ">
+              <span className="champ__etiquette">Agent de santé qui prend la poche</span>
+              <input
+                className="champ__saisie" value={nomAgent} required
+                placeholder="Nom de l'agent de santé" autoComplete="off"
+                onChange={(e) => { setNomAgent(e.target.value); setErreur(""); }}
+              />
+            </label>
+
+            <label className="champ">
+              <span className="champ__etiquette">Date</span>
+              <input
+                className="champ__saisie" type="date" value={date} required
+                onChange={(e) => { setDate(e.target.value); setErreur(""); }}
+              />
             </label>
           </div>
 
@@ -146,16 +137,15 @@ export default function Delivrances() {
             <Bouton
               type="submit" icone={<Hospital size={18} aria-hidden="true" />}
               enCours={enCours} motEnCours="Délivrance…"
-              disabled={!code.trim() || !service.trim()}
+              disabled={manquants.length > 0}
             >
               Délivrer
             </Bouton>
-            <Aide etiquette="Délivrer">
-              Clôt la traçabilité du produit. Le geste est définitif : le produit ne revient pas au stock.
-            </Aide>
           </div>
         </form>
       </Section>
+
+      {recu && <Reçu recu={recu} />}
 
       <Section titre="Produits disponibles" compte={disponibles.donnees?.length}>
         {disponibles.chargement && <SqueletteLignes lignes={3} />}
@@ -172,13 +162,6 @@ export default function Delivrances() {
         )}
         {!!disponibles.donnees?.length && (
           <>
-            {/*
-              * Un centre bien approvisionné détient des CENTAINES
-              * d'unités : les lister toutes donnait une page de près de
-              * 10 000 px, inutilisable. On filtre, et on n'affiche que
-              * les premières — celles qui périment en premier, car ce
-              * sont celles qu'il faut sortir d'abord.
-              */}
             <div className="filtre-rang">
               <label className="champ filtre-rang__champ">
                 <span className="champ__etiquette">Filtrer</span>
@@ -209,9 +192,6 @@ export default function Delivrances() {
                 colonnes={[
                   {
                     cle: "code", entete: "Code",
-                    // Cliquer remplit le formulaire : sur un poste de
-                    // terrain, recopier un code à la main est la première
-                    // source d'erreur.
                     rendu: (p) => (
                       <button
                         type="button"
@@ -251,5 +231,55 @@ export default function Delivrances() {
         )}
       </Section>
     </>
+  );
+}
+
+/* =====================================================================
+   Reçu de délivrance
+   ===================================================================== */
+
+function Reçu({ recu }: { recu: Recu }) {
+  return (
+    <Section titre="Reçu de délivrance">
+      <div className="recu">
+        <header className="recu__entete">
+          <span className="recu__site">{recu.siteNom || "Centre de transfusion"}</span>
+          <h2 className="recu__titre">Reçu de délivrance</h2>
+        </header>
+
+        <dl className="recu__lignes">
+          <div className="recu__ligne">
+            <dt>Produit</dt>
+            <dd><strong>{TYPE_PRODUIT[recu.typeProduit].mot} {recu.groupeSanguin}</strong></dd>
+          </div>
+          <div className="recu__ligne">
+            <dt>Code</dt>
+            <dd className="chiffres">{recu.code}</dd>
+          </div>
+          <div className="recu__ligne">
+            <dt>Service destinataire</dt>
+            <dd>{recu.service}</dd>
+          </div>
+          <div className="recu__ligne">
+            <dt>Reçu par</dt>
+            <dd>{recu.nomAgent}</dd>
+          </div>
+          <div className="recu__ligne">
+            <dt>Date</dt>
+            <dd>{dateCourte(recu.date)}</dd>
+          </div>
+        </dl>
+
+        <div className="recu__signature">
+          <span>Signature de l&apos;agent de santé</span>
+        </div>
+
+        <div className="recu__actions">
+          <Bouton variante="secondaire" icone={<Printer size={18} aria-hidden="true" />} onClick={() => window.print()}>
+            Imprimer le reçu
+          </Bouton>
+        </div>
+      </div>
+    </Section>
   );
 }

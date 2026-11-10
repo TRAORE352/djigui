@@ -4,7 +4,7 @@
  */
 import type {
   AgentCompte, AgentConnexionReponse, BesoinStock, CreerAgentRequete, CreerCentreRequete,
-  CreerPocheRequete, CreerZoneRequete, DelivranceRequete, Demande,
+  CreerPocheRequete, CreerZoneRequete, DelivranceReponse, DelivranceRequete, Demande,
   DemandeRequete, DonneurAgent, EnregistrerPassageRequete,
   EntreeStock, EntreeStockRequete,
   EstimationAlerteReponse, Expedition, ExpeditionRequete,
@@ -113,7 +113,7 @@ export const api = {
   creerDemande: (corps: DemandeRequete) => appel<Demande>("POST", "/demandes", corps),
   creerExpedition: (corps: ExpeditionRequete) => appel<Expedition>("POST", "/expeditions", corps),
   recevoirExpedition: (id: string) => appel<Expedition>("POST", `/expeditions/${encodeURIComponent(id)}/reception`),
-  delivrer: (corps: DelivranceRequete) => appel<{ code: string; service: string; statut: string }>("POST", "/delivrances", corps),
+  delivrer: (corps: DelivranceRequete) => appel<DelivranceReponse>("POST", "/delivrances", corps),
 
   // Espace CNTS (administration)
   agents: () => appel<AgentCompte[]>("GET", "/agents"),

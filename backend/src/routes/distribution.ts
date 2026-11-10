@@ -238,6 +238,9 @@ routeDistribution.post("/expeditions/:id/reception", ...STOCK, async (req, res) 
 const schemaDelivrance = z.object({
   code: z.string().min(1, "Code requis."),
   service: z.string().min(1, "Service requis."),
+  // Nom de l'agent de santé qui reçoit la poche. Défaut vide pour ne pas
+  // casser un ancien frontend pendant la fenêtre de déploiement.
+  nomAgent: z.string().default(""),
 });
 
 // POST /delivrances — délivrer un produit à un service.
@@ -246,8 +249,11 @@ routeDistribution.post("/delivrances", ...STOCK, async (req, res) => {
   const d = valider(schemaDelivrance, req.body);
   const code = normaliserCode(d.code);
 
-  const { rows } = await requete<{ id: string; code: string; statut: string }>(
-    "select id, code, statut from produits where upper(replace(code, '-', '')) = $1",
+  const { rows } = await requete<{ id: string; code: string; statut: string; groupe_sanguin: string; type_produit: string }>(
+    `select p.id, p.code, p.statut, p.groupe_sanguin, t.code as type_produit
+     from produits p
+     join types_produits t on t.id = p.type_produit_id
+     where upper(replace(p.code, '-', '')) = $1`,
     [code],
   );
   const produit = rows[0];
@@ -259,12 +265,12 @@ routeDistribution.post("/delivrances", ...STOCK, async (req, res) => {
   await transaction(async (client) => {
     await client.query("update produits set statut = 'delivre' where id = $1", [produit.id]);
     await client.query(
-      "insert into delivrances (produit_id, service, date, agent_id) values ($1, $2, current_date, $3)",
-      [produit.id, d.service, agent.id],
+      "insert into delivrances (produit_id, service, date, agent_id, nom_agent) values ($1, $2, current_date, $3, $4)",
+      [produit.id, d.service, agent.id, d.nomAgent],
     );
   });
 
-  await inscrireEvenement({ type: "delivrance", produitId: produit.id, agentId: agent.id, siteId: agent.siteId, details: { code: produit.code, service: d.service } });
+  await inscrireEvenement({ type: "delivrance", produitId: produit.id, agentId: agent.id, siteId: agent.siteId, details: { code: produit.code, service: d.service, nomAgent: d.nomAgent } });
 
-  res.status(201).json({ donnees: { code: produit.code, service: d.service, statut: "delivre" } });
+  res.status(201).json({ donnees: { code: produit.code, typeProduit: produit.type_produit, groupeSanguin: produit.groupe_sanguin, service: d.service, nomAgent: d.nomAgent, statut: "delivre" } });
 });

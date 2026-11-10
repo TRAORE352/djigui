@@ -1503,3 +1503,50 @@ a { color: var(--primaire); text-decoration: none; }
 /* Le bouton tombe en bas de carte : les cartes d'une même rangée
    alignent leurs actions même si les textes font des hauteurs différentes. */
 .besoin .bouton { margin-top: auto; align-self: flex-start; }
+
+/* =====================================================================
+   Reçu de délivrance
+   ===================================================================== */
+.recu {
+  background: var(--surface);
+  border: 1px solid var(--trait);
+  border-radius: var(--rayon);
+  padding: var(--e4);
+  max-width: 520px;
+}
+.recu__entete {
+  text-align: center;
+  border-bottom: 1px solid var(--trait);
+  padding-bottom: var(--e3);
+  margin-bottom: var(--e3);
+}
+.recu__site { display: block; font-weight: 600; color: var(--encre-2); font-size: var(--t-petit); }
+.recu__titre { font-size: var(--t-titre-s); margin-top: var(--e1); }
+.recu__lignes { display: flex; flex-direction: column; gap: var(--e2); }
+.recu__ligne { display: flex; justify-content: space-between; gap: var(--e4); align-items: baseline; }
+.recu__ligne dt { color: var(--encre-2); font-size: var(--t-petit); flex-shrink: 0; }
+.recu__ligne dd { text-align: right; }
+.recu__signature {
+  margin-top: var(--e5);
+  padding-top: var(--e2);
+  border-top: 1px dashed var(--trait-fort);
+  text-align: right;
+  color: var(--encre-2);
+  font-size: var(--t-petit);
+}
+.recu__actions { margin-top: var(--e4); display: flex; justify-content: flex-end; }
+
+/* Impression : n'imprimer que le reçu, rien d'autre. */
+@media print {
+  body * { visibility: hidden; }
+  .recu, .recu * { visibility: visible; }
+  .recu {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .recu__actions { display: none; }
+}
