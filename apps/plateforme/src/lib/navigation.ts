@@ -42,7 +42,11 @@ export const SECTIONS_AGENT: Section[] = [
   {
     adresse: "/agent/laboratoire",
     mot: "Laboratoire",
-    resume: "Analyser chaque poche : groupe sanguin, maladies transmissibles, puis libération.",
+    // Écran suspendu en attendant la validation de la chaîne de
+    // qualification avec les biologistes du CNTS. Le lien reste visible
+    // (le poste existe, l'agent doit le trouver) mais la page annonce
+    // l'attente au lieu de promettre une fonction absente.
+    resume: "Qualification biologique des poches. Écran en cours de préparation.",
     Icone: FlaskConical,
     roles: ["agent_labo"],
   },
