@@ -19,7 +19,7 @@ import { LES_GROUPES, TYPE_PRODUIT, TYPE_SITE, URGENCE, dateCourte, statutDemand
 import { useRessource } from "@/lib/useRessource";
 import { lireAgent } from "@/lib/session";
 import { EnTetePage } from "@/components/Coquille";
-import Explication from "@/components/Explication";
+import Aide, { AvecAide } from "@/components/Aide";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import BlocGroupe from "@/components/BlocGroupe";
@@ -51,26 +51,19 @@ export default function Distribution() {
         actions={<Bouton variante="secondaire" onClick={() => void demandes.recharger()}>Actualiser</Bouton>}
       />
 
-      <Explication
-        Icone={Truck}
-        role="Les hôpitaux et les dépôts n'ont pas de stock à eux : quand ils ont besoin de sang, ils vous en demandent. Cet écran sert à voir ces demandes et à leur envoyer les poches."
-        quand="Chaque fois qu'une demande arrive, et avant chaque départ de véhicule."
-        ensuite="Le site qui reçoit confirme la réception. Chaque poche reste traçable jusqu'au patient."
-      />
-
       {demandes.chargement && !demandes.donnees && <SqueletteLignes lignes={3} />}
       {demandes.erreur && <EtatErreur texte={demandes.erreur} surReessai={() => void demandes.recharger()} />}
 
       {demandes.donnees && (
         <>
           {/* L'essentiel du métier : ce que d'autres sites attendent de nous. */}
-          <Section titre="Ils attendent du sang de notre part" compte={recues.length}>
+          <Section
+            titre="À expédier"
+            compte={recues.length}
+            aide="Demandes reçues d'un hôpital ou d'un dépôt. Chaque poche expédiée sort du stock de ce site et reste traçable jusqu'au patient."
+          >
             {recues.length === 0 ? (
-              <VideLigne Icone={Truck}>
-Personne n'attend de sang de votre part pour l'instant. Dès qu'un hôpital
-                ou un dépôt en demandera, la demande s'affichera ici avec ce qu'il faut
-                préparer.
-              </VideLigne>
+              <VideLigne Icone={Truck}>Aucune demande reçue.</VideLigne>
             ) : (
               recues.map((d) => (
                 <CarteDemande key={d.id} demande={d} role="fournisseur" surAction={() => void demandes.recharger()} />
@@ -78,11 +71,13 @@ Personne n'attend de sang de votre part pour l'instant. Dès qu'un hôpital
             )}
           </Section>
 
-          <Section titre="Ce que nous avons demandé à d'autres sites" compte={envoyees.length}>
+          <Section
+            titre="Nos commandes"
+            compte={envoyees.length}
+            aide="Demandes que ce site a adressées à un centre ou à un dépôt. Le site fournisseur expédie, puis vous réceptionnez à l'arrivée."
+          >
             {envoyees.length === 0 ? (
-              <VideLigne Icone={ArrowDownToLine}>
-                Vous n'avez rien demandé à un autre site. Utilisez « Demander des produits » plus bas si votre stock ne suffit pas.
-              </VideLigne>
+              <VideLigne Icone={ArrowDownToLine}>Aucune commande en cours.</VideLigne>
             ) : (
               envoyees.map((d) => (
                 <CarteDemande key={d.id} demande={d} role="demandeur" surAction={() => void demandes.recharger()} />
@@ -93,17 +88,11 @@ Personne n'attend de sang de votre part pour l'instant. Dès qu'un hôpital
       )}
 
       {/* Les deux formulaires sont repliés : ils ne servent pas à chaque passage. */}
-      <Repli
-        titre="Demander des produits à un autre site"
-        resume="Adresser une commande à un centre ou à un dépôt."
-      >
+      <Repli titre="Demander des produits">
         <FormulaireDemande surCreation={() => void demandes.recharger()} />
       </Repli>
 
-      <Repli
-        titre="Délivrer un produit à un service"
-        resume="Dernière étape de la chaîne : le produit part vers un service de soins."
-      >
+      <Repli titre="Délivrer à un service">
         <Delivrance />
       </Repli>
     </>
@@ -174,30 +163,34 @@ function CarteDemande({ demande, role, surAction }: {
       {role === "fournisseur" && demande.statut === "en_attente" && (
         <div className="pile-s">
           <label className="champ">
-            <span className="champ__etiquette">Produits à expédier</span>
+            <AvecAide
+              etiquette="Produits à expédier"
+              aide="Scannez les produits un par un, ou collez leurs identifiants séparés par un espace. Ils sortent du stock de ce site dès validation."
+            >
+              <span className="champ__etiquette">Produits à expédier</span>
+            </AvecAide>
             <input
               className="champ__saisie chiffres"
               value={codes}
-              placeholder="Scannez les produits, ou collez leurs identifiants séparés par un espace"
+              placeholder="OUA-26-04812-K-GR"
               onChange={(e) => { setCodes(e.target.value); setErreur(""); }}
             />
-            <span className="champ__aide">
-              Les produits scannés sortent du stock de ce site dès l'expédition.
-            </span>
           </label>
           <div className="rang">
             <Bouton icone={<Send size={18} aria-hidden="true" />} enCours={enCours}
                     motEnCours="Expédition…" onClick={() => void expedier()}>
               Expédier
             </Bouton>
+            <Aide etiquette="Expédier">
+              Crée le bordereau de transport et sort les produits du stock. Le site destinataire confirmera la réception de son côté.
+            </Aide>
           </div>
         </div>
       )}
 
       {role === "demandeur" && demande.statut === "preparee" && (
         <Encadre ton="ocre">
-          Les produits ont été expédiés. À leur arrivée, réceptionnez l'expédition
-          depuis le bordereau de transport pour les faire entrer dans votre stock.
+          Produits expédiés. Réceptionnez-les à l&apos;arrivée depuis le bordereau de transport.
         </Encadre>
       )}
 
@@ -327,10 +320,15 @@ function FormulaireDemande({ surCreation }: { surCreation: () => void }) {
 
       <MessageErreur>{erreur}</MessageErreur>
 
-      <Bouton type="submit" enCours={enCours} motEnCours="Envoi…"
-              icone={<PackagePlus size={18} aria-hidden="true" />}>
-        Envoyer la demande
-      </Bouton>
+      <div className="rang">
+        <Bouton type="submit" enCours={enCours} motEnCours="Envoi…"
+                icone={<PackagePlus size={18} aria-hidden="true" />}>
+          Envoyer la demande
+        </Bouton>
+        <Aide etiquette="Envoyer la demande">
+          La demande part vers le site fournisseur choisi. Elle apparaîtra ensuite dans vos commandes en attente d&apos;expédition.
+        </Aide>
+      </div>
     </form>
   );
 }
@@ -364,16 +362,25 @@ function Delivrance() {
     <form className="pile" onSubmit={delivrer}>
       <div className="grille-2">
         <label className="champ">
-          <span className="champ__etiquette">Code du produit</span>
+          <AvecAide
+            etiquette="Code du produit"
+            aide="Le code figure sur l'étiquette de la poche. Les minuscules et les tirets sont acceptés, le code est normalisé à la validation."
+          >
+            <span className="champ__etiquette">Code du produit</span>
+          </AvecAide>
           <input className="champ__saisie chiffres" value={code} required
                  placeholder="OUA-26-04812-K-GR" autoComplete="off"
                  onChange={(e) => { setCode(e.target.value); setErreur(""); }} />
-          <span className="champ__aide">Tirets et minuscules acceptés : le code est normalisé.</span>
         </label>
         <label className="champ">
-          <span className="champ__etiquette">Service destinataire</span>
+          <AvecAide
+            etiquette="Service destinataire"
+            aide="Le service de soins qui reçoit le produit. C'est le dernier maillon enregistré dans la traçabilité."
+          >
+            <span className="champ__etiquette">Service destinataire</span>
+          </AvecAide>
           <input className="champ__saisie" value={service} required
-                 placeholder="Urgences, maternité, pédiatrie…" autoComplete="off"
+                 placeholder="Urgences, maternité, pédiatrie" autoComplete="off"
                  onChange={(e) => { setService(e.target.value); setErreur(""); }} />
         </label>
       </div>
@@ -381,11 +388,16 @@ function Delivrance() {
       <MessageErreur>{erreur}</MessageErreur>
       <MessageReussite>{reussite}</MessageReussite>
 
-      <Bouton type="submit" icone={<Hospital size={18} aria-hidden="true" />}
-              enCours={enCours} motEnCours="Délivrance…"
-              disabled={!code.trim() || !service.trim()}>
-        Délivrer
-      </Bouton>
+      <div className="rang">
+        <Bouton type="submit" icone={<Hospital size={18} aria-hidden="true" />}
+                enCours={enCours} motEnCours="Délivrance…"
+                disabled={!code.trim() || !service.trim()}>
+          Délivrer
+        </Bouton>
+        <Aide etiquette="Délivrer">
+          Clôt la traçabilité du produit. Le geste est définitif, le produit ne revient pas au stock.
+        </Aide>
+      </div>
     </form>
   );
 }

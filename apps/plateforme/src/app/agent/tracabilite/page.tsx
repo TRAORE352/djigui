@@ -14,6 +14,7 @@ import { messageDe } from "@/lib/erreurs";
 import { STATUT_POCHE, dateCourte } from "@/lib/metier";
 import { dateHeure } from "@/lib/format";
 import { EnTetePage } from "@/components/Coquille";
+import Aide, { AvecAide } from "@/components/Aide";
 import Explication from "@/components/Explication";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
@@ -68,7 +69,9 @@ export default function Tracabilite() {
 
       <form className="bloc rang" style={{ flexWrap: "wrap" }} onSubmit={rechercher}>
         <label className="champ" style={{ flex: 1, minWidth: 240 }}>
-          <span className="champ__etiquette">Code de la poche ou du produit</span>
+          <AvecAide etiquette="Code de la poche ou du produit" aide="Les tirets et la casse sont ignorés, la saisie oua2604812k fonctionne aussi. Le code d'un produit dérivé se termine par GR, PL ou PQ.">
+            <span className="champ__etiquette">Code de la poche ou du produit</span>
+          </AvecAide>
           <input
             className="champ__saisie chiffres"
             value={code}
@@ -76,8 +79,10 @@ export default function Tracabilite() {
             placeholder="OUA-26-04812-K"
             onChange={(e) => { setCode(e.target.value); setErreur(""); }}
           />
-          <span className="champ__aide">Les tirets et la casse sont ignorés : « oua2604812k » fonctionne aussi.</span>
         </label>
+        <Aide etiquette="Consulter">
+          Affiche toute l&apos;histoire du code, du donneur jusqu&apos;au service receveur. C&apos;est une consultation, rien n&apos;est modifié depuis cet écran.
+        </Aide>
         <Bouton type="submit" icone={<Search size={18} aria-hidden="true" />}
                 enCours={enCours} motEnCours="Recherche…" disabled={!code.trim()}>
           Consulter

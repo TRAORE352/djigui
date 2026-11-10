@@ -791,7 +791,12 @@ a { color: var(--primaire); text-decoration: none; }
 .contenu { gap: var(--e7); }
 .section { display: flex; flex-direction: column; gap: var(--e4); }
 .section__entete { display: flex; align-items: baseline; justify-content: space-between; gap: var(--e3); }
-.section__titre { font-size: var(--t-lead); font-weight: 650; letter-spacing: -0.01em; }
+/* Le titre porte un compteur et parfois une pastille d'aide : il les
+   aligne sur sa ligne de base au lieu de les laisser déborder. */
+.section__titre {
+  display: inline-flex; align-items: center; gap: var(--e2);
+  font-size: var(--t-lead); font-weight: 650; letter-spacing: -0.01em;
+}
 .section__compte {
   display: inline-grid; place-items: center; min-width: 22px; height: 22px;
   padding: 0 7px; border-radius: 999px;
@@ -1295,3 +1300,70 @@ a { color: var(--primaire); text-decoration: none; }
 
 /* Pile large : espacement généreux entre les étapes d'un écran. */
 .pile-g { display: flex; flex-direction: column; gap: var(--e8); }
+
+/* =====================================================================
+   Aide ponctuelle : la pastille « ! » et son panneau
+   ---------------------------------------------------------------------
+   Remplace les phrases d'explication imprimées en permanence sous chaque
+   champ. Ces phrases servent les premiers jours puis deviennent du bruit
+   sur un écran utilisé cent fois par jour : l'explication passe SOUS la
+   pastille, et l'écran respire.
+   ===================================================================== */
+
+/* Libellé et sa pastille, collés sur la même ligne de base. */
+.avec-aide { display: inline-flex; align-items: center; gap: var(--e2); }
+
+.aide__pastille {
+  position: relative;
+  display: inline-grid; place-items: center; flex: none;
+  /* 20 px de rond, mais une zone cliquable de 32 px via le pseudo-élément
+     ci-dessous : une cible tactile ne se mesure pas au dessin. */
+  width: 20px; height: 20px; padding: 0; margin: 0;
+  background: var(--primaire-clair); color: var(--primaire-fonce);
+  border: 0; border-radius: 50%;
+  font-size: var(--t-micro); font-weight: 800; line-height: 1;
+  font-family: var(--police); cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.aide__pastille::after {
+  content: ""; position: absolute; width: 32px; height: 32px;
+}
+.aide__pastille:hover,
+.aide__pastille--ouverte { background: var(--primaire); color: #fff; }
+.aide__pastille:focus-visible {
+  outline: 2px solid var(--primaire); outline-offset: 2px;
+}
+
+.aide__panneau {
+  position: fixed; z-index: 70;
+  padding: var(--e4);
+  background: var(--surface);
+  border: 1px solid var(--trait-fort); border-radius: var(--rayon);
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.16);
+  animation: aide-entre 120ms ease-out;
+}
+@keyframes aide-entre {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.aide__titre {
+  margin: 0 0 var(--e2);
+  font-size: var(--t-micro); font-weight: 700; color: var(--primaire-fonce);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.aide__texte {
+  margin: 0;
+  /* Poids et graisse remis à plat : la pastille vit souvent dans un
+     titre (`<h2>`, `<legend>`), dont le texte héritait du gras et de la
+     casse. Une explication se lit en texte courant. */
+  font-size: var(--t-appui); font-weight: 400; color: var(--encre);
+  line-height: 1.6; letter-spacing: normal; text-transform: none;
+  /* Justifié AVEC césure : un bloc étroit justifié sans césure se troue
+     de lézardes blanches entre les mots. */
+  text-align: justify;
+  hyphens: auto; -webkit-hyphens: auto;
+  text-wrap: pretty;
+}
+@media (prefers-reduced-motion: reduce) {
+  .aide__panneau { animation: none; }
+}

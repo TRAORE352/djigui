@@ -70,8 +70,12 @@ const CHROME = '/root/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome';
   };
 
   // ── 1. File de réception + liste de travail ───────────────────────────
-  await p.goto(`${BASE}/agent/laboratoire`, { waitUntil: 'networkidle' });
-  await p.waitForTimeout(2000);
+  // `networkidle` ne se stabilise jamais en dev : le websocket HMR de
+  // Next maintient une connexion ouverte en permanence. On attend donc
+  // un sélecteur de fin de chargement, qui est le vrai signal.
+  await p.goto(`${BASE}/agent/laboratoire`, { waitUntil: 'domcontentloaded' });
+  await p.waitForSelector('.worklist__ligne, .vide-ligne', { timeout: 30000 });
+  await p.waitForTimeout(600);
   await shot('1-file-travail');
   await mesurer('file');
 
@@ -105,15 +109,38 @@ const CHROME = '/root/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome';
   await mesurer('dossier-serologie');
 
   // ── 5. Libération ─────────────────────────────────────────────────────
-  // Les radios sont masquées sous des boutons stylés : `.check()` échoue
-  // en silence sur l'input. On clique le LABEL, comme un technicien.
-  for (const mk of ['VIH', 'Hépatite B', 'Hépatite C', 'Syphilis']) {
-    await p.locator(`input[aria-label="${mk} : Résultat négatif"]`)
-      .check({ force: true });
+  /*
+   * Les radios sont MASQUÉES sous des boutons stylés. `.check()` échoue
+   * en timeout (l'input n'est pas visible) et `.check({ force: true })`
+   * coche l'input sans que React voie l'événement : le bouton d'envoi
+   * reste grisé et le banc échoue plus loin, loin de la vraie cause.
+   * On clique le LABEL qui enveloppe l'input, comme un technicien.
+   */
+  // Le bouton visible est le <label> parent du radio masqué. On passe par
+  // l'aria-label du radio, seul identifiant stable : un filtre sur le
+  // texte « Hépatite C » attrape aussi d'autres cartes au re-rendu.
+  const marqueurs = await p.locator('input[aria-label$=": Résultat négatif"]').all();
+  for (const input of marqueurs) {
+    const nom = await input.getAttribute('aria-label');
+    if (!/^(VIH|Hépatite B|Hépatite C|Syphilis) :/.test(nom)) continue;
+    await input.evaluate((e) => e.closest('label').click());
+    await p.waitForTimeout(150);
   }
-  await p.waitForTimeout(400);
-  await p.locator('button:has-text("Enregistrer")').first().click();
-  await p.waitForSelector('button:has-text("Libérer la poche")', { timeout: 20000 });
+  await p.waitForTimeout(600);
+  const pret = await p.locator('button:has-text("Enregistrer")').first().isEnabled();
+  console.log('  4 marqueurs négatifs saisis, envoi possible :', pret);
+  /*
+   * Le libellé du bouton est DYNAMIQUE : « Enregistrer les résultats »
+   * tant que rien n'est saisi, puis « Enregistrer 4 résultats ». Un
+   * `has-text` sur le libellé complet ne matche donc plus au moment où
+   * l'on veut cliquer. On vise le rôle avec une expression régulière.
+   *
+   * `noWaitAfter` : le bouton passe en « Enregistrement… » puis la carte
+   * entière est remplacée, donc le locator se détache en plein clic. On
+   * attend le RÉSULTAT (l'étape suivante), pas la stabilité du bouton.
+   */
+  await p.getByRole('button', { name: /^Enregistrer/ }).click({ noWaitAfter: true });
+  await p.waitForSelector('button:has-text("Libérer la poche")', { timeout: 25000 });
   await p.waitForTimeout(800);
   await shot('6-dossier-liberation');
   await mesurer('dossier-liberation');
@@ -122,7 +149,7 @@ const CHROME = '/root/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome';
   const mob = await ctx.newPage();
   mob.on('pageerror', (e) => erreurs.push('MOBILE ' + e.message.slice(0, 160)));
   await mob.setViewportSize({ width: 390, height: 844 });
-  await mob.goto(`${BASE}/agent/laboratoire`, { waitUntil: 'networkidle' });
+  await mob.goto(`${BASE}/agent/laboratoire`, { waitUntil: 'domcontentloaded' });
   // Attendre la FIN du chargement : sinon la capture fige les squelettes
   // et l'on juge un écran de chargement au lieu de la liste réelle.
   await mob.waitForSelector('.worklist__ligne, .vide-ligne', { timeout: 20000 });

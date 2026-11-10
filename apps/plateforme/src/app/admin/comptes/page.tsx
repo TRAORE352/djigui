@@ -15,6 +15,7 @@ import { messageDe } from "@/lib/erreurs";
 import { TYPE_SITE, telephoneLisible } from "@/lib/metier";
 import { useRessource } from "@/lib/useRessource";
 import { EnTetePage } from "@/components/Coquille";
+import Aide, { AvecAide } from "@/components/Aide";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import Tableau from "@/components/Tableau";
@@ -181,11 +182,12 @@ function FormulaireAgent({ sites, surCreation }: {
                  onChange={(e) => setNom(e.target.value)} />
         </label>
         <label className="champ">
-          <span className="champ__etiquette">Adresse e-mail professionnelle</span>
+          <AvecAide etiquette="Adresse e-mail professionnelle" aide="Sert d'identifiant de connexion. Elle doit être unique dans tout le réseau.">
+            <span className="champ__etiquette">Adresse e-mail professionnelle</span>
+          </AvecAide>
           <input className="champ__saisie" type="email" value={email} required autoComplete="off"
                  placeholder="prenom.nom@cnts.bf"
                  onChange={(e) => setEmail(e.target.value)} />
-          <span className="champ__aide">Sert d'identifiant de connexion.</span>
         </label>
         <label className="champ">
           <span className="champ__etiquette">Téléphone</span>
@@ -194,14 +196,17 @@ function FormulaireAgent({ sites, surCreation }: {
                  onChange={(e) => setTelephone(e.target.value)} />
         </label>
         <label className="champ">
-          <span className="champ__etiquette">Mot de passe provisoire</span>
+          <AvecAide etiquette="Mot de passe provisoire" aide="Huit caractères au moins. L'agent le remplacera lui-même à sa première connexion.">
+            <span className="champ__etiquette">Mot de passe provisoire</span>
+          </AvecAide>
           <input className="champ__saisie" type="password" value={motDePasse} required
                  minLength={8} autoComplete="new-password"
                  onChange={(e) => setMotDePasse(e.target.value)} />
-          <span className="champ__aide">8 caractères au moins. L'agent le changera lui-même.</span>
         </label>
         <label className="champ">
-          <span className="champ__etiquette">Site de rattachement</span>
+          <AvecAide etiquette="Site de rattachement" aide="Détermine le stock et les poches que l'agent verra. Un agent ne voit jamais les données d'un autre site.">
+            <span className="champ__etiquette">Site de rattachement</span>
+          </AvecAide>
           <select className="champ__saisie" value={siteId} required
                   onChange={(e) => setSiteId(e.target.value)}>
             <option value="">Choisir…</option>
@@ -209,7 +214,6 @@ function FormulaireAgent({ sites, surCreation }: {
               <option key={s.id} value={s.id}>{s.nom} — {TYPE_SITE[s.type]} ({s.code})</option>
             ))}
           </select>
-          <span className="champ__aide">Détermine le stock et les poches que l'agent verra.</span>
         </label>
       </div>
 
@@ -231,10 +235,15 @@ function FormulaireAgent({ sites, surCreation }: {
 
       <MessageErreur>{erreur}</MessageErreur>
 
-      <Bouton type="submit" enCours={enCours} motEnCours="Création…"
-              icone={<UserPlus size={18} aria-hidden="true" />}>
-        Créer le compte
-      </Bouton>
+      <div className="rang">
+        <Bouton type="submit" enCours={enCours} motEnCours="Création…"
+                icone={<UserPlus size={18} aria-hidden="true" />}>
+          Créer le compte
+        </Bouton>
+        <Aide etiquette="Créer le compte">
+          L&apos;agent pourra se connecter immédiatement avec le mot de passe provisoire. Ses droits découlent des postes cochés ci-dessus.
+        </Aide>
+      </div>
     </form>
   );
 }

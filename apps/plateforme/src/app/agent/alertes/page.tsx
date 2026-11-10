@@ -18,7 +18,8 @@ import { messageDe } from "@/lib/erreurs";
 import { LES_GROUPES, URGENCE } from "@/lib/metier";
 import { dateHeure } from "@/lib/format";
 import { EnTetePage } from "@/components/Coquille";
-import Explication, { Etape } from "@/components/Explication";
+import { Etape } from "@/components/Explication";
+import Aide, { AvecAide } from "@/components/Aide";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import BlocGroupe from "@/components/BlocGroupe";
@@ -107,25 +108,23 @@ export default function Alertes() {
         chapeau="Prévenir les donneurs d'une zone qu'on a besoin d'eux, et suivre qui répond."
       />
 
-      <Explication
-        Icone={Megaphone}
-        cle="alertes"
-        resume="Prévenez les donneurs d'un quartier, suivez qui répond."
-        role="Vous envoyez un message aux donneurs qui habitent les zones que vous choisissez. Ils le reçoivent dans leur application et répondent s'ils peuvent venir."
-        quand="Quand le stock baisse, avant une opération programmée, ou après une urgence qui a vidé les réserves."
-        ensuite="Les donneurs qui acceptent se présentent au centre. Vous les accueillez depuis « Accueil et prélèvement »."
-      />
-
       <Composer surLancement={surLancement} />
 
       <section className="pile">
-        <h2 className="section-titre">Suivi des alertes lancées depuis ce poste</h2>
+        <h2 className="section-titre">
+          <AvecAide
+            etiquette="Suivi des appels"
+            aide="Seuls les appels lancés depuis ce poste sont listés. Le suivi est relu auprès du serveur toutes les trente secondes."
+          >
+            <span>Suivi des appels</span>
+          </AvecAide>
+        </h2>
         {suivies.length === 0 ? (
           <EtatVide
             Icone={BellRing}
             ton="doux"
             titre="Aucun appel lancé pour l'instant"
-            texte="Les appels que vous lancez ici apparaissent en dessous : combien de donneurs prévenus, combien ont répondu, combien sont venus."
+            texte="Vos appels et leurs réponses s'afficheront ici."
           />
         ) : (
           suivies.map((id) => <Suivi key={id} id={id} />)
@@ -229,7 +228,7 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
       <Etape
         numero={1}
         titre="Qui voulez-vous appeler ?"
-        resume="Choisissez les quartiers. Tous les donneurs qui y habitent et qui peuvent donner aujourd'hui recevront le message — on ne trie pas par groupe sanguin."
+        aide="Choisissez les quartiers. Tous les donneurs qui y habitent et qui peuvent donner aujourd'hui recevront le message. Le tri ne se fait jamais par groupe sanguin."
       >
         <div className="bloc pile">
           {zones.length === 0 ? (
@@ -288,15 +287,23 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
       <Etape
         numero={2}
         titre="Que doivent-ils lire ?"
-        resume="C'est le message qui s'affichera sur leur téléphone. Une phrase simple, dans un langage de tous les jours."
+        aide="Ce texte s'affiche tel quel sur le téléphone du donneur. Une phrase simple, dans un langage de tous les jours."
       >
         <div className="bloc pile">
           <label className="champ">
-            <span className="champ__etiquette">Message au donneur</span>
+            <AvecAide
+              etiquette="Message au donneur"
+              aide="Le donneur reçoit ce texte sur son téléphone, sans rien autour. Écrivez une phrase courte et concrète, comme vous la diriez au guichet."
+            >
+              <span className="champ__etiquette">Message au donneur</span>
+            </AvecAide>
             <input className="champ__saisie" value={message} required maxLength={200}
                    placeholder="Le centre de Ouagadougou manque de sang. Votre don peut sauver une vie aujourd'hui."
                    onChange={(e) => setMessage(e.target.value)} />
-            <span className="champ__aide">{200 - message.length} caractères restants.</span>
+            {/* Compteur discret : un nombre nu ne dit pas de quoi il parle,
+                mais « caractères restants » en toutes lettres sous chaque
+                champ alourdit. On garde l'unité, abrégée. */}
+            <span className="champ__aide chiffres">{200 - message.length} caractères restants</span>
           </label>
 
           {/* Modèles : l'agent au guichet n'a pas le temps de rédiger. Un
@@ -319,7 +326,14 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
 
           <div className="grille-auto">
             <fieldset className="champ champ--nu">
-              <legend className="champ__etiquette">Degré d&apos;urgence</legend>
+              <legend className="champ__etiquette">
+                <AvecAide
+                  etiquette="Degré d'urgence"
+                  aide="Change le ton du message et la couleur de la notification. Les destinataires restent exactement les mêmes."
+                >
+                  <span>Degré d&apos;urgence</span>
+                </AvecAide>
+              </legend>
               <div className="urgences">
                 {NIVEAUX_URGENCE.map((n) => (
                   <label key={n.cle} className={`urgence urgence--${n.cle}${urgence === n.cle ? " urgence--choisie" : ""}`}>
@@ -335,7 +349,6 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
                   </label>
                 ))}
               </div>
-              <span className="champ__aide">Change le ton du message, pas les destinataires.</span>
             </fieldset>
 
             {/* Le groupe est FACULTATIF et ne filtre personne : il sert
@@ -343,16 +356,17 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
                 ignorent leur groupe — c'est le laboratoire qui le
                 déterminera après le prélèvement. */}
             <label className="champ">
-              <span className="champ__etiquette">Groupe à mentionner (facultatif)</span>
+              <AvecAide
+                etiquette="Groupe à mentionner"
+                aide="Ce choix n'exclut personne. Tous les donneurs des zones cochées sont appelés, y compris ceux qui ignorent leur groupe, car le laboratoire le détermine après le prélèvement."
+              >
+                <span className="champ__etiquette">Groupe à mentionner</span>
+              </AvecAide>
               <select className="champ__saisie" value={groupe ?? ""}
                       onChange={(e) => setGroupe((e.target.value || null) as GroupeSanguin | null)}>
-                <option value="">Ne pas préciser — appeler tout le monde</option>
+                <option value="">Ne pas préciser, appeler tout le monde</option>
                 {LES_GROUPES.map((g) => <option key={g} value={g}>Nous manquons de {g}</option>)}
               </select>
-              <span className="champ__aide">
-                N&apos;exclut personne : tous les donneurs des zones choisies sont appelés,
-                même ceux qui ignorent leur groupe.
-              </span>
             </label>
           </div>
         </div>
@@ -361,21 +375,29 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
       <Etape
         numero={3}
         titre="Jusqu'à quand, et combien ?"
-        resume="L'appel se referme de lui-même une fois la date passée."
+        aide="L'appel se referme de lui-même une fois la date limite passée. Le nombre souhaité sert uniquement à savoir quand l'objectif est atteint."
       >
         <div className="bloc pile">
           <div className="grille-auto">
             <label className="champ">
-              <span className="champ__etiquette">Nombre de donneurs souhaité</span>
+              <AvecAide
+                etiquette="Nombre de donneurs souhaité"
+                aide="Sert de repère pour la jauge de suivi. L'appel n'est pas bloqué si le nombre est dépassé."
+              >
+                <span className="champ__etiquette">Nombre de donneurs souhaité</span>
+              </AvecAide>
               <input className="champ__saisie chiffres" type="number" min={1} max={500} value={objectif}
                      onChange={(e) => setObjectif(Math.max(1, Number(e.target.value) || 1))} />
-              <span className="champ__aide">Sert à savoir quand l&apos;objectif est atteint.</span>
             </label>
             <label className="champ">
-              <span className="champ__etiquette">Réponses attendues avant le</span>
+              <AvecAide
+                etiquette="Réponses attendues avant le"
+                aide="Date et heure de fermeture de l'appel. Au plus tôt dans une heure, pour laisser au donneur le temps de se déplacer."
+              >
+                <span className="champ__etiquette">Réponses attendues avant le</span>
+              </AvecAide>
               <input className="champ__saisie" type="datetime-local" required min={minLimite}
                      value={dateLimite} onChange={(e) => setDateLimite(e.target.value)} />
-              <span className="champ__aide">Date et heure. Au plus tôt dans une heure.</span>
             </label>
           </div>
 
@@ -459,11 +481,11 @@ function EstimationZones({ nbZones, estimation, enCours }: {
             : `donneur${estimation > 1 ? "s" : ""} joignable${estimation > 1 ? "s" : ""}`}
         </span>
       </span>
-      <span className="estimation__note">
+      <Aide etiquette="Donneurs joignables">
         {vide
-          ? "Les donneurs de ces quartiers ont tous donné trop récemment, ou sont en pause. Choisissez d'autres zones."
-          : "Les donneurs en pause, ou qui ont donné trop récemment, sont déjà exclus de ce total."}
-      </span>
+          ? "Les donneurs de ces quartiers ont tous donné trop récemment, ou sont en pause. Cochez d'autres zones pour élargir l'appel."
+          : "Les donneurs en pause, et ceux qui ont donné trop récemment, sont déjà retirés de ce total."}
+      </Aide>
     </div>
   );
 }
@@ -566,7 +588,7 @@ function Suivi({ id }: { id: string }) {
       </div>
 
       {alerte.donneurs.length === 0 ? (
-        <p className="appui">Aucune réponse pour l'instant. Les réponses apparaissent ici au fur et à mesure.</p>
+        <p className="appui">Aucune réponse pour l&apos;instant.</p>
       ) : (
         <Tableau
           legende="Réponses des donneurs à cette alerte"
@@ -594,9 +616,11 @@ function Suivi({ id }: { id: string }) {
         <div className="rang">
           <Bouton variante="secondaire" icone={<CheckCheck size={18} aria-hidden="true" />}
                   enCours={cloture} onClick={() => void clore()}>
-            Clôturer l'alerte
+            Clôturer l&apos;appel
           </Bouton>
-          <span className="petit">Clôturer arrête les relances ; les donneurs déjà venus restent enregistrés.</span>
+          <Aide etiquette="Clôturer l'appel">
+            Arrête les relances auprès des donneurs. Ceux qui sont déjà venus restent enregistrés, et le suivi reste consultable.
+          </Aide>
         </div>
       )}
     </div>

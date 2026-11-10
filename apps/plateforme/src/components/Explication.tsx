@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { ChevronDown, Info, type LucideIcon } from "lucide-react";
+import Aide from "@/components/Aide";
 
 /**
  * Bandeau d'explication en tête de page : à quoi sert cet écran, et quand
@@ -150,11 +151,17 @@ function Corps({ role, quand, ensuite }: { role: string; quand?: string; ensuite
  * Quand une page enchaîne des gestes (réceptionner, puis grouper, puis
  * libérer), les numéroter montre l'ordre et évite de chercher par où
  * commencer.
+ *
+ * `aide` remplace l'ancien `resume` imprimé en permanence sous le titre :
+ * l'explication passe sous une pastille, et l'étape tient sur une ligne.
+ * `resume` reste accepté pour les écrans qui ont une vraie consigne
+ * courte à montrer sans clic.
  */
-export function Etape({ numero, titre, resume, children }: {
+export function Etape({ numero, titre, resume, aide, children }: {
   numero: number;
   titre: string;
   resume?: string;
+  aide?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -162,7 +169,10 @@ export function Etape({ numero, titre, resume, children }: {
       <header className="etape__entete">
         <span className="etape__numero" aria-hidden="true">{numero}</span>
         <div>
-          <h2 className="etape__titre">{titre}</h2>
+          <span className="avec-aide">
+            <h2 className="etape__titre">{titre}</h2>
+            {aide && <Aide etiquette={titre}>{aide}</Aide>}
+          </span>
           {resume && <p className="etape__resume">{resume}</p>}
         </div>
       </header>

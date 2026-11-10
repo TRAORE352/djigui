@@ -9,12 +9,21 @@
  */
 import { useState, type ComponentType, type ReactNode } from "react";
 import { ChevronRight, Inbox } from "lucide-react";
+import Aide from "@/components/Aide";
 
-/** Une section de l'écran : titre, compteur, et action à droite. */
-export function Section({ titre, compte, action, children }: {
+/**
+ * Une section de l'écran : titre, compteur, et action à droite.
+ *
+ * `aide` pose une pastille contre le titre : ce qu'il fallait autrefois
+ * écrire en toutes lettres sous le titre (ou dans un état vide bavard)
+ * se lit maintenant au clic, et la section tient sur une ligne.
+ */
+export function Section({ titre, compte, aide, action, children }: {
   titre: string;
   /** Nombre d'éléments ; la pastille grise quand c'est zéro. */
   compte?: number;
+  /** Explication accessible au clic, à côté du titre. */
+  aide?: string;
   action?: ReactNode;
   children: ReactNode;
 }) {
@@ -29,6 +38,7 @@ export function Section({ titre, compte, action, children }: {
               {compte}
             </span>
           )}
+          {aide && <Aide etiquette={titre}>{aide}</Aide>}
         </h2>
         {action}
       </div>

@@ -15,6 +15,7 @@ import { messageDe } from "@/lib/erreurs";
 import { TYPE_SITE, telephoneLisible } from "@/lib/metier";
 import { useRessource } from "@/lib/useRessource";
 import { EnTetePage } from "@/components/Coquille";
+import Aide, { AvecAide } from "@/components/Aide";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import Tableau from "@/components/Tableau";
@@ -232,21 +233,23 @@ function FormulaireSite({ zones, surCreation }: { zones: Zone[]; surCreation: (n
 
       <div className="grille-3">
         <label className="champ">
-          <span className="champ__etiquette">Code</span>
+          <AvecAide etiquette="Code" aide="Trois lettres majuscules, uniques dans le réseau. Ce code préfixe tous les numéros de poche du site.">
+            <span className="champ__etiquette">Code</span>
+          </AvecAide>
           <input className="champ__saisie chiffres" value={code} required maxLength={3}
                  placeholder="BOB" style={{ textTransform: "uppercase" }} autoComplete="off"
                  onChange={(e) => { setCode(e.target.value.toUpperCase()); setErreur(""); }} />
-          <span className="champ__aide">3 lettres majuscules, unique.</span>
         </label>
         <label className="champ">
-          <span className="champ__etiquette">Type de site</span>
+          <AvecAide etiquette="Type de site" aide="Seuls les centres de collecte apparaissent aux donneurs dans l'application. Les dépôts et les hôpitaux reçoivent du sang sans en collecter.">
+            <span className="champ__etiquette">Type de site</span>
+          </AvecAide>
           <select className="champ__saisie" value={type}
                   onChange={(e) => setType(e.target.value as SiteAdmin["type"])}>
             <option value="centre">Centre de collecte</option>
             <option value="depot">Dépôt</option>
             <option value="hopital">Hôpital</option>
           </select>
-          <span className="champ__aide">Seuls les centres apparaissent aux donneurs.</span>
         </label>
         <label className="champ">
           <span className="champ__etiquette">Nom</span>
@@ -283,9 +286,14 @@ function FormulaireSite({ zones, surCreation }: { zones: Zone[]; surCreation: (n
 
       <MessageErreur>{erreur}</MessageErreur>
 
-      <Bouton type="submit" enCours={enCours} motEnCours="Ajout…" icone={<Plus size={18} aria-hidden="true" />}>
-        Ajouter le site
-      </Bouton>
+      <div className="rang">
+        <Bouton type="submit" enCours={enCours} motEnCours="Ajout…" icone={<Plus size={18} aria-hidden="true" />}>
+          Ajouter le site
+        </Bouton>
+        <Aide etiquette="Ajouter le site">
+          Le site devient immédiatement disponible pour rattacher des comptes et pour les échanges de produits entre sites.
+        </Aide>
+      </div>
     </form>
   );
 }

@@ -22,6 +22,7 @@ import {
   LES_GROUPES, dateCourte, telephoneInternational, telephoneLisible,
 } from "@/lib/metier";
 import { EnTetePage } from "@/components/Coquille";
+import Aide, { AvecAide } from "@/components/Aide";
 import Explication from "@/components/Explication";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
@@ -300,9 +301,14 @@ function FicheDonneur({ donneur }: { donneur: DonneurAgent }) {
         {passage?.resultat === "apte" && !poche && (
           <>
             <MessageReussite>Venue enregistrée : donneur apte. Créez la poche après le prélèvement.</MessageReussite>
-            <Bouton enCours={enCours === "poche"} motEnCours="Création…" onClick={() => void creerPoche()}>
-              Créer la poche
-            </Bouton>
+            <div className="rang">
+              <Bouton enCours={enCours === "poche"} motEnCours="Création…" onClick={() => void creerPoche()}>
+                Créer la poche
+              </Bouton>
+              <Aide etiquette="Créer la poche">
+                Attribue un numéro unique à la poche prélevée et l&apos;envoie au laboratoire pour qualification. À faire après le prélèvement, pas avant.
+              </Aide>
+            </div>
           </>
         )}
 
@@ -370,8 +376,11 @@ function BoutonAjournement({ desactive, enCours, surConfirmation }: {
         />
       </label>
       <Bouton disabled={!date} enCours={enCours} onClick={() => surConfirmation(date)}>
-        Valider l'ajournement
+        Valider l&apos;ajournement
       </Bouton>
+      <Aide etiquette="Valider l'ajournement">
+        Le donneur ne pourra pas donner avant cette date. Le motif médical n&apos;est jamais transmis à son application, c&apos;est un médecin qui le recontacte.
+      </Aide>
       <Bouton variante="secondaire" onClick={() => setOuvert(false)}>Annuler</Bouton>
     </span>
   );
@@ -473,10 +482,11 @@ function InscriptionSurPlace({ telephoneInitial, surInscription }: {
           </select>
         </label>
         <label className="champ">
-          <span className="champ__etiquette">Date de naissance</span>
+          <AvecAide etiquette="Date de naissance" aide="Le donneur doit avoir dix-huit ans révolus le jour du don.">
+            <span className="champ__etiquette">Date de naissance</span>
+          </AvecAide>
           <input className="champ__saisie" type="date" value={dateNaissance} required max={dateMax}
                  onChange={(e) => setDateNaissance(e.target.value)} />
-          <span className="champ__aide">18 ans révolus.</span>
         </label>
         <label className="champ">
           <span className="champ__etiquette">Groupe sanguin</span>
@@ -487,12 +497,13 @@ function InscriptionSurPlace({ telephoneInitial, surInscription }: {
           </select>
         </label>
         <label className="champ">
-          <span className="champ__etiquette">Zone d'habitation</span>
+          <AvecAide etiquette="Zone d'habitation" aide="Sert à prévenir le donneur quand un appel au don concerne son quartier. Facultatif.">
+            <span className="champ__etiquette">Zone d'habitation</span>
+          </AvecAide>
           <select className="champ__saisie" value={zoneId} onChange={(e) => setZoneId(e.target.value)}>
             <option value="">Non renseignée</option>
             {zones.map((z) => <option key={z.id} value={z.id}>{z.nom} · {z.ville}</option>)}
           </select>
-          <span className="champ__aide">Sert à le prévenir quand le besoin est près de chez lui.</span>
         </label>
       </div>
 

@@ -30,6 +30,7 @@ import {
 } from "@/lib/metier";
 import { useRessource } from "@/lib/useRessource";
 import { EnTetePage } from "@/components/Coquille";
+import Aide, { AvecAide } from "@/components/Aide";
 import Explication from "@/components/Explication";
 import { Section, VideLigne } from "@/components/Mise";
 import Bouton from "@/components/Bouton";
@@ -468,22 +469,26 @@ function FormulaireGroupage({ code, surFait }: { code: string; surFait: (d: Doss
 
       <div className="grille-2">
         <label className="champ">
-          <span className="champ__etiquette">1<sup>re</sup> détermination</span>
+          <AvecAide etiquette="Première détermination"
+                    aide="Épreuve globulaire, dite Beth-Vincent. Elle recherche les antigènes portés par les globules rouges du donneur.">
+            <span className="champ__etiquette">1<sup>re</sup> détermination</span>
+          </AvecAide>
           <select className="champ__saisie" value={d1}
                   onChange={(e) => { setD1(e.target.value as GroupeSanguin); setErreur(""); }}>
             <option value="">Choisir…</option>
             {LES_GROUPES.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
-          <span className="champ__aide">Épreuve globulaire (Beth-Vincent).</span>
         </label>
         <label className="champ">
-          <span className="champ__etiquette">2<sup>e</sup> détermination</span>
+          <AvecAide etiquette="Deuxième détermination"
+                    aide="Épreuve plasmatique, dite Simonin. C'est une lecture indépendante de la première, obligatoire avant toute transfusion.">
+            <span className="champ__etiquette">2<sup>e</sup> détermination</span>
+          </AvecAide>
           <select className="champ__saisie" value={d2}
                   onChange={(e) => { setD2(e.target.value as GroupeSanguin); setErreur(""); }}>
             <option value="">Choisir…</option>
             {LES_GROUPES.map((g) => <option key={g} value={g}>{g}</option>)}
           </select>
-          <span className="champ__aide">Épreuve plasmatique (Simonin), lecture indépendante.</span>
         </label>
       </div>
 
@@ -508,10 +513,15 @@ function FormulaireGroupage({ code, surFait }: { code: string; surFait: (d: Doss
 
       <MessageErreur>{erreur}</MessageErreur>
 
-      <Bouton type="submit" enCours={enCours} motEnCours="Enregistrement…"
-              disabled={!d1 || !d2 || discordant}>
-        Valider le groupage
-      </Bouton>
+      <div className="rang">
+        <Bouton type="submit" enCours={enCours} motEnCours="Enregistrement…"
+                disabled={!d1 || !d2 || discordant}>
+          Valider le groupage
+        </Bouton>
+        <Aide etiquette="Valider le groupage">
+          Les deux déterminations doivent concorder. En cas de discordance, refaites la lecture au laboratoire, l&apos;enregistrement reste bloqué.
+        </Aide>
+      </div>
     </form>
   );
 }
@@ -771,10 +781,15 @@ function CartePreparation({ poche, surPreparation }: { poche: Poche; surPreparat
 
       <MessageErreur>{erreur}</MessageErreur>
 
-      <Bouton enCours={enCours} motEnCours="Préparation…" onClick={() => void preparer()}
-              icone={<PackageCheck size={18} aria-hidden="true" />}>
-        Créer les produits
-      </Bouton>
+      <div className="rang">
+        <Bouton enCours={enCours} motEnCours="Préparation…" onClick={() => void preparer()}
+                icone={<PackageCheck size={18} aria-hidden="true" />}>
+          Créer les produits
+        </Bouton>
+        <Aide etiquette="Créer les produits">
+          Sépare la poche en produits transfusables, chacun avec son propre code et sa propre date de péremption. La poche d&apos;origine reste traçable.
+        </Aide>
+      </div>
     </div>
   );
 }
