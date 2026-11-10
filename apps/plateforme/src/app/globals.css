@@ -1420,3 +1420,60 @@ a { color: var(--primaire); text-decoration: none; }
   .travaux { padding: var(--e6) var(--e4); }
   .travaux__icone { width: 52px; height: 52px; }
 }
+
+/* ---------------------------------------------------------------------
+   Lignes de saisie d'un lot reçu (écran Stock)
+
+   Une ligne = un produit, un groupe, une quantité, une péremption. Sur
+   desktop les champs s'alignent ; sous 760 px ils s'empilent en deux
+   colonnes, parce qu'une ligne de 4 champs côte à côte sur un téléphone
+   rend chaque champ illisible et la quantité intouchable.
+   --------------------------------------------------------------------- */
+.lot-ligne {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.8fr 1.2fr auto;
+  gap: var(--e3);
+  align-items: end;
+  padding: var(--e3);
+  border: 1px solid var(--trait);
+  border-radius: var(--rayon-petit);
+  background: var(--fond);
+}
+.lot-ligne__champ { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.lot-ligne__champ .champ__saisie { width: 100%; }
+
+/* Le bouton de retrait est une cible tactile à part entière (44 px),
+   pas une petite croix décorative. */
+.lot-ligne__retirer {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: var(--cible); height: var(--cible);
+  border: 1px solid var(--trait-fort); border-radius: var(--rayon-petit);
+  background: var(--surface); color: var(--encre-2); cursor: pointer;
+}
+.lot-ligne__retirer:hover { background: var(--sang-clair); color: var(--sang-fonce); border-color: var(--sang-clair); }
+
+@media (max-width: 760px) {
+  .lot-ligne { grid-template-columns: 1fr 1fr; }
+  /* La croix reprend toute la largeur : à cette taille, une colonne
+     « auto » la coincerait contre le bord de l'écran. */
+  .lot-ligne__retirer { grid-column: 1 / -1; width: 100%; }
+}
+
+/* Code cliquable d'un tableau : recopier un code à la main est la
+   première source d'erreur sur un poste de terrain. Il doit se voir
+   comme une action, sans prendre l'apparence d'un bouton plein. */
+.lien-code {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  color: var(--primaire); font-weight: 600; font-family: var(--police-chiffres);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.lien-code:hover { color: var(--primaire-fonce); }
+
+/* Rangée de filtre au-dessus d'une liste longue : le champ prend la
+   place disponible, le compteur reste collé à droite et passe dessous
+   quand il n'y a plus la place. */
+.filtre-rang {
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  gap: var(--e3); margin-bottom: var(--e4);
+}
+.filtre-rang__champ { flex: 1 1 260px; margin: 0; }

@@ -6,6 +6,7 @@ import type {
   AgentCompte, AgentConnexionReponse, Analyse, CreerAgentRequete, CreerCentreRequete,
   CreerPocheRequete, CreerZoneRequete, DelivranceRequete, Demande,
   DemandeRequete, DonneurAgent, DossierLabo, EnregistrerAnalyseRequete, EnregistrerPassageRequete,
+  EntreeStock, EntreeStockRequete,
   EstimationAlerteReponse, Expedition, ExpeditionRequete, FicheTracabilite, FileLabo,
   GroupageRequete, InscriptionSurPlaceRequete, LancerAlerteRequete, LigneStock, ModifierRegleRequete,
   Passage, Poche, PreparerPocheRequete, Produit, ReceptionLaboRequete, Regle,
@@ -107,7 +108,13 @@ export const api = {
   stock: () => appel<LigneStock[]>("GET", "/stock"),
   zones: () => appel<{ id: string; nom: string; ville: string }[]>("GET", "/zones"),
   produitsPeremption: () => appel<Produit[]>("GET", "/produits?peremption=proche"),
+  /** Tous les produits délivrables du site (statut disponible/réservé). */
+  produitsDisponibles: () => appel<Produit[]>("GET", "/produits"),
   detruireProduit: (code: string) => appel<null>("POST", `/produits/${encodeURIComponent(code)}/destruction`, {}),
+
+  /** Enregistrer un lot reçu de l'extérieur (laboratoire, banque de sang). */
+  enregistrerEntree: (corps: EntreeStockRequete) =>
+    appel<EntreeStock>("POST", "/stock/entrees", corps),
 
   // P7 Alertes (gestionnaire)
   estimationAlerte: (zoneIds: string[]) =>

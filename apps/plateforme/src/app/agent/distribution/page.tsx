@@ -11,6 +11,7 @@
  * liste les sépare explicitement plutôt que de tout mélanger.
  */
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { ArrowDownToLine, Hospital, PackagePlus, Send, Truck } from "lucide-react";
 import type { Demande, GroupeSanguin, LigneDemande, SitePartenaire } from "@dds/contrat-api";
 import { api } from "@/lib/api";
@@ -92,9 +93,20 @@ export default function Distribution() {
         <FormulaireDemande surCreation={() => void demandes.recharger()} />
       </Repli>
 
-      <Repli titre="Délivrer à un service">
-        <Delivrance />
-      </Repli>
+      {/* La délivrance aux services de soins a son propre écran : c'est
+          le geste le plus fréquent du centre, et il n'a rien à voir avec
+          les échanges ENTRE sites traités ici. */}
+      <Section titre="Délivrer à un service de soins">
+        <div className="bord-actions">
+          <Link href="/agent/delivrances" className="bouton bouton--secondaire">
+            <Hospital size={18} aria-hidden="true" />
+            Ouvrir les délivrances
+          </Link>
+          <span className="petit">
+            Enregistrer une poche remise à un médecin ou un infirmier.
+          </span>
+        </div>
+      </Section>
     </>
   );
 }
@@ -333,71 +345,3 @@ function FormulaireDemande({ surCreation }: { surCreation: () => void }) {
   );
 }
 
-/* =====================================================================
-   P10 — Délivrance à un service de soins
-   ===================================================================== */
-
-function Delivrance() {
-  const [code, setCode] = useState("");
-  const [service, setService] = useState("");
-  const [erreur, setErreur] = useState("");
-  const [reussite, setReussite] = useState("");
-  const [enCours, setEnCours] = useState(false);
-
-  async function delivrer(e: React.FormEvent) {
-    e.preventDefault();
-    setErreur(""); setReussite(""); setEnCours(true);
-    try {
-      const r = await api.delivrer({ code: code.trim(), service: service.trim() });
-      setReussite(`Produit ${r.code} délivré au service « ${r.service} ». La traçabilité est bouclée.`);
-      setCode("");
-    } catch (p) {
-      setErreur(messageDe(p));
-    } finally {
-      setEnCours(false);
-    }
-  }
-
-  return (
-    <form className="pile" onSubmit={delivrer}>
-      <div className="grille-2">
-        <label className="champ">
-          <AvecAide
-            etiquette="Code du produit"
-            aide="Le code figure sur l'étiquette de la poche. Les minuscules et les tirets sont acceptés, le code est normalisé à la validation."
-          >
-            <span className="champ__etiquette">Code du produit</span>
-          </AvecAide>
-          <input className="champ__saisie chiffres" value={code} required
-                 placeholder="OUA-26-04812-K-GR" autoComplete="off"
-                 onChange={(e) => { setCode(e.target.value); setErreur(""); }} />
-        </label>
-        <label className="champ">
-          <AvecAide
-            etiquette="Service destinataire"
-            aide="Le service de soins qui reçoit le produit. C'est le dernier maillon enregistré dans la traçabilité."
-          >
-            <span className="champ__etiquette">Service destinataire</span>
-          </AvecAide>
-          <input className="champ__saisie" value={service} required
-                 placeholder="Urgences, maternité, pédiatrie" autoComplete="off"
-                 onChange={(e) => { setService(e.target.value); setErreur(""); }} />
-        </label>
-      </div>
-
-      <MessageErreur>{erreur}</MessageErreur>
-      <MessageReussite>{reussite}</MessageReussite>
-
-      <div className="rang">
-        <Bouton type="submit" icone={<Hospital size={18} aria-hidden="true" />}
-                enCours={enCours} motEnCours="Délivrance…"
-                disabled={!code.trim() || !service.trim()}>
-          Délivrer
-        </Bouton>
-        <Aide etiquette="Délivrer">
-          Clôt la traçabilité du produit. Le geste est définitif, le produit ne revient pas au stock.
-        </Aide>
-      </div>
-    </form>
-  );
-}

@@ -8,7 +8,7 @@
  */
 import type { Role } from "@dds/contrat-api";
 import {
-  Activity, BadgeCheck, Bell, Boxes, Building2, FlaskConical, LayoutDashboard,
+  Activity, BadgeCheck, Bell, Boxes, Building2, FlaskConical, Hospital, LayoutDashboard,
   ScanLine, SlidersHorizontal, Truck, UserRound, Users,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -55,6 +55,13 @@ export const SECTIONS_AGENT: Section[] = [
     mot: "Stock",
     resume: "Stock calculé par type et par groupe, et produits proches de la péremption.",
     Icone: Boxes,
+    roles: ["agent_stock", "agent_depot"],
+  },
+  {
+    adresse: "/agent/delivrances",
+    mot: "Délivrances",
+    resume: "Enregistrer les poches remises aux services de soins (urgences, maternité…).",
+    Icone: Hospital,
     roles: ["agent_stock", "agent_depot"],
   },
   {

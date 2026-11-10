@@ -200,16 +200,29 @@ routeStock.post("/entrees", async (req, res) => {
       if (!tr[0]) {
         throw new AppError("DONNEES_INVALIDES", `Type de produit inconnu : ${ligne.typeProduit}.`, 400);
       }
+
+      /*
+       * UN SEUL insert pour toute la ligne, pas un par unité.
+       * En série, 100 unités = 100 allers-retours vers la base, soit
+       * ~20 s — au-delà du délai du navigateur (15 s) : l'agent voyait
+       * une erreur alors que l'enregistrement avait réussi. Le pire des
+       * cas, parce qu'il aurait resaisi le lot une seconde fois.
+       */
+      const valeurs: unknown[] = [];
+      const tuples: string[] = [];
       for (let i = 0; i < ligne.quantite; i++) {
         numero += 1;
         const code = genererCodeExterne(sr[0].code, annee, numero, ligne.typeProduit);
-        await client.query(
-          `insert into produits (code, lot_id, type_produit_id, groupe_sanguin, date_peremption, statut, site_actuel_id)
-           values ($1, $2, $3, $4, $5, 'disponible', $6)`,
-          [code, lot.id, tr[0].id, ligne.groupeSanguin, ligne.datePeremption ?? null, agent.siteId],
-        );
         codes.push(code);
+        const b = valeurs.length;
+        tuples.push(`($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}, 'disponible', $${b + 6})`);
+        valeurs.push(code, lot.id, tr[0].id, ligne.groupeSanguin, ligne.datePeremption ?? null, agent.siteId);
       }
+      await client.query(
+        `insert into produits (code, lot_id, type_produit_id, groupe_sanguin, date_peremption, statut, site_actuel_id)
+         values ${tuples.join(", ")}`,
+        valeurs,
+      );
     }
 
     return { lot, codes };

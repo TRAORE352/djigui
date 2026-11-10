@@ -7,8 +7,8 @@
  * et montrer ce qui va se perdre (péremption proche).
  */
 import { useState } from "react";
-import { Boxes, CalendarX2, Trash2 } from "lucide-react";
-import type { LigneStock, Produit } from "@dds/contrat-api";
+import { Boxes, CalendarX2, PackagePlus, Plus, Trash2, X } from "lucide-react";
+import type { GroupeSanguin, LigneLotRequete, LigneStock, Produit } from "@dds/contrat-api";
 import { api } from "@/lib/api";
 import { messageDe } from "@/lib/erreurs";
 import { NIVEAU_STOCK, TYPE_PRODUIT, dateCourte, joursRestants } from "@/lib/metier";
@@ -22,6 +22,7 @@ import Tableau from "@/components/Tableau";
 import { EtatErreur, EtatVide, SqueletteLignes } from "@/components/Etats";
 import { Section, VideLigne } from "@/components/Mise";
 import { MessageErreur, MessageReussite } from "@/components/Messages";
+import { ChampTexte } from "@/components/Champs";
 
 export default function Stock() {
   const stock = useRessource<LigneStock[]>(() => api.stock());
@@ -48,6 +49,8 @@ export default function Stock() {
 
       <ResumeNiveaux lignes={stock.donnees} />
 
+      <ReceptionLot surEntree={() => { void stock.recharger(); void peremption.recharger(); }} />
+
       <Section titre="Produits disponibles" compte={stock.donnees?.length}>
         {stock.chargement && <SqueletteLignes lignes={4} />}
         {stock.erreur && <EtatErreur texte={stock.erreur} surReessai={() => void stock.recharger()} />}
@@ -55,7 +58,7 @@ export default function Stock() {
           <EtatVide
             Icone={Boxes}
             titre="Aucun produit en stock"
-            texte="Dès que le laboratoire prépare des produits à partir d'une poche conforme, ils apparaissent ici."
+            texte="Enregistrez un lot reçu avec « Recevoir un lot », ou attendez que le laboratoire prépare des produits."
           />
         )}
         {!!stock.donnees?.length && (
@@ -208,6 +211,225 @@ function Peremption({ ressource, surDestruction }: {
             },
           ]}
         />
+      )}
+    </Section>
+  );
+}
+
+/* =====================================================================
+   Réception d'un lot reçu de l'extérieur
+
+   Un centre reçoit des poches déjà qualifiées, livrées par un
+   laboratoire ou une banque. La saisie est GROUPÉE : un agent qui
+   reçoit 100 poches ne remplit pas 100 formulaires. Il décrit des
+   lignes (« 40 × GR O+, périme le 15/12 ») et le système crée autant
+   d'unités, chacune avec son code — c'est ce qui permet ensuite de
+   délivrer ou tracer une unité précise.
+
+   Le formulaire est replié par défaut : recevoir un lot est une action
+   ponctuelle, elle ne doit pas occuper l'écran de consultation
+   quotidien.
+   ===================================================================== */
+
+const GROUPES: GroupeSanguin[] = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+const TYPES: LigneLotRequete["typeProduit"][] = ["GR", "PL", "PQ"];
+
+/** Une ligne en cours de saisie : la quantité reste du texte tant que
+ *  l'agent tape (un champ nombre contrôlé refuse l'effacement). */
+type LigneSaisie = {
+  typeProduit: LigneLotRequete["typeProduit"];
+  groupeSanguin: GroupeSanguin;
+  quantite: string;
+  datePeremption: string;
+};
+
+const ligneVide = (): LigneSaisie => ({
+  typeProduit: "GR", groupeSanguin: "O+", quantite: "", datePeremption: "",
+});
+
+function ReceptionLot({ surEntree }: { surEntree: () => void }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [reference, setReference] = useState("");
+  const [fournisseur, setFournisseur] = useState("");
+  const [lignes, setLignes] = useState<LigneSaisie[]>([ligneVide()]);
+  const [erreur, setErreur] = useState("");
+  const [reussite, setReussite] = useState("");
+  const [enCours, setEnCours] = useState(false);
+
+  const majLigne = (i: number, champ: Partial<LigneSaisie>) =>
+    setLignes((l) => l.map((x, j) => (j === i ? { ...x, ...champ } : x)));
+
+  // Le total guide l'agent : il doit retrouver le compte de son bordereau
+  // AVANT d'enregistrer, pas après.
+  const total = lignes.reduce((n, l) => n + (parseInt(l.quantite, 10) || 0), 0);
+  const complet = reference.trim() !== "" && fournisseur.trim() !== "" && total > 0;
+
+  function reinitialiser() {
+    setReference(""); setFournisseur(""); setLignes([ligneVide()]);
+  }
+
+  async function enregistrer(e: React.FormEvent) {
+    e.preventDefault();
+    setErreur(""); setReussite(""); setEnCours(true);
+    try {
+      const resultat = await api.enregistrerEntree({
+        reference: reference.trim(),
+        fournisseurLibre: fournisseur.trim(),
+        lignes: lignes
+          .filter((l) => (parseInt(l.quantite, 10) || 0) > 0)
+          .map((l) => ({
+            typeProduit: l.typeProduit,
+            groupeSanguin: l.groupeSanguin,
+            quantite: parseInt(l.quantite, 10),
+            datePeremption: l.datePeremption || null,
+          })),
+      });
+      setReussite(
+        `${resultat.unitesCreees} unité${resultat.unitesCreees > 1 ? "s" : ""} ajoutée${
+          resultat.unitesCreees > 1 ? "s" : ""
+        } au stock (lot ${resultat.reference}). Premier code : ${resultat.codes[0]}.`,
+      );
+      reinitialiser();
+      setOuvert(false);
+      surEntree();
+    } catch (p) {
+      setErreur(messageDe(p));
+    } finally {
+      setEnCours(false);
+    }
+  }
+
+  return (
+    <Section titre="Entrée de stock">
+      {/* La réussite reste visible après la fermeture du formulaire :
+          c'est la preuve de l'enregistrement, avec le code à reporter. */}
+      <MessageReussite>{reussite}</MessageReussite>
+
+      {!ouvert ? (
+        <div className="bord-actions">
+          <Bouton
+            variante="principal"
+            icone={<PackagePlus size={18} aria-hidden="true" />}
+            onClick={() => { setOuvert(true); setReussite(""); }}
+          >
+            Recevoir un lot
+          </Bouton>
+          <span className="petit">
+            Poches livrées par un laboratoire ou une banque de sang.
+          </span>
+        </div>
+      ) : (
+        <form className="bloc pile-m" onSubmit={enregistrer}>
+          <MessageErreur>{erreur}</MessageErreur>
+
+          <div className="grille-2">
+            <ChampTexte
+              etiquette="Référence du bordereau"
+              aide="Le numéro inscrit sur le document de livraison."
+              value={reference}
+              onChange={(e) => setReference(e.target.value)}
+              required
+            />
+            <ChampTexte
+              etiquette="Livré par"
+              aide="Nom du laboratoire, de la banque ou du centre."
+              value={fournisseur}
+              onChange={(e) => setFournisseur(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="pile-s">
+            <span className="champ__etiquette">Contenu du lot</span>
+            {lignes.map((l, i) => (
+              <div key={i} className="lot-ligne">
+                <label className="lot-ligne__champ">
+                  <span className="petit">Produit</span>
+                  <select
+                    className="champ__saisie"
+                    value={l.typeProduit}
+                    onChange={(e) => majLigne(i, {
+                      typeProduit: e.target.value as LigneSaisie["typeProduit"],
+                    })}
+                  >
+                    {TYPES.map((t) => (
+                      <option key={t} value={t}>{TYPE_PRODUIT[t].mot}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="lot-ligne__champ">
+                  <span className="petit">Groupe</span>
+                  <select
+                    className="champ__saisie"
+                    value={l.groupeSanguin}
+                    onChange={(e) => majLigne(i, { groupeSanguin: e.target.value as GroupeSanguin })}
+                  >
+                    {GROUPES.map((g) => <option key={g} value={g}>{g}</option>)}
+                  </select>
+                </label>
+
+                <label className="lot-ligne__champ lot-ligne__champ--court">
+                  <span className="petit">Unités</span>
+                  <input
+                    className="champ__saisie"
+                    type="number" min={1} max={500} inputMode="numeric"
+                    value={l.quantite}
+                    onChange={(e) => majLigne(i, { quantite: e.target.value })}
+                  />
+                </label>
+
+                <label className="lot-ligne__champ">
+                  <span className="petit">Périme le</span>
+                  <input
+                    className="champ__saisie"
+                    type="date"
+                    value={l.datePeremption}
+                    onChange={(e) => majLigne(i, { datePeremption: e.target.value })}
+                  />
+                </label>
+
+                {/* Une seule ligne ne se supprime pas : le formulaire
+                    doit toujours offrir au moins une saisie. */}
+                {lignes.length > 1 && (
+                  <button
+                    type="button"
+                    className="lot-ligne__retirer"
+                    onClick={() => setLignes((x) => x.filter((_, j) => j !== i))}
+                    aria-label={`Retirer la ligne ${i + 1}`}
+                  >
+                    <X size={16} aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            ))}
+
+            <div className="bord-actions">
+              <Bouton
+                variante="secondaire" compact
+                icone={<Plus size={16} aria-hidden="true" />}
+                onClick={() => setLignes((l) => [...l, ligneVide()])}
+              >
+                Ajouter une ligne
+              </Bouton>
+              <span className="petit">
+                Total : <strong className="chiffres">{total}</strong> unité{total > 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
+
+          <div className="bord-actions">
+            <Bouton type="submit" variante="principal" enCours={enCours} disabled={!complet}>
+              Ajouter au stock
+            </Bouton>
+            <Bouton
+              variante="secondaire"
+              onClick={() => { setOuvert(false); setErreur(""); reinitialiser(); }}
+            >
+              Annuler
+            </Bouton>
+          </div>
+        </form>
       )}
     </Section>
   );
