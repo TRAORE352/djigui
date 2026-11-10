@@ -3,7 +3,7 @@
  * parle au backend. Les types viennent de @dds/contrat-api.
  */
 import type {
-  AgentCompte, AgentConnexionReponse, Analyse, CreerAgentRequete, CreerCentreRequete,
+  AgentCompte, AgentConnexionReponse, Analyse, BesoinStock, CreerAgentRequete, CreerCentreRequete,
   CreerPocheRequete, CreerZoneRequete, DelivranceRequete, Demande,
   DemandeRequete, DonneurAgent, DossierLabo, EnregistrerAnalyseRequete, EnregistrerPassageRequete,
   EntreeStock, EntreeStockRequete,
@@ -106,6 +106,8 @@ export const api = {
 
   // P6 Stock
   stock: () => appel<LigneStock[]>("GET", "/stock"),
+  /** Ce que le stock réclame : groupes sous leur seuil, avec suggestion. */
+  besoinsStock: () => appel<BesoinStock[]>("GET", "/stock/besoins"),
   zones: () => appel<{ id: string; nom: string; ville: string }[]>("GET", "/zones"),
   produitsPeremption: () => appel<Produit[]>("GET", "/produits?peremption=proche"),
   /** Tous les produits délivrables du site (statut disponible/réservé). */

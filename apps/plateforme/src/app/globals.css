@@ -1477,3 +1477,29 @@ a { color: var(--primaire); text-decoration: none; }
   gap: var(--e3); margin-bottom: var(--e4);
 }
 .filtre-rang__champ { flex: 1 1 260px; margin: 0; }
+
+/* ---------------------------------------------------------------------
+   Besoins du stock (écran Appels au don)
+
+   Chaque carte répond à « de quoi manque-t-on, et combien de donneurs
+   faut-il appeler ». La bordure latérale porte la gravité : le rouge
+   n'est pas décoratif, il hiérarchise la lecture.
+   --------------------------------------------------------------------- */
+.besoins-grille {
+  display: grid; gap: var(--e3);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
+.besoin {
+  display: flex; flex-direction: column; gap: var(--e3);
+  padding: var(--e4); background: var(--surface);
+  border: 1px solid var(--trait); border-left: 3px solid var(--trait-fort);
+  border-radius: var(--rayon);
+}
+.besoin--critique { border-left-color: var(--sang); background: #FFFCFC; }
+.besoin--bas { border-left-color: var(--ocre); }
+.besoin__haut { display: flex; align-items: center; justify-content: space-between; gap: var(--e2); }
+.besoin__chiffre { display: flex; align-items: baseline; gap: var(--e2); flex-wrap: wrap; }
+.besoin__chiffre strong { font-size: var(--t-grand); line-height: 1; }
+/* Le bouton tombe en bas de carte : les cartes d'une même rangée
+   alignent leurs actions même si les textes font des hauteurs différentes. */
+.besoin .bouton { margin-top: auto; align-self: flex-start; }

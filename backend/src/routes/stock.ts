@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
-import type { EntreeStock, EntreeStockRequete, LigneStock, Produit } from "@dds/contrat-api";
+import type { BesoinStock, EntreeStock, EntreeStockRequete, LigneStock, Produit } from "@dds/contrat-api";
 import { AppError } from "../lib/erreurs.js";
 import { requete, transaction } from "../lib/db.js";
 import { valider } from "../lib/validation.js";
 import { inscrireEvenement } from "../lib/evenements.js";
+import { lireRegle } from "../lib/regles.js";
 import { genererCodeExterne, normaliserCode } from "../lib/codes-poches.js";
 
 /**
@@ -27,25 +28,48 @@ routeStock.get("/", async (req, res) => {
     [agent.siteId],
   );
 
-  const lignes: LigneStock[] = [];
-  for (const l of rows) {
-    const { rows: sr } = await requete<{ seuil_bas: number; seuil_critique: number }>(
-      `select seuil_bas, seuil_critique from seuils_stock
-       where site_id = $1 and type_produit_id = (select id from types_produits where code = $2) and groupe_sanguin = $3`,
-      [agent.siteId, l.type_produit, l.groupe_sanguin],
-    );
+  /*
+   * Les seuils du site sont lus EN UNE FOIS, pas une requête par ligne :
+   * la boucle précédente faisait un aller-retour par couple
+   * type/groupe (jusqu'à 24) pour un résultat qui tient en une jointure.
+   */
+  const { rows: seuils } = await requete<{
+    type_produit: string; groupe_sanguin: string; seuil_bas: number; seuil_critique: number;
+  }>(
+    `select t.code as type_produit, s.groupe_sanguin, s.seuil_bas, s.seuil_critique
+     from seuils_stock s
+     join types_produits t on t.id = s.type_produit_id
+     where s.site_id = $1`,
+    [agent.siteId],
+  );
+  const parCle = new Map(seuils.map((s) => [`${s.type_produit}|${s.groupe_sanguin}`, s]));
+
+  /*
+   * Sans seuil propre au site, on applique les valeurs par défaut des
+   * règles. Auparavant, l'absence de seuil rendait TOUT « suffisant » —
+   * y compris un groupe à une seule unité — et la colonne « Niveau »
+   * ne voulait rien dire tant qu'un administrateur n'avait pas saisi
+   * 24 lignes par site.
+   */
+  const [basDefaut, critiqueDefaut] = await Promise.all([
+    lireRegle("seuil_bas_defaut", 10),
+    lireRegle("seuil_critique_defaut", 3),
+  ]);
+
+  const lignes: LigneStock[] = rows.map((l) => {
+    const s = parCle.get(`${l.type_produit}|${l.groupe_sanguin}`);
+    const bas = s ? s.seuil_bas : basDefaut;
+    const critique = s ? s.seuil_critique : critiqueDefaut;
     let niveau: LigneStock["niveau"] = "suffisant";
-    if (sr[0]) {
-      if (l.quantite <= sr[0].seuil_critique) niveau = "critique";
-      else if (l.quantite <= sr[0].seuil_bas) niveau = "bas";
-    }
-    lignes.push({
+    if (l.quantite <= critique) niveau = "critique";
+    else if (l.quantite <= bas) niveau = "bas";
+    return {
       typeProduit: l.type_produit as LigneStock["typeProduit"],
       groupeSanguin: l.groupe_sanguin as LigneStock["groupeSanguin"],
       quantite: l.quantite,
       niveau,
-    });
-  }
+    };
+  });
 
   res.json({ donnees: lignes });
 });
@@ -104,6 +128,80 @@ routeProduits.post("/:code/destruction", async (req, res) => {
   });
 
   res.json({ donnees: null });
+});
+
+// ---------------------------------------------------------------------
+// GET /stock/besoins — ce que le stock réclame
+// ---------------------------------------------------------------------
+/*
+ * Le lien manquant entre le stock et les appels au don. Jusqu'ici
+ * l'agent devait repérer le rouge dans le tableau, décider d'un
+ * objectif de donneurs et d'une urgence — de tête. Le système a déjà
+ * toutes les données pour proposer tout cela.
+ *
+ * Proposer, pas décider : l'agent reste maître du départ de l'appel.
+ * Un système qui lancerait des alertes tout seul enverrait des messages
+ * à des donneurs réels sur la foi d'un seuil mal réglé.
+ */
+routeStock.get("/besoins", async (req, res) => {
+  const agent = req.utilisateur!;
+
+  const { rows } = await requete<{ type_produit: string; groupe_sanguin: string; quantite: number }>(
+    `select t.code as type_produit, p.groupe_sanguin, count(*)::int as quantite
+     from produits p
+     join types_produits t on t.id = p.type_produit_id
+     where p.site_actuel_id = $1 and p.statut in ('disponible', 'reserve')
+     group by t.code, p.groupe_sanguin`,
+    [agent.siteId],
+  );
+
+  const { rows: seuils } = await requete<{
+    type_produit: string; groupe_sanguin: string; seuil_bas: number; seuil_critique: number;
+  }>(
+    `select t.code as type_produit, s.groupe_sanguin, s.seuil_bas, s.seuil_critique
+     from seuils_stock s
+     join types_produits t on t.id = s.type_produit_id
+     where s.site_id = $1`,
+    [agent.siteId],
+  );
+  const parCle = new Map(seuils.map((s) => [`${s.type_produit}|${s.groupe_sanguin}`, s]));
+
+  const [basDefaut, critiqueDefaut, parPoche] = await Promise.all([
+    lireRegle("seuil_bas_defaut", 10),
+    lireRegle("seuil_critique_defaut", 3),
+    lireRegle("alerte_donneurs_par_poche", 3),
+  ]);
+
+  const besoins: BesoinStock[] = [];
+  for (const l of rows) {
+    const s = parCle.get(`${l.type_produit}|${l.groupe_sanguin}`);
+    const bas = s ? s.seuil_bas : basDefaut;
+    const critique = s ? s.seuil_critique : critiqueDefaut;
+    if (l.quantite > bas) continue;           // rien à signaler
+
+    const niveau = l.quantite <= critique ? "critique" : "bas";
+    // Revenir au-dessus du seuil bas, pas seulement l'atteindre.
+    const manque = Math.max(1, bas - l.quantite);
+    besoins.push({
+      typeProduit: l.type_produit as BesoinStock["typeProduit"],
+      groupeSanguin: l.groupe_sanguin as BesoinStock["groupeSanguin"],
+      quantite: l.quantite,
+      seuilBas: bas,
+      niveau,
+      manque,
+      donneursSuggeres: Math.ceil(manque * parPoche),
+      // Un stock critique appelle une mobilisation « urgente ». On ne
+      // propose jamais « critique » d'office : ce niveau réveille des
+      // donneurs la nuit et doit rester une décision humaine.
+      urgenceSuggeree: niveau === "critique" ? "urgente" : "normale",
+    });
+  }
+
+  // Le plus grave d'abord : c'est ce qui doit décider l'agent.
+  besoins.sort((a, b) =>
+    (a.niveau === b.niveau ? b.manque - a.manque : a.niveau === "critique" ? -1 : 1));
+
+  res.json({ donnees: besoins });
 });
 
 // ---------------------------------------------------------------------

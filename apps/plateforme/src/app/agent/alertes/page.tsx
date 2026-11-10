@@ -12,10 +12,11 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { BellRing, CheckCheck, LoaderCircle, Megaphone, TriangleAlert, Users } from "lucide-react";
-import type { GroupeSanguin, SuiviAlerte, Zone } from "@dds/contrat-api";
+import type { BesoinStock, GroupeSanguin, SuiviAlerte, Zone } from "@dds/contrat-api";
 import { api } from "@/lib/api";
 import { messageDe } from "@/lib/erreurs";
-import { LES_GROUPES, URGENCE } from "@/lib/metier";
+import { LES_GROUPES, TYPE_PRODUIT, URGENCE } from "@/lib/metier";
+import { useRessource } from "@/lib/useRessource";
 import { dateHeure } from "@/lib/format";
 import { EnTetePage } from "@/components/Coquille";
 import { Etape } from "@/components/Explication";
@@ -96,9 +97,19 @@ export default function Alertes() {
   const [suivies, setSuivies] = useState<string[]>([]);
   useEffect(() => { setSuivies(lireSuivies()); }, []);
 
+  /*
+   * Besoin retenu par l'agent : il pré-remplit le formulaire plus bas.
+   * Le compteur `applique` force la réapplication même si l'agent
+   * reclique le MÊME besoin après avoir modifié les champs à la main.
+   */
+  const [besoinChoisi, setBesoinChoisi] = useState<BesoinStock | null>(null);
+  const [applique, setApplique] = useState(0);
+
   function surLancement(id: string) {
     memoriser(id);
     setSuivies(lireSuivies());
+    // L'appel est parti : la suggestion a joué son rôle.
+    setBesoinChoisi(null);
   }
 
   return (
@@ -108,7 +119,15 @@ export default function Alertes() {
         chapeau="Prévenir les donneurs d'une zone qu'on a besoin d'eux, et suivre qui répond."
       />
 
-      <Composer surLancement={surLancement} />
+      <BesoinsStock
+        surChoix={(b) => { setBesoinChoisi(b); setApplique((n) => n + 1); }}
+      />
+
+      <Composer
+        surLancement={surLancement}
+        suggestion={besoinChoisi}
+        applique={applique}
+      />
 
       <section className="pile">
         <h2 className="section-titre">
@@ -138,7 +157,11 @@ export default function Alertes() {
    Composer l'appel
    ===================================================================== */
 
-function Composer({ surLancement }: { surLancement: (id: string) => void }) {
+function Composer({ surLancement, suggestion, applique }: {
+  surLancement: (id: string) => void;
+  suggestion: BesoinStock | null;
+  applique: number;
+}) {
   // `null` = appel ouvert à tous, et c'est le cas NORMAL : le ciblage se
   // fait par zone, jamais par groupe. Le groupe ne sert qu'à rédiger le
   // message quand on sait de quoi on manque.
@@ -147,6 +170,22 @@ function Composer({ surLancement }: { surLancement: (id: string) => void }) {
   const [objectif, setObjectif] = useState(10);
   const [dateLimite, setDateLimite] = useState("");
   const [message, setMessage] = useState("");
+
+  // `applique` (et non `suggestion`) en dépendance : recliquer le même
+  // besoin doit réappliquer la proposition après une retouche manuelle.
+  useEffect(() => {
+    if (!suggestion) return;
+    setGroupe(suggestion.groupeSanguin);
+    setUrgence(suggestion.urgenceSuggeree);
+    setObjectif(suggestion.donneursSuggeres);
+    setMessage(
+      `Nous manquons de sang de groupe ${suggestion.groupeSanguin}. ` +
+      "Si vous êtes de ce groupe, ou si vous ne connaissez pas le vôtre, " +
+      "venez : nous le déterminons sur place.",
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applique]);
+
   const [zoneIds, setZoneIds] = useState<string[]>([]);
   const [zones, setZones] = useState<Zone[]>([]);
   const [estimation, setEstimation] = useState<number | null>(null);
@@ -634,5 +673,78 @@ function Compteur({ libelle, valeur, ton }: { libelle: string; valeur: number; t
       <span className="appui">{libelle}</span>
       <strong className={`indicateur__valeur chiffres${couleur}`}>{valeur}</strong>
     </div>
+  );
+}
+
+/* =====================================================================
+   Ce que le stock réclame
+
+   Le lien entre le stock et les appels au don. Avant, l'agent devait
+   ouvrir l'écran Stock, repérer les lignes rouges, puis revenir ici et
+   décider de tête d'un objectif de donneurs et d'une urgence. Le
+   système a déjà les données : il propose, l'agent dispose.
+
+   On ne lance JAMAIS d'appel automatiquement : un seuil mal réglé
+   enverrait des messages à des donneurs réels. Le bouton prépare le
+   formulaire, rien de plus.
+   ===================================================================== */
+
+function BesoinsStock({ surChoix }: { surChoix: (b: BesoinStock) => void }) {
+  const besoins = useRessource<BesoinStock[]>(() => api.besoinsStock());
+
+  if (besoins.chargement) return <SqueletteLignes lignes={1} />;
+  // Une panne ici ne doit pas bloquer la composition d'un appel : on
+  // masque la suggestion plutôt que d'afficher une erreur en travers de
+  // l'écran. L'agent garde le formulaire complet.
+  if (besoins.erreur || !besoins.donnees?.length) return null;
+
+  return (
+    <section className="pile">
+      <h2 className="section-titre">
+        <AvecAide
+          etiquette="Ce que le stock réclame"
+          aide="Groupes passés sous leur seuil. Le nombre de donneurs proposé tient compte du fait que tous les appelés ne viennent pas."
+        >
+          <span>Ce que le stock réclame</span>
+        </AvecAide>
+      </h2>
+
+      <div className="besoins-grille">
+        {besoins.donnees.map((b) => (
+          <article
+            key={`${b.typeProduit}-${b.groupeSanguin}`}
+            className={`besoin besoin--${b.niveau}`}
+          >
+            <span className="besoin__haut">
+              <BlocGroupe groupe={b.groupeSanguin} taille="s" />
+              <Pilule ton={b.niveau === "critique" ? "sang" : "ocre"}>
+                {b.niveau === "critique" ? "Critique" : "Bas"}
+              </Pilule>
+            </span>
+
+            <span className="besoin__chiffre">
+              <strong className="chiffres">{b.quantite}</strong>
+              <span className="petit">
+                {TYPE_PRODUIT[b.typeProduit].mot} en stock · seuil {b.seuilBas}
+              </span>
+            </span>
+
+            <span className="petit">
+              Il manque <strong className="chiffres">{b.manque}</strong> unité{b.manque > 1 ? "s" : ""}.
+              Environ <strong className="chiffres">{b.donneursSuggeres}</strong> donneurs à mobiliser.
+            </span>
+
+            <Bouton
+              variante={b.niveau === "critique" ? "principal" : "secondaire"}
+              compact
+              icone={<Megaphone size={16} aria-hidden="true" />}
+              onClick={() => surChoix(b)}
+            >
+              Préparer l&apos;appel
+            </Bouton>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }

@@ -610,6 +610,30 @@ export interface EstimationAlerteReponse {
   donneursCibles: number;
 }
 
+/**
+ * GET /stock/besoins — ce que le stock réclame, calculé.
+ *
+ * Répond à la question « dois-je lancer un appel au don, et pour quoi ? »
+ * sans obliger l'agent à lire le tableau et à faire le calcul de tête.
+ * Un besoin n'est PAS une alerte : c'est une proposition que l'agent
+ * confirme, modifie ou ignore.
+ */
+export interface BesoinStock {
+  typeProduit: "GR" | "PL" | "PQ";
+  groupeSanguin: GroupeSanguin;
+  /** Unités actuellement disponibles. */
+  quantite: number;
+  /** Seuil sous lequel ce groupe est jugé bas. */
+  seuilBas: number;
+  niveau: "bas" | "critique";
+  /** Unités manquantes pour repasser au-dessus du seuil bas. */
+  manque: number;
+  /** Donneurs à mobiliser pour combler ce manque. */
+  donneursSuggeres: number;
+  /** Urgence proposée, déduite du niveau. */
+  urgenceSuggeree: "normale" | "urgente" | "critique";
+}
+
 /** POST /alertes — lancer une alerte (gestionnaire de stock). */
 export interface LancerAlerteRequete {
   /**
