@@ -712,9 +712,19 @@ a { color: var(--primaire); text-decoration: none; }
   .explication__icone { order: 1; width: 32px; height: 32px; }
   .explication__details > div { flex-direction: column; gap: 2px; }
   .explication__details { gap: var(--e3); }
-  .explication--replie { flex-wrap: nowrap; }
-  .explication--replie .explication__resume { white-space: normal; }
-  .explication--replie .explication__bascule { font-size: var(--t-micro); }
+  /* Bandeau replié sur mobile : « Afficher les instructions » est trop
+     long pour partager 390 px avec le résumé — celui-ci se comprimait en
+     colonne d'un mot sur six lignes. On passe sur deux rangs : le résumé
+     occupe toute la largeur, le bouton se range dessous à droite. */
+  .explication--replie { flex-wrap: wrap; row-gap: var(--e2); }
+  .explication--replie .explication__resume {
+    /* `flex: 1 1 0` et non `auto` : sur 390 px le texte reste sur le même
+       rang que la puce au lieu de la laisser seule sur sa ligne. */
+    flex: 1 1 0; min-width: 0; white-space: normal;
+  }
+  .explication--replie .explication__bascule {
+    flex-basis: 100%; justify-content: flex-end; font-size: var(--t-petit);
+  }
 }
 
 /* Carte d'indicateur cliquable (raccourcis du poste de travail) */
@@ -745,16 +755,22 @@ a { color: var(--primaire); text-decoration: none; }
 .fiche__cle { font-size: var(--t-micro); font-weight: 700; color: var(--encre-2); text-transform: uppercase; letter-spacing: 0.05em; }
 .fiche__valeur { font-size: var(--t-corps); font-weight: 600; }
 
-/* Frise d'événements (traçabilité) */
-.frise { display: flex; flex-direction: column; }
-.frise__etape { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--e4); padding-bottom: var(--e5); position: relative; }
-.frise__etape:last-child { padding-bottom: 0; }
-.frise__puce { width: 12px; height: 12px; margin: 6px auto 0; border-radius: 50%; background: var(--primaire); box-shadow: 0 0 0 3px var(--primaire-clair); }
-.frise__etape:not(:last-child)::before {
+/* Chronologie verticale d'événements (traçabilité).
+
+   Nom distinct de `.frise` (progression horizontale du laboratoire) :
+   deux composants différents ne doivent JAMAIS partager un préfixe de
+   classe. Quand c'était le cas, la définition la plus basse dans le
+   fichier l'emportait et cassait l'autre écran en silence — c'est
+   exactement ce qui empilait les quatre pastilles du laboratoire. */
+.chrono { display: flex; flex-direction: column; }
+.chrono__etape { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--e4); padding-bottom: var(--e5); position: relative; }
+.chrono__etape:last-child { padding-bottom: 0; }
+.chrono__puce { width: 12px; height: 12px; margin: 6px auto 0; border-radius: 50%; background: var(--primaire); box-shadow: 0 0 0 3px var(--primaire-clair); }
+.chrono__etape:not(:last-child)::before {
   content: ""; position: absolute; left: 11px; top: 22px; bottom: 4px;
   width: 2px; background: var(--trait);
 }
-.frise__corps { display: flex; flex-direction: column; gap: 2px; }
+.chrono__corps { display: flex; flex-direction: column; gap: 2px; }
 
 /* Grille de formulaire à trois colonnes */
 .grille-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--e4); }
@@ -826,7 +842,10 @@ a { color: var(--primaire); text-decoration: none; }
    `inline-flex`, écrasait silencieusement la mise en page en colonne des
    étapes 1-2-3 de l'écran des appels au don.
    ===================================================================== */
-.frise { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
+.frise {
+  display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap;
+  margin: 0; padding: 0; list-style: none;
+}
 .frise__etape {
   display: inline-flex; align-items: center; gap: var(--e2);
   padding: var(--e2) var(--e3); border-radius: 999px;
@@ -843,6 +862,91 @@ a { color: var(--primaire); text-decoration: none; }
 .frise__etape--active { background: var(--primaire); color: #fff; }
 .frise__etape--active .frise__num { background: rgba(255, 255, 255, 0.3); color: #fff; }
 .frise__lien { color: var(--trait-fort); flex-shrink: 0; }
+
+/* =====================================================================
+   Liste de travail (worklist)
+
+   Convention des logiciels de laboratoire : une ligne par échantillon,
+   colonnes alignées, identifiant en chiffres à largeur fixe. On lit la
+   file en balayant une colonne, pas en lisant des cartes l'une après
+   l'autre. Chaque ligne est un bouton : toute la surface est cliquable.
+   ===================================================================== */
+.worklist {
+  background: var(--surface);
+  border: 1px solid var(--trait); border-radius: var(--rayon);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.05);
+  overflow: hidden;
+}
+.worklist__lignes { margin: 0; padding: 0; list-style: none; }
+.worklist__lignes > li + li { border-top: 1px solid var(--trait); }
+
+/* Une seule définition de grille, partagée par l'en-tête et les lignes :
+   les colonnes ne peuvent pas se désaligner. */
+.worklist__entetes,
+.worklist__ligne {
+  display: grid; align-items: center; gap: var(--e4);
+  grid-template-columns: minmax(150px, max-content) 76px 1fr max-content max-content max-content;
+  padding: 0 var(--e5);
+}
+.worklist__entetes {
+  min-height: 38px;
+  background: var(--fond); border-bottom: 1px solid var(--trait);
+  font-size: var(--t-micro); font-weight: 700; color: var(--encre-2);
+  text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+}
+.worklist__ligne {
+  width: 100%; min-height: 60px;
+  background: transparent; border: 0; text-align: left; cursor: pointer;
+  transition: background 120ms;
+}
+.worklist__ligne:hover { background: var(--primaire-clair); }
+.worklist__code {
+  font-size: var(--t-corps); font-weight: 700; letter-spacing: 0.02em; color: var(--encre);
+}
+.worklist__groupe { display: flex; justify-content: flex-start; }
+/* « à définir » plutôt qu'un tiret : un tiret ne dit pas si la donnée
+   manque, est inconnue, ou viendra plus tard. */
+.worklist__attente {
+  padding: 2px var(--e2); border-radius: 999px;
+  background: var(--fond); border: 1px dashed var(--trait-fort);
+  color: var(--encre-2); font-size: var(--t-micro); font-weight: 600; white-space: nowrap;
+}
+.worklist__donneur,
+.worklist__date,
+.worklist__volume { font-size: var(--t-appui); color: var(--encre-2); white-space: nowrap; }
+/* L'action est le point d'arrivée de l'œil : elle garde la couleur. */
+.worklist__action {
+  display: inline-flex; align-items: center; gap: var(--e1);
+  font-size: var(--t-appui); font-weight: 650; color: var(--primaire-fonce);
+  white-space: nowrap;
+}
+
+/* En dessous de 900 px, la grille en colonnes devient illisible : on
+   passe en deux lignes, code et action d'abord. */
+@media (max-width: 900px) {
+  .worklist__entetes { display: none; }
+  .worklist__ligne {
+    /* Le code de poche d'abord, à sa largeur réelle : en `1fr` il se
+       coupait en deux lignes (« OUA-26- / 00012-H ») et la ligne perdait
+       son repère principal. L'action prend le reste et s'aligne à droite. */
+    grid-template-columns: max-content 1fr;
+    gap: var(--e2) var(--e3);
+    padding: var(--e3) var(--e4);
+  }
+  .worklist__code { grid-column: 1; grid-row: 1; white-space: nowrap; }
+  .worklist__action { grid-column: 2; grid-row: 1; justify-content: flex-end; }
+  /* Le verbe de l'étape disparaît : l'onglet actif en haut le dit déjà,
+     et « Contrôler l'échantillon » débordait de la carte sur 390 px. Le
+     chevron suffit à signaler que la ligne s'ouvre. */
+  .worklist__verbe {
+    position: absolute; width: 1px; height: 1px;
+    margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0);
+    white-space: nowrap; border: 0;
+  }
+  .worklist__groupe { grid-column: 1; grid-row: 2; }
+  .worklist__donneur { grid-column: 2; grid-row: 2; text-align: right; }
+  .worklist__date, .worklist__volume { display: none; }
+}
 
 /* Grille de saisie des marqueurs sérologiques.
    Le nom du marqueur est AU-DESSUS des boutons, pas à côté : côte à côte,

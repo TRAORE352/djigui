@@ -15,7 +15,7 @@
  */
 import { useState } from "react";
 import {
-  CheckCircle2, ChevronLeft, CircleAlert, CircleCheck, CircleSlash,
+  CheckCircle2, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, CircleSlash,
   FlaskConical, PackageCheck, TestTubes, XCircle,
 } from "lucide-react";
 import type {
@@ -66,37 +66,53 @@ export default function Laboratoire() {
       ? aPreparer.donnees?.length ?? 0
       : file.donnees?.[cle].length ?? 0;
 
+  /*
+   * Un dossier ouvert est un plan de travail, pas une page de navigation.
+   * Tant qu'il est ouvert on retire ce qui invite à partir ailleurs — les
+   * onglets des autres files et le bandeau d'aide général — pour ne laisser
+   * que le dossier et l'action du moment. Le retour à la liste reste la
+   * seule sortie, visible en haut.
+   */
+  const dossierOuvert = ouverte !== null && onglet !== "preparation";
+
   return (
     <>
       <EnTetePage
         titre="Laboratoire"
-        chapeau="Un don n'est transfusable qu'après quatre étapes : réception de l'échantillon, groupage, sérologie, puis libération."
-        actions={<Bouton variante="secondaire" onClick={() => void toutRecharger()}>Actualiser</Bouton>}
+        chapeau="Qualification biologique des poches prélevées."
+        actions={dossierOuvert ? undefined
+          : <Bouton variante="secondaire" onClick={() => void toutRecharger()}>Actualiser</Bouton>}
       />
 
-      <Explication
-        Icone={FlaskConical}
-        role="Une poche prélevée n'est pas encore utilisable. Ici vous l'analysez : vous déterminez son groupe sanguin et vous vérifiez qu'elle ne transmet aucune maladie."
-        quand="Après chaque prélèvement. Une poche attend ici tant qu'elle n'est pas analysée."
-        ensuite="Si tout est conforme, la poche est libérée et rejoint le stock. Sinon elle est écartée et détruite."
-      />
+      {!dossierOuvert && (
+        <Explication
+          Icone={FlaskConical}
+          cle="laboratoire"
+          resume="Analysez chaque poche avant qu'elle rejoigne le stock."
+          role="Une poche prélevée n'est pas encore utilisable. Ici vous l'analysez : vous déterminez son groupe sanguin et vous vérifiez qu'elle ne transmet aucune maladie."
+          quand="Après chaque prélèvement. Une poche attend ici tant qu'elle n'est pas analysée."
+          ensuite="Si tout est conforme, la poche est libérée et rejoint le stock. Sinon elle est écartée et détruite."
+        />
+      )}
 
-      <nav className="onglets" aria-label="Étapes du laboratoire">
-        {ONGLETS.map((o) => (
-          <button
-            key={o.cle}
-            className={`onglet${onglet === o.cle ? " onglet--actif" : ""}`}
-            aria-current={onglet === o.cle ? "page" : undefined}
-            onClick={() => { setOnglet(o.cle); setOuverte(null); }}
-          >
-            {o.mot}
-            <span className={`section__compte${compte(o.cle) === 0 ? " section__compte--vide" : ""}`}
-                  style={{ marginLeft: "var(--e2)" }}>
-              {compte(o.cle)}
-            </span>
-          </button>
-        ))}
-      </nav>
+      {!dossierOuvert && (
+        <nav className="onglets" aria-label="Étapes du laboratoire">
+          {ONGLETS.map((o) => (
+            <button
+              key={o.cle}
+              className={`onglet${onglet === o.cle ? " onglet--actif" : ""}`}
+              aria-current={onglet === o.cle ? "page" : undefined}
+              onClick={() => { setOnglet(o.cle); setOuverte(null); }}
+            >
+              {o.mot}
+              <span className={`section__compte${compte(o.cle) === 0 ? " section__compte--vide" : ""}`}
+                    style={{ marginLeft: "var(--e2)" }}>
+                {compte(o.cle)}
+              </span>
+            </button>
+          ))}
+        </nav>
+      )}
 
       {file.chargement && !file.donnees && <SqueletteLignes lignes={3} />}
       {file.erreur && <EtatErreur texte={file.erreur} surReessai={() => void file.recharger()} />}
@@ -123,10 +139,10 @@ export default function Laboratoire() {
    ===================================================================== */
 
 const VIDE: Record<Exclude<Onglet, "preparation">, string> = {
-  aRecevoir: "Aucun échantillon à réceptionner. Les poches arrivent ici dès que le prélèvement est enregistré.",
-  aGrouper: "Aucune poche à grouper. Réceptionnez d'abord les échantillons.",
-  aTester: "Aucune sérologie en attente. Le groupage doit être fait avant.",
-  aLiberer: "Aucun dossier prêt. Une poche n'arrive ici qu'une fois tous les examens obligatoires saisis.",
+  aRecevoir: "Aucun échantillon à réceptionner.",
+  aGrouper: "Aucune poche à grouper.",
+  aTester: "Aucune sérologie en attente.",
+  aLiberer: "Aucun dossier prêt à libérer.",
 };
 
 function FileEtape({ dossiers, etape, ouverte, surOuvrir, surAction }: {
@@ -158,22 +174,41 @@ function FileEtape({ dossiers, etape, ouverte, surOuvrir, surAction }: {
 
   return (
     <Section titre={`${dossiers.length} poche${dossiers.length > 1 ? "s" : ""} à traiter`}>
-      <div className="pile-s">
-        {dossiers.map((d) => (
-          <button key={d.code} className="travail" style={{ cursor: "pointer", textAlign: "left" }}
-                  onClick={() => surOuvrir(d.code)}>
-            <div className="travail__entete">
-              <span className="travail__code">{d.code}</span>
-              {d.groupage && <BlocGroupe groupe={d.groupage.determination1} taille="s" />}
-              <span className="travail__meta">
-                <span className="petit">Prélevée le {dateCourte(d.datePrelevement)}</span>
-                {d.volume && <span className="petit">{d.volume} ml</span>}
-                <Pilule ton="primaire">{ETAPE_LABO[d.etape].verbe}</Pilule>
-              </span>
-            </div>
-            <Frise etape={d.etape} />
-          </button>
-        ))}
+      {/* Liste de travail : une ligne par poche, lue en rafale. La frise
+          des quatre étapes a disparu d'ici — elle répétait sur chaque
+          ligne ce que les onglets disent déjà une fois en haut. */}
+      <div className="worklist">
+        {/* En-têtes de colonnes : sans eux, « — » et « 450 ml » sont des
+            valeurs sans nom. Masqués sous 900 px, où la ligne se replie. */}
+        <div className="worklist__entetes" aria-hidden="true">
+          <span>Poche</span>
+          <span className="worklist__groupe">Groupe</span>
+          <span>Donneur</span>
+          <span>Prélevée le</span>
+          <span>Volume</span>
+          <span />
+        </div>
+        <ul className="worklist__lignes">
+          {dossiers.map((d) => (
+            <li key={d.code}>
+              <button className="worklist__ligne" onClick={() => surOuvrir(d.code)}>
+                <span className="worklist__code chiffres">{d.code}</span>
+                <span className="worklist__groupe">
+                  {d.groupage
+                    ? <BlocGroupe groupe={d.groupage.determination1} taille="s" />
+                    : <span className="worklist__attente" title="Groupe déterminé à l'étape Groupage">à définir</span>}
+                </span>
+                <span className="worklist__donneur chiffres">{d.numeroDonneur ?? "—"}</span>
+                <span className="worklist__date">{dateCourte(d.datePrelevement)}</span>
+                <span className="worklist__volume chiffres">{d.volume ? `${d.volume} ml` : "—"}</span>
+                <span className="worklist__action">
+                  <span className="worklist__verbe">{ETAPE_LABO[d.etape].verbe}</span>
+                  <ChevronRight size={16} aria-hidden="true" />
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
     </Section>
   );
@@ -183,18 +218,19 @@ function FileEtape({ dossiers, etape, ouverte, surOuvrir, surAction }: {
 function Frise({ etape }: { etape: EtapeLabo }) {
   const position = ETAPES_ORDRE.indexOf(etape);
   return (
-    <div className="frise">
+    <ol className="frise" aria-label="Avancement de la qualification">
       {ETAPES_ORDRE.map((e, i) => {
         const faite = etape === "terminee" || (position >= 0 && i < position);
         const active = e === etape;
         return (
-          <span key={e} className={`frise__etape${faite ? " frise__etape--faite" : active ? " frise__etape--active" : ""}`}>
+          <li key={e} className={`frise__etape${faite ? " frise__etape--faite" : active ? " frise__etape--active" : ""}`}
+              aria-current={active ? "step" : undefined}>
             <span className="frise__num">{faite ? "✓" : i + 1}</span>
             {ETAPE_LABO[e].mot}
-          </span>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
 

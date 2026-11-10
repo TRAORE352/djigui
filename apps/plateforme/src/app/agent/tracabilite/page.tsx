@@ -143,11 +143,11 @@ function Fiche({ fiche }: { fiche: FicheTracabilite }) {
         {fiche.evenements.length === 0 ? (
           <p className="appui">Aucun événement enregistré pour ce code.</p>
         ) : (
-          <ol className="frise" style={{ listStyle: "none", margin: 0, padding: 0 }}>
+          <ol className="chrono" style={{ listStyle: "none", margin: 0, padding: 0 }}>
             {fiche.evenements.map((e, i) => (
-              <li key={i} className="frise__etape">
-                <span className="frise__puce" aria-hidden="true" />
-                <div className="frise__corps">
+              <li key={i} className="chrono__etape">
+                <span className="chrono__puce" aria-hidden="true" />
+                <div className="chrono__corps">
                   <span className="fort">{EVENEMENT[e.type] ?? e.type.replace(/_/g, " ")}</span>
                   <span className="appui">{dateHeure(e.date)}</span>
                   <span className="petit">

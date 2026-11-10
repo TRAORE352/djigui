@@ -38,19 +38,21 @@ export default function Explication({ Icone, role, quand, ensuite, cle, resume }
   resume?: string;
 }) {
   const rangement = cle ? `dds:explication:${cle}` : "";
-  // Ouvert par défaut : on ne cache jamais une consigne à quelqu'un qui
-  // n'a pas encore choisi de la cacher.
-  const [ouvert, setOuvert] = useState(true);
-  // Le premier rendu doit être identique côté serveur et client ; on ne
-  // lit la préférence qu'après le montage.
-  const [monte, setMonte] = useState(false);
+  /*
+   * Replié par défaut dès qu'une `cle` est fournie.
+   *
+   * Ces consignes servent les premiers jours ; ensuite elles coûtent de
+   * la hauteur à chaque passage, sur un écran dont l'agent se sert cent
+   * fois. L'aide reste à un clic, et le choix contraire est retenu par
+   * poste. Un écran de travail doit respirer avant d'expliquer.
+   */
+  const [ouvert, setOuvert] = useState(false);
 
   useEffect(() => {
-    setMonte(true);
     if (!rangement) return;
     try {
-      if (localStorage.getItem(rangement) === "replie") setOuvert(false);
-    } catch { /* stockage refusé : le bandeau reste ouvert */ }
+      if (localStorage.getItem(rangement) === "ouvert") setOuvert(true);
+    } catch { /* stockage refusé : le bandeau reste replié */ }
   }, [rangement]);
 
   function basculer() {
@@ -77,7 +79,9 @@ export default function Explication({ Icone, role, quand, ensuite, cle, resume }
 
   const idCorps = `explication-${cle}`;
 
-  if (monte && !ouvert) {
+  // `monte` n'est plus requis ici : replié est l'état par défaut des deux
+  // côtés (serveur et premier rendu client), donc aucun écart d'hydratation.
+  if (!ouvert) {
     return (
       <aside className="explication explication--replie">
         <span className="explication__puce" aria-hidden="true"><Info size={16} /></span>
