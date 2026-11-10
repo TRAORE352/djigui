@@ -732,6 +732,18 @@ export interface DelivranceReponse {
   statut: string;
 }
 
+/** GET /delivrances — une délivrance enregistrée (historique). */
+export interface Delivrance {
+  id: string;
+  code: string;
+  typeProduit: "GR" | "PL" | "PQ";
+  groupeSanguin: GroupeSanguin;
+  service: string;
+  nomAgent: string;
+  /** ISO datetime — date et heure exactes de la délivrance. */
+  creeLe: string;
+}
+
 // ---------------------------------------------------------------------
 // Entrées de stock externes (lots reçus d'un laboratoire ou d'une banque)
 // ---------------------------------------------------------------------

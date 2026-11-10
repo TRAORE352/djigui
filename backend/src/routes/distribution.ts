@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
-import type { Demande, DemandeRequete, Expedition, SitePartenaire } from "@dds/contrat-api";
+import type { Delivrance, Demande, DemandeRequete, Expedition, SitePartenaire } from "@dds/contrat-api";
 import { AppError } from "../lib/erreurs.js";
 import { requete, transaction } from "../lib/db.js";
 import { valider } from "../lib/validation.js";
 import { inscrireEvenement } from "../lib/evenements.js";
 import { normaliserCode } from "../lib/codes-poches.js";
+import { instantISO } from "../lib/format.js";
 import { authentifier } from "../middlewares/authentification.js";
 import { exigerRole } from "../middlewares/roles.js";
 
@@ -241,6 +242,36 @@ const schemaDelivrance = z.object({
   // Nom de l'agent de santé qui reçoit la poche. Défaut vide pour ne pas
   // casser un ancien frontend pendant la fenêtre de déploiement.
   nomAgent: z.string().default(""),
+});
+
+// ---------------------------------------------------------------------
+// GET /delivrances — historique des délivrances du site, la plus récente
+// d'abord. Le tri par groupe/service/agent se fait côté écran.
+// ---------------------------------------------------------------------
+routeDistribution.get("/delivrances", ...STOCK, async (req, res) => {
+  const agent = req.utilisateur!;
+  const { rows } = await requete<{
+    id: string; code: string; groupe_sanguin: string; type_produit: string;
+    service: string; nom_agent: string; cree_le: Date;
+  }>(
+    `select d.id, d.service, d.nom_agent, d.cree_le, p.code, p.groupe_sanguin, t.code as type_produit
+     from delivrances d
+     join produits p on p.id = d.produit_id
+     join types_produits t on t.id = p.type_produit_id
+     where p.site_actuel_id = $1
+     order by d.cree_le desc`,
+    [agent.siteId],
+  );
+  const donnees: Delivrance[] = rows.map((r) => ({
+    id: r.id,
+    code: r.code,
+    typeProduit: r.type_produit as Delivrance["typeProduit"],
+    groupeSanguin: r.groupe_sanguin as Delivrance["groupeSanguin"],
+    service: r.service,
+    nomAgent: r.nom_agent,
+    creeLe: instantISO(r.cree_le),
+  }));
+  res.json({ donnees });
 });
 
 // POST /delivrances — délivrer un produit à un service.
