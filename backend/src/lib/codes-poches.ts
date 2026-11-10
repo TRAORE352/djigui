@@ -52,3 +52,26 @@ export function codePocheValide(code: string): boolean {
   if (!m) return false;
   return calculerLettreControle(`${m[1]}${m[2]}${m[3]}`) === m[4];
 }
+
+/**
+ * Code d'une unité reçue de l'extérieur : OUA-E26-00014-GR-K.
+ *
+ * Le « E » (Externe) juste après le site distingue d'un coup d'œil une
+ * unité LIVRÉE d'une unité prélevée et qualifiée sur place. C'est une
+ * information de traçabilité : en cas de rappel, on doit pouvoir dire
+ * immédiatement si l'unité vient de notre chaîne ou d'un fournisseur.
+ *
+ * Le numéro est celui du rang de l'unité dans le lot ; la lettre de
+ * contrôle protège la saisie manuelle, comme pour les poches.
+ */
+export function genererCodeExterne(
+  siteCode: string,
+  annee: number,
+  numero: number,
+  typeProduit: string,
+): string {
+  const annee2 = String(annee).slice(-2);
+  const numero5 = String(numero).padStart(5, "0");
+  const partie = `${siteCode}E${annee2}${numero5}${typeProduit}`;
+  return `${siteCode}-E${annee2}-${numero5}-${typeProduit}-${calculerLettreControle(partie)}`;
+}

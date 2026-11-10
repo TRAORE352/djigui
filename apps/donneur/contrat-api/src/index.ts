@@ -694,6 +694,48 @@ export interface DelivranceRequete {
   service: string;
 }
 
+// ---------------------------------------------------------------------
+// Entrées de stock externes (lots reçus d'un laboratoire ou d'une banque)
+// ---------------------------------------------------------------------
+
+/**
+ * Une ligne de lot : un type de produit, un groupe, une quantité.
+ * La saisie est GROUPÉE (« 40 × GR O+ ») parce qu'un agent qui reçoit
+ * 100 poches ne va pas taper 100 formulaires. L'enregistrement reste
+ * unitaire côté base : chaque unité devient un produit avec son code.
+ */
+export interface LigneLotRequete {
+  typeProduit: "GR" | "PL" | "PQ";
+  groupeSanguin: GroupeSanguin;
+  quantite: number;
+  /** AAAA-MM-JJ. Absente = pas de péremption connue. */
+  datePeremption?: string | null;
+}
+
+/** POST /stock/entrees — enregistrer un lot reçu de l'extérieur. */
+export interface EntreeStockRequete {
+  /** Référence du bordereau de livraison du fournisseur. */
+  reference: string;
+  /** Site du réseau qui a livré… */
+  fournisseurId?: string | null;
+  /** …ou son nom, s'il n'est pas dans le réseau. L'un des deux est requis. */
+  fournisseurLibre?: string | null;
+  note?: string;
+  lignes: LigneLotRequete[];
+}
+
+/** Ce que renvoie l'enregistrement d'un lot. */
+export interface EntreeStock {
+  id: string;
+  reference: string;
+  fournisseur: string;
+  recuLe: string;
+  /** Nombre d'unités réellement créées. */
+  unitesCreees: number;
+  /** Les codes générés, pour que l'agent puisse les reporter. */
+  codes: string[];
+}
+
 /**
  * GET /sites-partenaires — les sites auxquels le site courant peut adresser
  * une demande de produits (son propre site exclu).
