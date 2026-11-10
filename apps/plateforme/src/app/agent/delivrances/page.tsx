@@ -22,6 +22,7 @@ import type { Produit } from "@dds/contrat-api";
 import { api } from "@/lib/api";
 import { messageDe } from "@/lib/erreurs";
 import { TYPE_PRODUIT, dateCourte } from "@/lib/metier";
+import { SERVICES_SANTE } from "@/lib/services";
 import { useRessource } from "@/lib/useRessource";
 import { EnTetePage } from "@/components/Coquille";
 import Explication from "@/components/Explication";
@@ -128,11 +129,13 @@ export default function Delivrances() {
               >
                 <span className="champ__etiquette">Service destinataire</span>
               </AvecAide>
-              <input
+              <select
                 className="champ__saisie" value={service} required
-                placeholder="Urgences, maternité, pédiatrie" autoComplete="off"
                 onChange={(e) => { setService(e.target.value); setErreur(""); }}
-              />
+              >
+                <option value="">Choisir un service</option>
+                {SERVICES_SANTE.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
             </label>
           </div>
 
