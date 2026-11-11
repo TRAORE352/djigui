@@ -14,13 +14,12 @@ import { messageDe } from "@/lib/erreurs";
 import { NIVEAU_STOCK, TYPE_PRODUIT, dateCourte, joursRestants } from "@/lib/metier";
 import { useRessource } from "@/lib/useRessource";
 import { EnTetePage } from "@/components/Coquille";
-import Explication from "@/components/Explication";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import BlocGroupe from "@/components/BlocGroupe";
 import Tableau from "@/components/Tableau";
 import { EtatErreur, EtatVide, SqueletteLignes } from "@/components/Etats";
-import { Section, VideLigne } from "@/components/Mise";
+import { Repli, Section, VideLigne } from "@/components/Mise";
 import { MessageErreur, MessageReussite } from "@/components/Messages";
 import { ChampTexte } from "@/components/Champs";
 
@@ -40,18 +39,14 @@ export default function Stock() {
         }
       />
 
-      <Explication
-        Icone={Boxes}
-        role="L'état des réserves de votre site : combien de poches disponibles, de quel groupe, et lesquelles vont bientôt périmer."
-        quand="Chaque matin, et avant de répondre à une demande d'hôpital."
-        ensuite="Si vos réserves baissent, lancez une campagne de don depuis « Campagnes »."
-      />
-
       <ResumeNiveaux lignes={stock.donnees} />
 
       <ReceptionLot surEntree={() => { void stock.recharger(); void peremption.recharger(); }} />
 
-      <Section titre="Produits disponibles" compte={stock.donnees?.length}>
+      <Repli
+        titre="Produits disponibles"
+        resume={stock.donnees ? `${stock.donnees.length} ligne${stock.donnees.length > 1 ? "s" : ""} de stock` : undefined}
+      >
         {stock.chargement && <SqueletteLignes lignes={4} />}
         {stock.erreur && <EtatErreur texte={stock.erreur} surReessai={() => void stock.recharger()} />}
         {stock.donnees?.length === 0 && (
@@ -88,7 +83,7 @@ export default function Stock() {
             ]}
           />
         )}
-      </Section>
+      </Repli>
 
       <Peremption ressource={peremption} surDestruction={() => { void stock.recharger(); void peremption.recharger(); }} />
     </>
@@ -155,7 +150,10 @@ function Peremption({ ressource, surDestruction }: {
   }
 
   return (
-    <Section titre="Péremption dans les 14 jours" compte={ressource.donnees?.length}>
+    <Repli
+      titre="Péremption dans les 14 jours"
+      resume={ressource.donnees ? `${ressource.donnees.length} produit${ressource.donnees.length > 1 ? "s" : ""}` : undefined}
+    >
       {ressource.chargement && <SqueletteLignes lignes={2} />}
       {ressource.erreur && <EtatErreur texte={ressource.erreur} surReessai={() => void ressource.recharger()} />}
 
@@ -212,7 +210,7 @@ function Peremption({ ressource, surDestruction }: {
           ]}
         />
       )}
-    </Section>
+    </Repli>
   );
 }
 
