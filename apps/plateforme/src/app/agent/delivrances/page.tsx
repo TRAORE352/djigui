@@ -27,7 +27,7 @@ import BlocGroupe from "@/components/BlocGroupe";
 import Tableau from "@/components/Tableau";
 import Modal from "@/components/Modal";
 import { EtatErreur, EtatVide, SqueletteLignes } from "@/components/Etats";
-import { Section, VideLigne } from "@/components/Mise";
+import { Repli, Section, VideLigne } from "@/components/Mise";
 import { MessageErreur, MessageReussite } from "@/components/Messages";
 
 /** Pagination des produits disponibles : 5 par 5. */
@@ -195,7 +195,10 @@ export default function Delivrances() {
         </form>
       </Section>
 
-      <Section titre="Produits disponibles" compte={disponibles.donnees?.length}>
+      <Repli
+        titre="Produits disponibles"
+        resume={disponibles.donnees ? `${disponibles.donnees.length} produit${disponibles.donnees.length > 1 ? "s" : ""} disponible${disponibles.donnees.length > 1 ? "s" : ""}` : undefined}
+      >
         {disponibles.chargement && <SqueletteLignes lignes={3} />}
         {disponibles.erreur && (
           <EtatErreur texte={disponibles.erreur} surReessai={() => void disponibles.recharger()} />
@@ -277,7 +280,7 @@ export default function Delivrances() {
             )}
           </>
         )}
-      </Section>
+      </Repli>
 
       {historiqueOuvert && (
         <Modal titre="Historique des délivrances" surFermer={() => setHistoriqueOuvert(false)}>
