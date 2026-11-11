@@ -2,15 +2,14 @@
 /**
  * Tableau de bord du CNTS — l'état du réseau en temps réel.
  *
- * Les chiffres sont groupés par question posée : « combien de donneurs ? »,
- * « que se passe-t-il aujourd'hui ? », « qu'est-ce qui attend une action ? ».
+ * Toutes les cartes tiennent dans un seul panneau : ce qui attend une action
+ * d'abord (alerte, demande), puis l'activité du jour et la base des donneurs.
  */
 import { useEffect } from "react";
 import Link from "next/link";
 import type { Statistiques } from "@dds/contrat-api";
 import { api } from "@/lib/api";
 import { useRessource } from "@/lib/useRessource";
-import { EnTetePage } from "@/components/Coquille";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import { EtatErreur, Squelette } from "@/components/Etats";
@@ -39,7 +38,7 @@ export default function TableauDeBord() {
   if (chargement && !stats) {
     return (
       <>
-        <EnTetePage titre="Tableau de bord" />
+        <BoutonHaut recharger={recharger} />
         <Squelette hauteur={240} />
       </>
     );
@@ -48,7 +47,7 @@ export default function TableauDeBord() {
   if (erreur && !stats) {
     return (
       <>
-        <EnTetePage titre="Tableau de bord" />
+        <BoutonHaut recharger={recharger} />
         <EtatErreur texte={erreur} surReessai={() => void recharger()} />
       </>
     );
@@ -56,7 +55,17 @@ export default function TableauDeBord() {
 
   if (!stats) return null;
 
-  const activite: Carte[] = [
+  const cartes: Carte[] = [
+    {
+      libelle: "Alertes en cours", valeur: stats.alertesEnCours,
+      detail: "appels aux donneurs encore ouverts", ton: "sang",
+      lien: { adresse: "/agent/alertes", mot: "Voir les alertes" },
+    },
+    {
+      libelle: "Demandes en attente", valeur: stats.demandesEnAttente,
+      detail: "à accepter par la distribution", ton: "ocre",
+      lien: { adresse: "/agent/distribution/donner", mot: "Voir les demandes" },
+    },
     {
       libelle: "Dons aujourd'hui", valeur: stats.donsAujourdhui,
       detail: "donneurs déclarés aptes et prélevés",
@@ -69,22 +78,6 @@ export default function TableauDeBord() {
       libelle: "Produits disponibles", valeur: stats.produitsDisponibles,
       detail: "en stock ou réservés sur le réseau", ton: "seve",
     },
-  ];
-
-  const aTraiter: Carte[] = [
-    {
-      libelle: "Alertes en cours", valeur: stats.alertesEnCours,
-      detail: "appels aux donneurs encore ouverts", ton: "sang",
-      lien: { adresse: "/agent/alertes", mot: "Voir les alertes" },
-    },
-    {
-      libelle: "Demandes en attente", valeur: stats.demandesEnAttente,
-      detail: "à préparer par la distribution", ton: "ocre",
-      lien: { adresse: "/agent/distribution", mot: "Voir les demandes" },
-    },
-  ];
-
-  const donneurs: Carte[] = [
     {
       libelle: "Donneurs inscrits", valeur: stats.donneurs.total,
       detail: `${stats.donneurs.actifs} actifs · ${stats.donneurs.enPause} en pause`,
@@ -103,9 +96,30 @@ export default function TableauDeBord() {
         </div>
       </header>
 
-      <Groupe titre="Activité du jour" cartes={activite} />
-      <Groupe titre="En attente d'une action" cartes={aTraiter} />
-      <Groupe titre="Base des donneurs" cartes={donneurs} />
+      <section className="pile-s">
+        <h2 className="section-titre">Le réseau en un coup d&apos;œil</h2>
+        <div className="grille-indicateurs">
+          {cartes.map((c) => {
+            // Un « 0 » en rouge se lit comme un problème, alors que c'est la
+            // bonne nouvelle : la teinte d'alerte ne s'applique qu'au-delà de 0.
+            const ton = c.valeur === 0 && c.ton !== "seve" ? undefined : c.ton;
+            return (
+              <article key={c.libelle} className="bloc indicateur">
+                <span className="appui">{c.libelle}</span>
+                <strong className={`indicateur__valeur chiffres${ton ? ` indicateur__valeur--${ton}` : ""}`}>
+                  {c.valeur}
+                </strong>
+                <span className="petit">{c.detail}</span>
+                {c.lien && c.valeur > 0 && (
+                  <Link href={c.lien.adresse} className="petit" style={{ marginTop: "var(--e1)" }}>
+                    {c.lien.mot}
+                  </Link>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="pile-s">
         <h2 className="section-titre">Réseau</h2>
@@ -120,31 +134,16 @@ export default function TableauDeBord() {
   );
 }
 
-function Groupe({ titre, cartes }: { titre: string; cartes: Carte[] }) {
+/** En-tête commun aux états de chargement et d'erreur. */
+function BoutonHaut({ recharger }: { recharger: () => void }) {
   return (
-    <section className="pile-s">
-      <h2 className="section-titre">{titre}</h2>
-      <div className="grille-indicateurs">
-        {cartes.map((c) => {
-          // Un « 0 » en rouge se lit comme un problème, alors que c'est la
-          // bonne nouvelle : la teinte d'alerte ne s'applique qu'au-delà de 0.
-          const ton = c.valeur === 0 && c.ton !== "seve" ? undefined : c.ton;
-          return (
-            <article key={c.libelle} className="bloc indicateur">
-              <span className="appui">{c.libelle}</span>
-              <strong className={`indicateur__valeur chiffres${ton ? ` indicateur__valeur--${ton}` : ""}`}>
-                {c.valeur}
-              </strong>
-              <span className="petit">{c.detail}</span>
-              {c.lien && c.valeur > 0 && (
-                <Link href={c.lien.adresse} className="petit" style={{ marginTop: "var(--e1)" }}>
-                  {c.lien.mot}
-                </Link>
-              )}
-            </article>
-          );
-        })}
+    <header className="bord-entete">
+      <div className="bord-entete__gauche">
+        <h1 className="bord-entete__titre">Tableau de bord du CNTS</h1>
       </div>
-    </section>
+      <div className="bord-entete__droite">
+        <Bouton variante="secondaire" onClick={() => void recharger()}>Actualiser</Bouton>
+      </div>
+    </header>
   );
 }
