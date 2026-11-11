@@ -8,7 +8,7 @@
  */
 import type { Role } from "@dds/contrat-api";
 import {
-  Activity, BadgeCheck, Bell, Boxes, Building2, Hospital, LayoutDashboard,
+  Activity, ArrowDownToLine, BadgeCheck, Bell, Boxes, Building2, Hospital, LayoutDashboard,
   SlidersHorizontal, Truck, UserRound, Users,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -61,9 +61,16 @@ export const SECTIONS_AGENT: Section[] = [
     roles: ["agent_stock", "agent_depot"],
   },
   {
-    adresse: "/agent/distribution",
-    mot: "Distribution",
-    resume: "Envoyer du sang aux hôpitaux et aux dépôts qui en demandent.",
+    adresse: "/agent/distribution/recevoir",
+    mot: "Recevoir",
+    resume: "Demander du sang à un autre centre, puis réceptionner le colis.",
+    Icone: ArrowDownToLine,
+    roles: ["agent_stock", "agent_depot"],
+  },
+  {
+    adresse: "/agent/distribution/donner",
+    mot: "Donner",
+    resume: "Répondre aux demandes de sang qui vous sont adressées.",
     Icone: Truck,
     roles: ["agent_stock", "agent_depot"],
   },
