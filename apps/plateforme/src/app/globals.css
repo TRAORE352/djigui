@@ -407,8 +407,13 @@ a { color: var(--primaire); text-decoration: none; }
   padding: var(--e3) var(--e3) var(--e1);
   font-size: var(--t-micro); font-weight: 700; color: var(--encre-2);
   text-transform: uppercase; letter-spacing: 0.06em;
+  width: 100%; border: 0; background: none; cursor: pointer; text-align: left;
+  border-radius: var(--rayon-petit);
 }
+.lateral__groupe-titre:hover { background: var(--fond); }
 .lateral__groupe-titre svg { color: var(--encre-2); }
+.lateral__groupe-fleche { margin-left: auto; transition: transform 140ms; }
+.lateral__groupe-fleche--ouverte { transform: rotate(180deg); }
 .lateral__lien--enfant { padding-left: calc(var(--e3) + var(--e4)); }
 .lateral__lien {
   display: flex; align-items: center; gap: var(--e3);

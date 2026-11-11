@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut } from "lucide-react";
+import { ChevronDown, LogOut } from "lucide-react";
 import type { AgentConnecte } from "@dds/contrat-api";
 import {
   LIBELLE_ROLE, sectionAutorisee, sectionCourante, sectionsVisibles,
@@ -92,28 +92,7 @@ export default function Coquille({ espace, children }: { espace: Espace; childre
         <nav className="lateral__menu" aria-label="Navigation principale">
           {visibles.map((section) => {
             if (section.children?.length) {
-              return (
-                <div key={section.mot} className="lateral__groupe">
-                  <span className="lateral__groupe-titre">
-                    <section.Icone size={19} aria-hidden="true" />
-                    <span>{section.mot}</span>
-                  </span>
-                  {section.children.map((enfant) => {
-                    const actif = chemin === enfant.adresse || chemin.startsWith(`${enfant.adresse}/`);
-                    return (
-                      <Link
-                        key={enfant.adresse}
-                        href={enfant.adresse}
-                        className={`lateral__lien lateral__lien--enfant${actif ? " lateral__lien--actif" : ""}`}
-                        aria-current={actif ? "page" : undefined}
-                      >
-                        <enfant.Icone size={19} aria-hidden="true" />
-                        <span>{enfant.mot}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              );
+              return <GroupeLateral key={section.mot} section={section} chemin={chemin} />;
             }
             const actif = chemin === section.adresse || chemin.startsWith(`${section.adresse}/`);
             return (
@@ -156,6 +135,41 @@ export default function Coquille({ espace, children }: { espace: Espace; childre
       <main className="contenu">
         {interdite ? <AccesRefuse section={courante} /> : children}
       </main>
+    </div>
+  );
+}
+
+/** Groupe dépliable de la barre latérale (ex. « Échanges » → Recevoir, Donner). */
+function GroupeLateral({ section, chemin }: { section: Section; chemin: string }) {
+  const dansLeGroupe = (section.children ?? []).some((c) => chemin === c.adresse || chemin.startsWith(`${c.adresse}/`));
+  const [ouvert, setOuvert] = useState(!!dansLeGroupe);
+
+  // En naviguant vers un enfant, on ouvre le groupe pour le montrer.
+  useEffect(() => {
+    if (dansLeGroupe) setOuvert(true);
+  }, [dansLeGroupe]);
+
+  return (
+    <div className="lateral__groupe">
+      <button type="button" className="lateral__groupe-titre" aria-expanded={ouvert} onClick={() => setOuvert((v) => !v)}>
+        <section.Icone size={19} aria-hidden="true" />
+        <span>{section.mot}</span>
+        <ChevronDown size={16} className={`lateral__groupe-fleche${ouvert ? " lateral__groupe-fleche--ouverte" : ""}`} aria-hidden="true" />
+      </button>
+      {ouvert && section.children?.map((enfant) => {
+        const actif = chemin === enfant.adresse || chemin.startsWith(`${enfant.adresse}/`);
+        return (
+          <Link
+            key={enfant.adresse}
+            href={enfant.adresse}
+            className={`lateral__lien lateral__lien--enfant${actif ? " lateral__lien--actif" : ""}`}
+            aria-current={actif ? "page" : undefined}
+          >
+            <enfant.Icone size={19} aria-hidden="true" />
+            <span>{enfant.mot}</span>
+          </Link>
+        );
+      })}
     </div>
   );
 }
