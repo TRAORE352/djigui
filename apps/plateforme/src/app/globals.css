@@ -1016,8 +1016,7 @@ a { color: var(--primaire); text-decoration: none; }
    dans 1 100 px de blanc se lit moins bien qu'une carte cadrée. */
 .bord-grille {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(248px, 320px));
-  justify-content: start;
+  grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
   gap: var(--e4);
 }
 
