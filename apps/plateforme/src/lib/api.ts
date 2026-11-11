@@ -11,7 +11,7 @@ import type {
   InscriptionSurPlaceRequete, LancerAlerteRequete, LigneStock, ModifierRegleRequete,
   Passage, Poche, Produit, Regle,
   ReinitialisationMotDePasseReponse, Reponse, ReponseErreur,
-  SiteAdmin, SitePartenaire, Statistiques, SuiviAlerte,
+  SiteAdmin, SitePartenaire, Statistiques, SuiviAlerte, DonneurAdmin, Evenement,
 } from "@dds/contrat-api";
 import { lireJeton } from "./session";
 // `ErreurApi` et `messageDe` vivent dans ./erreurs : une seule définition
@@ -128,4 +128,10 @@ export const api = {
   regles: () => appel<Regle[]>("GET", "/regles"),
   modifierRegle: (cle: string, corps: ModifierRegleRequete) => appel<Regle>("PUT", `/regles/${encodeURIComponent(cle)}`, corps),
   statistiques: () => appel<Statistiques>("GET", "/statistiques"),
+  /** Les donneurs, vus par le CNTS. */
+  donneurs: () => appel<DonneurAdmin[]>("GET", "/donneurs"),
+  /** Journal des dernières actions (agents et labo). */
+  activite: () => appel<Evenement[]>("GET", "/activite"),
+  /** Historique d'activité d'une personne (agent ou donneur). */
+  activitePersonne: (id: string) => appel<Evenement[]>("GET", `/activite/${encodeURIComponent(id)}`),
 };

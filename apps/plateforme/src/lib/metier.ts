@@ -62,6 +62,30 @@ export function statutDemande(code: string) {
   return STATUT_DEMANDE[code] ?? { mot: code.replace(/_/g, " "), ton: "neutre" as Ton };
 }
 
+/** Libellé lisible d'un type d'événement du journal d'activité (espace CNTS). */
+export const LIBELLE_EVENEMENT: Record<string, string> = {
+  prelevement: "a prélevé une poche",
+  analyse: "a analysé une poche",
+  preparation: "a préparé des produits",
+  expedition: "a expédié des produits",
+  reception: "a réceptionné un colis",
+  delivrance: "a délivré une poche",
+  destruction: "a détruit un produit",
+  reinitialisation: "a réinitialisé un mot de passe",
+  inscription: "s'est inscrit",
+  connexion: "s'est connecté",
+  alerte: "a lancé une campagne",
+  cloture_alerte: "a clôturé une campagne",
+  acceptation: "a accepté une demande",
+  pause: "a mis ses alertes en pause",
+  modification: "a modifié un profil",
+};
+
+/** Libellé d'un type d'événement, avec repli lisible si inconnu. */
+export function libelleEvenement(type: string): string {
+  return LIBELLE_EVENEMENT[type] ?? type.replace(/_/g, " ");
+}
+
 export const LES_GROUPES = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"] as const;
 
 /** AAAA-MM-JJ → « 12 novembre 2026 ». */

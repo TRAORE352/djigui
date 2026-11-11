@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import type {
   AgentCompte, CreerAgentRequete, CreerCentreRequete, CreerZoneRequete,
-  ModifierRegleRequete, Regle, Role, SiteAdmin, Statistiques,
+  DonneurAdmin, Evenement, ModifierRegleRequete, Regle, Role, SiteAdmin, Statistiques,
 } from "@dds/contrat-api";
 import { AppError } from "../lib/erreurs.js";
 import { requete, transaction } from "../lib/db.js";
@@ -39,6 +39,7 @@ interface LigneAgent {
   actif: boolean;
   site_id: string;
   site_nom: string;
+  ville: string;
   roles: string[];
   cree_le: Date;
 }
@@ -46,9 +47,11 @@ interface LigneAgent {
 const SELECT_AGENT = `
   select u.id, u.nom, u.prenom, u.email, u.telephone, u.actif,
          u.site_id, s.nom as site_nom, u.cree_le,
+         coalesce(z.ville, '') as ville,
          coalesce(array_agg(r.role order by r.role) filter (where r.role is not null), '{}') as roles
   from utilisateurs u
   join sites s on s.id = u.site_id
+  left join zones z on z.id = s.zone_id
   left join utilisateur_roles r on r.utilisateur_id = u.id
 `;
 
@@ -62,6 +65,7 @@ function formaterAgent(a: LigneAgent): AgentCompte {
     roles: a.roles as Role[],
     siteId: a.site_id,
     siteNom: a.site_nom,
+    ville: a.ville,
     actif: a.actif,
     creeLe: instantISO(a.cree_le),
   };
@@ -70,7 +74,7 @@ function formaterAgent(a: LigneAgent): AgentCompte {
 // GET /agents — liste des comptes de la plateforme (agents + administrateurs).
 routeAdmin.get("/agents", ...protege, async (_req, res) => {
   const { rows } = await requete<LigneAgent>(
-    `${SELECT_AGENT} group by u.id, s.nom order by u.nom, u.prenom`,
+    `${SELECT_AGENT} group by u.id, s.nom, z.ville order by u.nom, u.prenom`,
   );
   res.json({ donnees: rows.map(formaterAgent) });
 });
@@ -115,7 +119,7 @@ routeAdmin.post("/agents", ...protege, async (req, res) => {
   });
 
   const { rows } = await requete<LigneAgent>(
-    `${SELECT_AGENT} where u.id = $1 group by u.id, s.nom`, [id],
+    `${SELECT_AGENT} where u.id = $1 group by u.id, s.nom, z.ville`, [id],
   );
   res.status(201).json({ donnees: formaterAgent(rows[0]) });
 });
@@ -266,4 +270,80 @@ routeAdmin.get("/statistiques", ...protege, async (_req, res) => {
     agents: agents.rows[0].n,
   };
   res.json({ donnees: stats });
+});
+
+// GET /activite/:id — l'historique d'une personne (agent ou donneur).
+routeAdmin.get("/activite/:id", ...protege, async (req, res) => {
+  const id = z.string().uuid().safeParse(req.params.id);
+  if (!id.success) throw new AppError("INTROUVABLE", "Personne introuvable.", 404);
+  const { rows } = await requete<{
+    id: string; type: string; date: Date; acteur: string; site_nom: string; cible: string;
+  }>(
+    `select e.id, e.type, e.date,
+            coalesce(u.prenom || ' ' || u.nom, d.prenom || ' ' || d.nom, '') as acteur,
+            coalesce(s.nom, '') as site_nom,
+            coalesce(p.code, pr.code, '') as cible
+     from evenements e
+     left join utilisateurs u on u.id = e.agent_id
+     left join donneurs d on d.id = e.donneur_id
+     left join sites s on s.id = e.site_id
+     left join poches p on p.id = e.poche_id
+     left join produits pr on pr.id = e.produit_id
+     where e.agent_id = $1 or e.donneur_id = $1
+     order by e.date desc
+     limit 100`,
+    [id.data],
+  );
+  const donnees: Evenement[] = rows.map((r) => ({
+    id: r.id, type: r.type, acteur: r.acteur,
+    siteNom: r.site_nom, cible: r.cible, date: instantISO(r.date),
+  }));
+  res.json({ donnees });
+});
+
+// GET /donneurs — les donneurs, vus par le CNTS (avec leur zone et leur ville).
+routeAdmin.get("/donneurs", ...protege, async (_req, res) => {
+  const { rows } = await requete<{
+    id: string; nom: string; prenom: string; telephone: string;
+    groupe_sanguin: string | null; ville: string; zone: string;
+    actif: boolean; cree_le: Date;
+  }>(
+    `select d.id, d.nom, d.prenom, d.telephone, d.groupe_sanguin, d.actif, d.cree_le,
+            coalesce(z.nom, '') as zone, coalesce(z.ville, '') as ville
+     from donneurs d
+     left join zones z on z.id = d.zone_id
+     order by d.nom, d.prenom`,
+  );
+  const donnees: DonneurAdmin[] = rows.map((r) => ({
+    id: r.id, nom: r.nom, prenom: r.prenom, telephone: r.telephone,
+    groupeSanguin: r.groupe_sanguin as DonneurAdmin["groupeSanguin"],
+    ville: r.ville, zone: r.zone, actif: r.actif, creeLe: instantISO(r.cree_le),
+  }));
+  res.json({ donnees });
+});
+
+// GET /activite — le journal des dernières actions (agents et labo), la plus
+// récente d'abord. Sert au tableau de bord temps réel du CNTS.
+routeAdmin.get("/activite", ...protege, async (_req, res) => {
+  const { rows } = await requete<{
+    id: string; type: string; date: Date; acteur: string; site_nom: string; cible: string;
+  }>(
+    `select e.id, e.type, e.date,
+            coalesce(u.prenom || ' ' || u.nom, d.prenom || ' ' || d.nom, '') as acteur,
+            coalesce(s.nom, '') as site_nom,
+            coalesce(p.code, pr.code, '') as cible
+     from evenements e
+     left join utilisateurs u on u.id = e.agent_id
+     left join donneurs d on d.id = e.donneur_id
+     left join sites s on s.id = e.site_id
+     left join poches p on p.id = e.poche_id
+     left join produits pr on pr.id = e.produit_id
+     order by e.date desc
+     limit 50`,
+  );
+  const donnees: Evenement[] = rows.map((r) => ({
+    id: r.id, type: r.type, acteur: r.acteur,
+    siteNom: r.site_nom, cible: r.cible, date: instantISO(r.date),
+  }));
+  res.json({ donnees });
 });

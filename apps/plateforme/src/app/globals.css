@@ -1184,6 +1184,17 @@ a { color: var(--primaire); text-decoration: none; }
 }
 .bord-raccourci:hover { border-color: var(--trait-fort); background: var(--fond); }
 .bord-raccourci svg { color: var(--primaire); flex-shrink: 0; }
+.activite-ligne {
+  display: flex; align-items: baseline; gap: var(--e3);
+  padding: var(--e2) 0;
+  border-bottom: 1px solid var(--trait);
+}
+.activite-ligne:last-child { border-bottom: none; }
+.activite-ligne__point {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--primaire); flex-shrink: 0; align-self: center;
+}
+.activite-ligne__texte { flex: 1; min-width: 0; }
 @media (max-width: 560px) {
   .bord-actions { flex-direction: column; align-items: stretch; }
   .bord-actions .bouton { width: 100%; min-width: 0; }

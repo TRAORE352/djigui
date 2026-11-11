@@ -817,8 +817,35 @@ export interface AgentCompte {
   roles: Role[];
   siteId: string;
   siteNom: string;
+  ville: string;
   actif: boolean;
   creeLe: string;
+}
+
+/** GET /donneurs — un donneur, vu de l'espace CNTS. */
+export interface DonneurAdmin {
+  id: string;
+  nom: string;
+  prenom: string;
+  telephone: string;
+  groupeSanguin: GroupeSanguin | null;
+  ville: string;
+  zone: string;
+  actif: boolean;
+  creeLe: string;
+}
+
+/** GET /activite — un événement d'activité (qui a fait quoi, quand). */
+export interface Evenement {
+  id: string;
+  type: string;
+  /** Nom de l'acteur (agent ou donneur). */
+  acteur: string;
+  /** Site où l'action a eu lieu. */
+  siteNom: string;
+  /** Poche ou produit concerné, si pertinent. */
+  cible: string;
+  date: string;
 }
 
 /** POST /agents — créer un compte agent (avec ses rôles). */
