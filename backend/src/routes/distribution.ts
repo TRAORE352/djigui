@@ -139,6 +139,98 @@ async function lireDemande(id: string): Promise<Demande | null> {
   };
 }
 
+// POST /demandes/:id/accepter — le fournisseur accepte : son stock sort.
+routeDistribution.post("/demandes/:id/accepter", ...STOCK, async (req, res) => {
+  const agent = req.utilisateur!;
+  const id = z.string().uuid().safeParse(req.params.id);
+  if (!id.success) throw new AppError("INTROUVABLE", "Demande introuvable.", 404);
+
+  const { rows: dRows } = await requete<{ site_fournisseur_id: string; site_demandeur_id: string; statut: string }>(
+    "select site_fournisseur_id, site_demandeur_id, statut from demandes where id = $1", [id.data],
+  );
+  const demande = dRows[0];
+  if (!demande) throw new AppError("INTROUVABLE", "Demande introuvable.", 404);
+  if (demande.site_fournisseur_id !== agent.siteId) throw new AppError("NON_CONNECTE", "Cette demande ne concerne pas votre site.", 403);
+  if (demande.statut !== "en_attente") throw new AppError("DONNEES_INVALIDES", "Cette demande a déjà été traitée.", 400);
+
+  const { rows: lignes } = await requete<{ type_produit: string; groupe_sanguin: string; quantite: number }>(
+    `select t.code as type_produit, l.groupe_sanguin, l.quantite
+     from demande_lignes l join types_produits t on t.id = l.type_produit_id
+     where l.demande_id = $1`, [id.data],
+  );
+
+  await transaction(async (client) => {
+    const ins = await client.query<{ id: string }>(
+      `insert into expeditions (demande_id, site_depart_id, site_arrivee_id, date_envoi, agent_envoi_id)
+       values ($1, $2, $3, now(), $4) returning id`,
+      [id.data, agent.siteId, demande.site_demandeur_id, agent.id],
+    );
+    const expeditionId = ins.rows[0].id;
+
+    // Les quantités demandées sortent du stock, la péremption la plus proche
+    // d'abord (premier périmé, premier sorti).
+    for (const l of lignes) {
+      const { rows: produits } = await client.query<{ id: string }>(
+        `select id from produits
+         where site_actuel_id = $1 and statut = 'disponible'
+           and type_produit_id = (select id from types_produits where code = $2)
+           and groupe_sanguin = $3
+         order by date_peremption nulls last, cree_le
+         limit $4`,
+        [agent.siteId, l.type_produit, l.groupe_sanguin, l.quantite],
+      );
+      if (produits.length < l.quantite) {
+        throw new AppError("DONNEES_INVALIDES", `Stock insuffisant en ${l.type_produit} ${l.groupe_sanguin} : ${produits.length} sur ${l.quantite}.`, 400);
+      }
+      for (const p of produits) {
+        await client.query("update produits set statut = 'expedie' where id = $1", [p.id]);
+        await client.query(
+          "insert into expedition_produits (expedition_id, produit_id) values ($1, $2) on conflict do nothing",
+          [expeditionId, p.id],
+        );
+      }
+    }
+    await client.query("update demandes set statut = 'acceptee' where id = $1", [id.data]);
+  });
+
+  await inscrireEvenement({ type: "acceptation", agentId: agent.id, siteId: agent.siteId, details: { demandeId: id.data } });
+  res.json({ donnees: await lireDemande(id.data) });
+});
+
+// POST /demandes/:id/recevoir — le demandeur réceptionne : son stock entre.
+routeDistribution.post("/demandes/:id/recevoir", ...STOCK, async (req, res) => {
+  const agent = req.utilisateur!;
+  const id = z.string().uuid().safeParse(req.params.id);
+  if (!id.success) throw new AppError("INTROUVABLE", "Demande introuvable.", 404);
+
+  const { rows: dRows } = await requete<{ site_demandeur_id: string; statut: string }>(
+    "select site_demandeur_id, statut from demandes where id = $1", [id.data],
+  );
+  const demande = dRows[0];
+  if (!demande) throw new AppError("INTROUVABLE", "Demande introuvable.", 404);
+  if (demande.site_demandeur_id !== agent.siteId) throw new AppError("NON_CONNECTE", "Cette demande ne concerne pas votre site.", 403);
+  if (demande.statut !== "acceptee") throw new AppError("DONNEES_INVALIDES", "Cette demande n'est pas prête à être réceptionnée.", 400);
+
+  const { rows: eRows } = await requete<{ id: string }>(
+    "select id from expeditions where demande_id = $1 order by date_envoi desc limit 1", [id.data],
+  );
+  const expedition = eRows[0];
+  if (!expedition) throw new AppError("INTROUVABLE", "Aucune expédition pour cette demande.", 404);
+
+  await transaction(async (client) => {
+    await client.query(
+      `update produits set statut = 'recu', site_actuel_id = $1
+       where id in (select produit_id from expedition_produits where expedition_id = $2)`,
+      [agent.siteId, expedition.id],
+    );
+    await client.query("update expeditions set date_reception = now(), agent_reception_id = $1 where id = $2", [agent.id, expedition.id]);
+    await client.query("update demandes set statut = 'livree' where id = $1", [id.data]);
+  });
+
+  await inscrireEvenement({ type: "reception", agentId: agent.id, siteId: agent.siteId, details: { demandeId: id.data } });
+  res.json({ donnees: await lireDemande(id.data) });
+});
+
 const schemaExpedition = z.object({
   demandeId: z.string().uuid("Demande invalide."),
   produitIds: z.array(z.string().uuid()).min(1, "Scannez au moins un produit."),

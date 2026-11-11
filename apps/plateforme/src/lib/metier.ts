@@ -49,6 +49,8 @@ export const TYPE_SITE: Record<"centre" | "depot" | "hopital", string> = {
 /** Statut d'une demande de produits, tel qu'écrit par le backend. */
 export const STATUT_DEMANDE: Record<string, { mot: string; ton: Ton }> = {
   en_attente: { mot: "En attente", ton: "ocre" },
+  acceptee: { mot: "Acceptée", ton: "primaire" },
+  livree: { mot: "Livrée", ton: "seve" },
   preparee: { mot: "Préparée", ton: "primaire" },
   expediee: { mot: "Expédiée", ton: "primaire" },
   recue: { mot: "Reçue", ton: "seve" },

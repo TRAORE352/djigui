@@ -1,32 +1,31 @@
 "use client";
 /**
- * P8 / P10 — Distribution.
+ * P8 — Distribution.
  *
- * Trois gestes, selon le côté où l'on se trouve :
- *   · demander des produits à un autre site (dépôt → centre) ;
- *   · répondre à une demande reçue en expédiant des produits ;
- *   · délivrer un produit à un service de soins (fin de la chaîne).
+ * Deux sous-pages repliables :
+ *   · « Recevoir » — je fais une demande de produits à un autre centre
+ *     (ou un labo) et je réceptionne le colis à l'arrivée ;
+ *   · « Donner » — je consulte les demandes qui me sont adressées, je les
+ *     accepte (mon stock sort aussitôt) et je vois la livraison se clore.
  *
- * Une demande reçue et une demande envoyée ne se traitent pas pareil : la
- * liste les sépare explicitement plutôt que de tout mélanger.
+ * Parcours d'une demande : « en attente » → « acceptée » (le stock du
+ * fournisseur sort) → « livrée » (le stock du demandeur entre).
  */
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { ArrowDownToLine, Hospital, PackagePlus, Send, Truck } from "lucide-react";
-import type { Demande, GroupeSanguin, LigneDemande, SitePartenaire } from "@dds/contrat-api";
+import { ArrowDownToLine, PackagePlus, Send, Truck } from "lucide-react";
+import type { Demande, GroupeSanguin, SitePartenaire } from "@dds/contrat-api";
 import { api } from "@/lib/api";
 import { messageDe } from "@/lib/erreurs";
 import { LES_GROUPES, TYPE_PRODUIT, TYPE_SITE, URGENCE, dateCourte, statutDemande } from "@/lib/metier";
 import { useRessource } from "@/lib/useRessource";
 import { lireAgent } from "@/lib/session";
 import { EnTetePage } from "@/components/Coquille";
-import Aide, { AvecAide } from "@/components/Aide";
 import Bouton from "@/components/Bouton";
 import Pilule from "@/components/Pilule";
 import BlocGroupe from "@/components/BlocGroupe";
-import { EtatErreur, SqueletteLignes } from "@/components/Etats";
-import { Repli, Section, VideLigne } from "@/components/Mise";
-import { Encadre, MessageErreur, MessageReussite } from "@/components/Messages";
+import { EtatErreur, EtatVide, SqueletteLignes } from "@/components/Etats";
+import { Repli, VideLigne } from "@/components/Mise";
+import { MessageErreur, MessageReussite } from "@/components/Messages";
 
 export default function Distribution() {
   const demandes = useRessource<Demande[]>(() => api.demandes());
@@ -34,8 +33,8 @@ export default function Distribution() {
 
   useEffect(() => { setSiteId(lireAgent()?.siteId ?? ""); }, []);
 
-  // Une demande où notre site est fournisseur attend une expédition de notre
-  // part ; une demande où il est demandeur attend l'envoi de l'autre site.
+  // « Donner » = demandes reçues (je suis fournisseur) ; « Recevoir » =
+  // demandes envoyées (je suis demandeur).
   const { recues, envoyees } = useMemo(() => {
     const liste = demandes.donnees ?? [];
     return {
@@ -48,7 +47,7 @@ export default function Distribution() {
     <>
       <EnTetePage
         titre="Distribution"
-        chapeau="Envoyer du sang aux hôpitaux et aux dépôts qui en demandent."
+        chapeau="Recevoir du sang d'un autre centre, ou répondre aux demandes qui vous sont adressées."
         actions={<Bouton variante="secondaire" onClick={() => void demandes.recharger()}>Actualiser</Bouton>}
       />
 
@@ -57,56 +56,39 @@ export default function Distribution() {
 
       {demandes.donnees && (
         <>
-          {/* L'essentiel du métier : ce que d'autres sites attendent de nous. */}
-          <Section
-            titre="À expédier"
-            compte={recues.length}
-            aide="Demandes reçues d'un hôpital ou d'un dépôt. Chaque poche expédiée sort du stock de ce site et reste traçable jusqu'au patient."
+          <Repli
+            titre="Recevoir"
+            resume={envoyees.length > 0 ? `${envoyees.length} demande${envoyees.length > 1 ? "s" : ""} en cours` : "Faire une demande à un centre ou un labo"}
+          >
+            <FormulaireDemande surCreation={() => void demandes.recharger()} />
+
+            {envoyees.length === 0 ? (
+              <VideLigne Icone={ArrowDownToLine}>Aucune demande en cours.</VideLigne>
+            ) : (
+              <div className="pile">
+                {envoyees.map((d) => (
+                  <CarteDemande key={d.id} demande={d} role="demandeur" surAction={() => void demandes.recharger()} />
+                ))}
+              </div>
+            )}
+          </Repli>
+
+          <Repli
+            titre="Donner"
+            resume={recues.length > 0 ? `${recues.length} demande${recues.length > 1 ? "s" : ""} à traiter` : "Aucune demande à traiter"}
           >
             {recues.length === 0 ? (
               <VideLigne Icone={Truck}>Aucune demande reçue.</VideLigne>
             ) : (
-              recues.map((d) => (
-                <CarteDemande key={d.id} demande={d} role="fournisseur" surAction={() => void demandes.recharger()} />
-              ))
+              <div className="pile">
+                {recues.map((d) => (
+                  <CarteDemande key={d.id} demande={d} role="fournisseur" surAction={() => void demandes.recharger()} />
+                ))}
+              </div>
             )}
-          </Section>
-
-          <Section
-            titre="Nos commandes"
-            compte={envoyees.length}
-            aide="Demandes que ce site a adressées à un centre ou à un dépôt. Le site fournisseur expédie, puis vous réceptionnez à l'arrivée."
-          >
-            {envoyees.length === 0 ? (
-              <VideLigne Icone={ArrowDownToLine}>Aucune commande en cours.</VideLigne>
-            ) : (
-              envoyees.map((d) => (
-                <CarteDemande key={d.id} demande={d} role="demandeur" surAction={() => void demandes.recharger()} />
-              ))
-            )}
-          </Section>
+          </Repli>
         </>
       )}
-
-      {/* Les deux formulaires sont repliés : ils ne servent pas à chaque passage. */}
-      <Repli titre="Demander des produits">
-        <FormulaireDemande surCreation={() => void demandes.recharger()} />
-      </Repli>
-
-      {/* La délivrance aux services de soins a son propre écran : c'est
-          le geste le plus fréquent du centre, et il n'a rien à voir avec
-          les échanges ENTRE sites traités ici. */}
-      <Section titre="Délivrer à un service de soins">
-        <div className="bord-actions">
-          <Link href="/agent/delivrances" className="bouton bouton--secondaire">
-            <Hospital size={18} aria-hidden="true" />
-            Ouvrir les délivrances
-          </Link>
-          <span className="petit">
-            Enregistrer une poche remise à un médecin ou un infirmier.
-          </span>
-        </div>
-      </Section>
     </>
   );
 }
@@ -120,23 +102,16 @@ function CarteDemande({ demande, role, surAction }: {
   role: "fournisseur" | "demandeur";
   surAction: () => void;
 }) {
-  const [codes, setCodes] = useState("");
   const [erreur, setErreur] = useState("");
-  const [reussite, setReussite] = useState("");
   const [enCours, setEnCours] = useState(false);
   const statut = statutDemande(demande.statut);
   const unites = demande.lignes.reduce((t, l) => t + l.quantite, 0);
 
-  // L'expédition attend des identifiants de produits. Tant que le lecteur de
-  // code-barres n'est pas branché, l'agent colle les identifiants un par ligne.
-  async function expedier() {
-    const produitIds = codes.split(/[\s,;]+/).map((c) => c.trim()).filter(Boolean);
-    if (produitIds.length === 0) { setErreur("Scannez ou collez au moins un identifiant de produit."); return; }
-    setErreur(""); setReussite(""); setEnCours(true);
+  // « Donner » : le fournisseur accepte, son stock sort aussitôt.
+  async function accepter() {
+    setErreur(""); setEnCours(true);
     try {
-      const e = await api.creerExpedition({ demandeId: demande.id, produitIds });
-      setReussite(`Expédition créée : ${e.produits.length} produit${e.produits.length > 1 ? "s" : ""} en route.`);
-      setCodes("");
+      await api.accepterDemande(demande.id);
       surAction();
     } catch (p) {
       setErreur(messageDe(p));
@@ -145,19 +120,31 @@ function CarteDemande({ demande, role, surAction }: {
     }
   }
 
+  // « Recevoir » : le demandeur réceptionne et vérifie, son stock entre.
+  async function recevoir() {
+    setErreur(""); setEnCours(true);
+    try {
+      await api.recevoirDemande(demande.id);
+      surAction();
+    } catch (p) {
+      setErreur(messageDe(p));
+    } finally {
+      setEnCours(false);
+    }
+  }
+
+  const attendAcceptation = role === "fournisseur" && demande.statut === "en_attente";
+  const attendReception = role === "demandeur" && demande.statut === "acceptee";
+
   return (
     <div className="bloc pile">
       <div className="rang-espace" style={{ flexWrap: "wrap" }}>
         <div className="pile-s" style={{ gap: 2 }}>
-          {/* Dire QUI demande, et quoi. Un nombre seul (« 0 unité
-              demandée ») ne permet pas de décider quoi faire. */}
           <span className="titre-s">
             {role === "fournisseur" ? demande.siteDemandeurNom : demande.siteFournisseurNom}
           </span>
           <span className="petit">
-            {unites > 0
-              ? `${unites} unité${unites > 1 ? "s" : ""} · demandé le ${dateCourte(demande.date)}`
-              : `Quantité à préciser · demandé le ${dateCourte(demande.date)}`}
+            {unites > 0 ? `${unites} unité${unites > 1 ? "s" : ""} · demandé le ${dateCourte(demande.date)}` : `Quantité à préciser · ${dateCourte(demande.date)}`}
           </span>
         </div>
         <div className="rang" style={{ flexWrap: "wrap" }}>
@@ -172,47 +159,34 @@ function CarteDemande({ demande, role, surAction }: {
         {demande.lignes.map((l, i) => <LigneProduit key={i} ligne={l} />)}
       </div>
 
-      {role === "fournisseur" && demande.statut === "en_attente" && (
-        <div className="pile-s">
-          <label className="champ">
-            <AvecAide
-              etiquette="Produits à expédier"
-              aide="Scannez les produits un par un, ou collez leurs identifiants séparés par un espace. Ils sortent du stock de ce site dès validation."
-            >
-              <span className="champ__etiquette">Produits à expédier</span>
-            </AvecAide>
-            <input
-              className="champ__saisie chiffres"
-              value={codes}
-              placeholder="OUA-26-04812-K-GR"
-              onChange={(e) => { setCodes(e.target.value); setErreur(""); }}
-            />
-          </label>
-          <div className="rang">
-            <Bouton icone={<Send size={18} aria-hidden="true" />} enCours={enCours}
-                    motEnCours="Expédition…" onClick={() => void expedier()}>
-              Expédier
-            </Bouton>
-            <Aide etiquette="Expédier">
-              Crée le bordereau de transport et sort les produits du stock. Le site destinataire confirmera la réception de son côté.
-            </Aide>
-          </div>
+      {attendAcceptation && (
+        <div className="rang">
+          <Bouton icone={<Send size={18} aria-hidden="true" />} enCours={enCours} onClick={() => void accepter()}>
+            Demande acceptée
+          </Bouton>
+          <span className="petit">Votre stock sort dès que vous acceptez.</span>
         </div>
       )}
 
-      {role === "demandeur" && demande.statut === "preparee" && (
-        <Encadre ton="ocre">
-          Produits expédiés. Réceptionnez-les à l&apos;arrivée depuis le bordereau de transport.
-        </Encadre>
+      {attendReception && (
+        <div className="rang">
+          <Bouton icone={<PackagePlus size={18} aria-hidden="true" />} enCours={enCours} onClick={() => void recevoir()}>
+            Colis reçu et vérifié conforme
+          </Bouton>
+          <span className="petit">Votre stock est mis à jour à la réception.</span>
+        </div>
+      )}
+
+      {role === "fournisseur" && demande.statut === "livree" && (
+        <Pilule ton="seve">Colis livré avec succès</Pilule>
       )}
 
       <MessageErreur>{erreur}</MessageErreur>
-      <MessageReussite>{reussite}</MessageReussite>
     </div>
   );
 }
 
-function LigneProduit({ ligne }: { ligne: LigneDemande }) {
+function LigneProduit({ ligne }: { ligne: Demande["lignes"][number] }) {
   return (
     <div className="ligne">
       <BlocGroupe groupe={ligne.groupeSanguin} taille="s" />
@@ -226,7 +200,7 @@ function LigneProduit({ ligne }: { ligne: LigneDemande }) {
 }
 
 /* =====================================================================
-   Nouvelle demande
+   Nouvelle demande (Recevoir)
    ===================================================================== */
 
 type Brouillon = { typeProduit: "GR" | "PL" | "PQ"; groupeSanguin: GroupeSanguin; quantite: number };
@@ -240,7 +214,7 @@ function FormulaireDemande({ surCreation }: { surCreation: () => void }) {
   const [enCours, setEnCours] = useState(false);
 
   useEffect(() => {
-    api.sitesPartenaires().then(setSites).catch((p) => setErreur(messageDe(p)));
+    api.sitesPartenaires().then((s) => setSites(s.filter((x) => x.type === "centre"))).catch((p) => setErreur(messageDe(p)));
   }, []);
 
   function modifier(index: number, maj: Partial<Brouillon>) {
@@ -250,10 +224,11 @@ function FormulaireDemande({ surCreation }: { surCreation: () => void }) {
   async function envoyer(e: React.FormEvent) {
     e.preventDefault();
     setErreur("");
-    if (!siteFournisseurId) { setErreur("Choisissez le site à qui vous adressez la demande."); return; }
+    if (!siteFournisseurId) { setErreur("Choisissez le centre à qui vous adressez la demande."); return; }
     setEnCours(true);
     try {
       await api.creerDemande({ siteFournisseurId, urgence, lignes });
+      setSite(""); setLignes([{ typeProduit: "GR", groupeSanguin: "O+", quantite: 2 }]);
       surCreation();
     } catch (p) {
       setErreur(messageDe(p));
@@ -263,12 +238,11 @@ function FormulaireDemande({ surCreation }: { surCreation: () => void }) {
   }
 
   return (
-    <form className="pile" onSubmit={envoyer}>
+    <form className="bloc pile-m" onSubmit={envoyer}>
       <div className="grille-2">
         <label className="champ">
-          <span className="champ__etiquette">Site fournisseur</span>
-          <select className="champ__saisie" value={siteFournisseurId} required
-                  onChange={(e) => setSite(e.target.value)}>
+          <span className="champ__etiquette">Centre ou labo fournisseur</span>
+          <select className="champ__saisie" value={siteFournisseurId} required onChange={(e) => setSite(e.target.value)}>
             <option value="">Choisir…</option>
             {sites.map((s) => (
               <option key={s.id} value={s.id}>
@@ -279,8 +253,7 @@ function FormulaireDemande({ surCreation }: { surCreation: () => void }) {
         </label>
         <label className="champ">
           <span className="champ__etiquette">Urgence</span>
-          <select className="champ__saisie" value={urgence}
-                  onChange={(e) => setUrgence(e.target.value as typeof urgence)}>
+          <select className="champ__saisie" value={urgence} onChange={(e) => setUrgence(e.target.value as typeof urgence)}>
             <option value="normale">Normale</option>
             <option value="urgente">Urgente</option>
             <option value="critique">Critique</option>
@@ -293,30 +266,24 @@ function FormulaireDemande({ surCreation }: { surCreation: () => void }) {
         {lignes.map((l, i) => (
           <div key={i} className="rang" style={{ flexWrap: "wrap", alignItems: "flex-end" }}>
             <label className="champ" style={{ minWidth: 170 }}>
-              <span className="champ__etiquette sr-only">Type de produit</span>
               <select className="champ__saisie" value={l.typeProduit} aria-label="Type de produit"
                       onChange={(e) => modifier(i, { typeProduit: e.target.value as Brouillon["typeProduit"] })}>
-                {(["GR", "PL", "PQ"] as const).map((t) => (
-                  <option key={t} value={t}>{TYPE_PRODUIT[t].mot}</option>
-                ))}
+                {(["GR", "PL", "PQ"] as const).map((t) => <option key={t} value={t}>{TYPE_PRODUIT[t].mot}</option>)}
               </select>
             </label>
             <label className="champ" style={{ width: 110 }}>
-              <span className="champ__etiquette sr-only">Groupe sanguin</span>
               <select className="champ__saisie" value={l.groupeSanguin} aria-label="Groupe sanguin"
                       onChange={(e) => modifier(i, { groupeSanguin: e.target.value as GroupeSanguin })}>
                 {LES_GROUPES.map((g) => <option key={g} value={g}>{g}</option>)}
               </select>
             </label>
             <label className="champ" style={{ width: 110 }}>
-              <span className="champ__etiquette sr-only">Quantité</span>
               <input className="champ__saisie chiffres" type="number" min={1} max={200} value={l.quantite}
                      aria-label="Quantité"
                      onChange={(e) => modifier(i, { quantite: Math.max(1, Number(e.target.value) || 1) })} />
             </label>
             {lignes.length > 1 && (
-              <Bouton variante="secondaire" compact
-                      onClick={() => setLignes((liste) => liste.filter((_, j) => j !== i))}>
+              <Bouton variante="secondaire" compact onClick={() => setLignes((liste) => liste.filter((_, j) => j !== i))}>
                 Retirer
               </Bouton>
             )}
@@ -332,16 +299,11 @@ function FormulaireDemande({ surCreation }: { surCreation: () => void }) {
 
       <MessageErreur>{erreur}</MessageErreur>
 
-      <div className="rang">
-        <Bouton type="submit" enCours={enCours} motEnCours="Envoi…"
-                icone={<PackagePlus size={18} aria-hidden="true" />}>
+      <div className="envoi">
+        <Bouton type="submit" enCours={enCours} motEnCours="Envoi…" icone={<PackagePlus size={18} aria-hidden="true" />}>
           Envoyer la demande
         </Bouton>
-        <Aide etiquette="Envoyer la demande">
-          La demande part vers le site fournisseur choisi. Elle apparaîtra ensuite dans vos commandes en attente d&apos;expédition.
-        </Aide>
       </div>
     </form>
   );
 }
-
