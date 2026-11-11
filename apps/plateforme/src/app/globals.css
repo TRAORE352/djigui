@@ -401,7 +401,15 @@ a { color: var(--primaire); text-decoration: none; }
 .lateral__espace { font-size: var(--t-micro); color: var(--encre-2); text-transform: uppercase; letter-spacing: 0.06em; }
 
 .lateral__menu { display: flex; flex-direction: column; gap: 2px; flex: 1; }
-.lateral__groupe { padding: var(--e4) var(--e3) var(--e2); font-size: var(--t-micro); font-weight: 700; color: var(--encre-2); text-transform: uppercase; letter-spacing: 0.06em; }
+.lateral__groupe { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--e2); }
+.lateral__groupe-titre {
+  display: flex; align-items: center; gap: var(--e3);
+  padding: var(--e3) var(--e3) var(--e1);
+  font-size: var(--t-micro); font-weight: 700; color: var(--encre-2);
+  text-transform: uppercase; letter-spacing: 0.06em;
+}
+.lateral__groupe-titre svg { color: var(--encre-2); }
+.lateral__lien--enfant { padding-left: calc(var(--e3) + var(--e4)); }
 .lateral__lien {
   display: flex; align-items: center; gap: var(--e3);
   min-height: var(--cible); padding: 0 var(--e3);

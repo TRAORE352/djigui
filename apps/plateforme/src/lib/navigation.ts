@@ -8,7 +8,7 @@
  */
 import type { Role } from "@dds/contrat-api";
 import {
-  Activity, ArrowDownToLine, BadgeCheck, Bell, Boxes, Building2, Hospital, LayoutDashboard,
+  Activity, ArrowDownToLine, ArrowLeftRight, BadgeCheck, Bell, Boxes, Building2, Hospital, LayoutDashboard,
   SlidersHorizontal, Truck, UserRound, Users,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -21,6 +21,8 @@ export type Section = {
   Icone: ComponentType<{ size?: number | string; "aria-hidden"?: boolean | "true" }>;
   /** Rôles autorisés ; vide = tout compte de la plateforme. */
   roles: Role[];
+  /** Sous-liens regroupés sous ce libellé (ex. « Échanges » → Recevoir, Donner). */
+  children?: Section[];
 };
 
 /** Espace agent (P3 à P10). */
@@ -61,18 +63,27 @@ export const SECTIONS_AGENT: Section[] = [
     roles: ["agent_stock", "agent_depot"],
   },
   {
-    adresse: "/agent/distribution/recevoir",
-    mot: "Recevoir",
-    resume: "Demander du sang à un autre centre, puis réceptionner le colis.",
-    Icone: ArrowDownToLine,
+    adresse: "",
+    mot: "Échanges",
+    resume: "Recevoir du sang d'un autre centre, ou répondre aux demandes.",
+    Icone: ArrowLeftRight,
     roles: ["agent_stock", "agent_depot"],
-  },
-  {
-    adresse: "/agent/distribution/donner",
-    mot: "Donner",
-    resume: "Répondre aux demandes de sang qui vous sont adressées.",
-    Icone: Truck,
-    roles: ["agent_stock", "agent_depot"],
+    children: [
+      {
+        adresse: "/agent/distribution/recevoir",
+        mot: "Recevoir",
+        resume: "Demander du sang à un autre centre, puis réceptionner le colis.",
+        Icone: ArrowDownToLine,
+        roles: ["agent_stock", "agent_depot"],
+      },
+      {
+        adresse: "/agent/distribution/donner",
+        mot: "Donner",
+        resume: "Répondre aux demandes de sang qui vous sont adressées.",
+        Icone: Truck,
+        roles: ["agent_stock", "agent_depot"],
+      },
+    ],
   },
 ];
 
@@ -125,14 +136,17 @@ export function sectionAutorisee(section: Section, roles: Role[]): boolean {
   return section.roles.length === 0 || section.roles.some((r) => roles.includes(r));
 }
 
-/** Sections visibles par ce compte, dans l'ordre. */
+/** Sections visibles par ce compte, dans l'ordre (les groupes gardent leurs enfants). */
 export function sectionsVisibles(sections: Section[], roles: Role[]): Section[] {
-  return sections.filter((s) => sectionAutorisee(s, roles));
+  return sections
+    .filter((s) => (s.children?.length ? sectionsVisibles(s.children, roles).length > 0 : sectionAutorisee(s, roles)))
+    .map((s) => (s.children?.length ? { ...s, children: sectionsVisibles(s.children!, roles) } : s));
 }
 
 /** Retrouve la section qui décrit l'adresse courante (la plus précise). */
 export function sectionCourante(sections: Section[], chemin: string): Section | undefined {
-  return [...sections]
+  const plates = sections.flatMap((s) => (s.children?.length ? [...s.children, s] : [s]));
+  return [...plates]
     .sort((a, b) => b.adresse.length - a.adresse.length)
-    .find((s) => chemin === s.adresse || chemin.startsWith(`${s.adresse}/`));
+    .find((s) => s.adresse && (chemin === s.adresse || chemin.startsWith(`${s.adresse}/`)));
 }

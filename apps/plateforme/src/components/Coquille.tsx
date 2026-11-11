@@ -90,17 +90,41 @@ export default function Coquille({ espace, children }: { espace: Espace; childre
         </div>
 
         <nav className="lateral__menu" aria-label="Navigation principale">
-          {visibles.map(({ adresse, mot, Icone }) => {
-            const actif = chemin === adresse || chemin.startsWith(`${adresse}/`);
+          {visibles.map((section) => {
+            if (section.children?.length) {
+              return (
+                <div key={section.mot} className="lateral__groupe">
+                  <span className="lateral__groupe-titre">
+                    <section.Icone size={19} aria-hidden="true" />
+                    <span>{section.mot}</span>
+                  </span>
+                  {section.children.map((enfant) => {
+                    const actif = chemin === enfant.adresse || chemin.startsWith(`${enfant.adresse}/`);
+                    return (
+                      <Link
+                        key={enfant.adresse}
+                        href={enfant.adresse}
+                        className={`lateral__lien lateral__lien--enfant${actif ? " lateral__lien--actif" : ""}`}
+                        aria-current={actif ? "page" : undefined}
+                      >
+                        <enfant.Icone size={19} aria-hidden="true" />
+                        <span>{enfant.mot}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            }
+            const actif = chemin === section.adresse || chemin.startsWith(`${section.adresse}/`);
             return (
               <Link
-                key={adresse}
-                href={adresse}
+                key={section.adresse}
+                href={section.adresse}
                 className={`lateral__lien${actif ? " lateral__lien--actif" : ""}`}
                 aria-current={actif ? "page" : undefined}
               >
-                <Icone size={19} aria-hidden="true" />
-                <span>{mot}</span>
+                <section.Icone size={19} aria-hidden="true" />
+                <span>{section.mot}</span>
               </Link>
             );
           })}
