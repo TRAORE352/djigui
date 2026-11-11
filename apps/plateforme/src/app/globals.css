@@ -1507,52 +1507,118 @@ a { color: var(--primaire); text-decoration: none; }
 /* =====================================================================
    Reçu de délivrance
    ===================================================================== */
-.recu {
+/* =====================================================================
+   Fenêtre plein écran (modal)
+   ===================================================================== */
+.modal { position: fixed; inset: 0; z-index: 100; }
+.modal__fond { position: absolute; inset: 0; background: rgba(15, 23, 42, 0.55); }
+.modal__panneau {
+  position: relative;
+  width: 100%; height: 100%;
+  background: var(--fond);
+  display: flex; flex-direction: column;
+}
+.modal__entete {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--e3);
+  padding: var(--e3) var(--e4);
   background: var(--surface);
+  border-bottom: 1px solid var(--trait);
+}
+.modal__titre { font-size: var(--t-titre-s); margin: 0; }
+.modal__fermer {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--trait); background: var(--surface);
+  color: var(--encre); cursor: pointer;
+}
+.modal__fermer:hover { background: var(--fond); }
+.modal__corps { flex: 1; overflow-y: auto; padding: var(--e4); }
+
+/* =====================================================================
+   Reçu de délivrance (format A4)
+   ===================================================================== */
+.recu {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  background: #fff;
   border: 1px solid var(--trait);
   border-radius: var(--rayon);
-  max-width: 560px;
-  overflow: hidden;
   box-shadow: var(--ombre);
+  overflow: hidden;
+  font-size: var(--t-corps);
 }
 .recu__entete {
   text-align: center;
   background: var(--primaire-clair);
   border-bottom: 1px solid var(--trait);
-  padding: var(--e4) var(--e4) var(--e3);
+  padding: var(--e5) var(--e5) var(--e4);
 }
-.recu__icone {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px; border-radius: 50%;
-  background: var(--surface); border: 1px solid var(--trait);
-  color: var(--primaire); margin-bottom: var(--e2);
+.recu__marque {
+  display: inline-flex; align-items: center; gap: var(--e2);
+  font-weight: 700; font-size: var(--t-lead); color: var(--primaire);
+  letter-spacing: 0.02em;
 }
-.recu__titre { font-size: var(--t-titre-s); margin: 0; }
+.recu__titre { font-size: var(--t-titre); margin: var(--e2) 0 0; color: var(--encre); }
 .recu__site { display: block; color: var(--encre-2); font-size: var(--t-petit); margin-top: var(--e1); }
-.recu__date {
-  text-align: center; padding: var(--e3);
-  font-size: var(--t-appui); background: var(--fond);
+.recu__ref {
+  display: flex; justify-content: space-between; gap: var(--e3); flex-wrap: wrap;
+  padding: var(--e3) var(--e5);
+  background: var(--fond);
   border-bottom: 1px solid var(--trait);
+  font-size: var(--t-petit); color: var(--encre-2);
 }
-.recu__lignes { padding: var(--e4); display: flex; flex-direction: column; gap: var(--e3); }
+.recu__corps { padding: var(--e5); }
+.recu__lignes { display: flex; flex-direction: column; gap: var(--e3); }
 .recu__ligne { display: flex; justify-content: space-between; gap: var(--e4); align-items: baseline; }
 .recu__ligne dt { color: var(--encre-2); font-size: var(--t-petit); flex-shrink: 0; }
 .recu__ligne dd { text-align: right; font-weight: 500; }
+.recu__date {
+  text-align: center; padding: var(--e3); margin-top: var(--e4);
+  background: var(--primaire-clair); border-radius: var(--rayon-petit);
+  font-size: var(--t-appui);
+}
+.recu__qr {
+  display: flex; flex-direction: column; align-items: center; gap: var(--e2);
+  padding: var(--e4) 0 var(--e2); text-align: center;
+}
+.recu__qr svg { border: 1px solid var(--trait); border-radius: var(--rayon-petit); padding: var(--e2); background: #fff; }
+.recu__qr span { color: var(--encre-2); font-size: var(--t-petit); }
 .recu__signature {
-  margin: 0 var(--e4); padding-top: var(--e2);
+  margin-top: var(--e4); padding-top: var(--e3);
   border-top: 1px dashed var(--trait-fort);
   text-align: right; color: var(--encre-2); font-size: var(--t-petit);
 }
-.recu__actions { padding: var(--e4); display: flex; justify-content: flex-end; gap: var(--e2); }
+.recu__pied { padding: var(--e4) var(--e5) var(--e5); text-align: center; color: var(--encre-2); font-size: var(--t-micro); }
+.recu__actions {
+  display: flex; justify-content: space-between; align-items: center; gap: var(--e3);
+  padding: var(--e3) var(--e5);
+  border-top: 1px solid var(--trait); background: var(--fond);
+  flex-wrap: wrap;
+}
+.recu__partage { display: flex; gap: var(--e2); flex-wrap: wrap; align-items: center; }
+.recu__partage .bouton--partage {
+  display: inline-flex; align-items: center; gap: var(--e1);
+  padding: var(--e2) var(--e3);
+  border-radius: var(--rayon-petit);
+  border: 1px solid var(--trait); background: #fff;
+  font-size: var(--t-petit); color: var(--encre); cursor: pointer; text-decoration: none;
+}
+.recu__partage .bouton--partage:hover { background: var(--fond); }
+.recu__partage .bouton--partage--whatsapp { color: #128C7E; border-color: #128C7E33; background: #128C7E0f; }
 
-/* Impression : n'imprimer que le reçu, rien d'autre. */
+/* Impression : n'imprimer que le reçu, en A4. */
 @media print {
+  @page { size: A4; margin: 12mm; }
   body * { visibility: hidden; }
   .recu, .recu * { visibility: visible; }
   .recu {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%;
+    position: fixed;
+    inset: 0;
+    max-width: none;
+    width: auto;
+    margin: 0;
     border: none;
     border-radius: 0;
     box-shadow: none;
