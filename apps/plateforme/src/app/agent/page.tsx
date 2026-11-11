@@ -21,7 +21,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight, Bell, Boxes, CalendarX2, CheckCircle2, Clock,
-  Truck, UserPlus,
+  Hospital, Truck, UserPlus,
 } from "lucide-react";
 import type { AgentConnecte, Demande, LigneStock, Produit, Role } from "@dds/contrat-api";
 import { api, ErreurApi, messageDe } from "@/lib/api";
@@ -42,6 +42,14 @@ type Carte = {
   ton: "urgent" | "agir" | "calme";
   roles: Role[];
 };
+
+/** Accès rapides vers les gestes les plus fréquents du poste. */
+const RACCOURCIS = [
+  { adresse: "/agent/accueil", mot: "Accueillir un donneur", Icone: UserPlus },
+  { adresse: "/agent/delivrances", mot: "Délivrer", Icone: Hospital },
+  { adresse: "/agent/stock", mot: "Stock", Icone: Boxes },
+  { adresse: "/agent/alertes", mot: "Campagnes", Icone: Bell },
+];
 
 export default function TableauDeBordAgent() {
   const [agent, setAgent] = useState<AgentConnecte | null>(null);
@@ -139,10 +147,10 @@ export default function TableauDeBordAgent() {
         );
         liste.push({
           cle: "demandes",
-          libelle: "Demandes à préparer",
+          libelle: "Demandes à accepter",
           valeur: aPreparer.length,
           detail: aPreparer.length === 0 ? "aucune demande reçue" : "d'autres sites attendent ces produits",
-          adresse: "/agent/distribution",
+          adresse: "/agent/distribution/donner",
           Icone: Truck,
           ton: aPreparer.length === 0 ? "calme" : "agir",
           roles: ["agent_stock", "agent_depot"],
@@ -173,6 +181,12 @@ export default function TableauDeBordAgent() {
   const aFaire = cartes?.filter((c) => c.ton !== "calme") ?? [];
   const calmes = cartes?.filter((c) => c.ton === "calme") ?? [];
   const metier = agent.roles.map((r) => LIBELLE_ROLE[r] ?? r).join(", ");
+  // Résumé dynamique : ce qui attend l'agent, en une phrase.
+  const resume = cartes === null
+    ? ""
+    : aFaire.length > 0
+      ? `${aFaire.length} chose${aFaire.length > 1 ? "s" : ""} à faire`
+      : "Tout est à jour";
 
   return (
     <>
@@ -181,6 +195,10 @@ export default function TableauDeBordAgent() {
       <header className="bord-entete">
         <div className="bord-entete__gauche">
           <h1 className="bord-entete__titre">{salutation()} {prenom}</h1>
+          <p className="bord-entete__date">
+            {dateAujourdhui()}
+            {resume && <span className="bord-entete__resume"> · {resume}</span>}
+          </p>
           <p className="bord-entete__contexte">
             <span className="bord-jeton">{metier}</span>
             {agent.siteNom && (
@@ -239,13 +257,14 @@ export default function TableauDeBordAgent() {
         </>
       )}
 
-      <Section titre="Autres écrans">
-        <div className="bord-actions">
-          {/* Action la plus fréquente sur le terrain : seule en bouton plein. */}
-          <Link href="/agent/accueil" className="bouton bouton--principal">
-            <UserPlus size={18} aria-hidden="true" />
-            Accueillir un donneur
-          </Link>
+      <Section titre="Accès rapide">
+        <div className="bord-raccourcis">
+          {RACCOURCIS.map((r) => (
+            <Link key={r.adresse} href={r.adresse} className="bord-raccourci">
+              <r.Icone size={18} aria-hidden="true" />
+              <span>{r.mot}</span>
+            </Link>
+          ))}
         </div>
       </Section>
     </>
@@ -308,6 +327,11 @@ function CarteBord({ carte }: { carte: Carte }) {
 function salutation(): string {
   const h = new Date().getHours();
   return h < 18 ? "Bonjour" : "Bonsoir";
+}
+
+/** Date du jour, en toutes lettres : « mardi 10 novembre ». */
+function dateAujourdhui(): string {
+  return new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" }).format(new Date());
 }
 
 /**

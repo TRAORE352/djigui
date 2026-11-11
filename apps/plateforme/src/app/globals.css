@@ -1037,6 +1037,8 @@ a { color: var(--primaire); text-decoration: none; }
 }
 .bord-entete__contexte { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
 .bord-entete__sep { width: 4px; height: 4px; border-radius: 50%; background: var(--trait-fort); }
+.bord-entete__date { font-size: var(--t-appui); color: var(--encre-2); }
+.bord-entete__resume { color: var(--primaire-fonce); font-weight: 600; }
 .bord-entete__droite { display: flex; align-items: center; gap: var(--e2); }
 
 /* Jeton de contexte : rôle, centre. Information, pas action. */
@@ -1168,6 +1170,16 @@ a { color: var(--primaire); text-decoration: none; }
 .bord-actions .bouton { min-width: 180px; }
 .bord-actions .bouton--principal { background: var(--sang); border-color: var(--sang); }
 .bord-actions .bouton--principal:hover:not(:disabled) { background: var(--sang-fonce); border-color: var(--sang-fonce); }
+.bord-raccourcis { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: var(--e3); }
+.bord-raccourci {
+  display: flex; align-items: center; gap: var(--e2);
+  padding: var(--e3); border: 1px solid var(--trait); border-radius: var(--rayon-petit);
+  background: var(--surface); color: var(--encre); text-decoration: none;
+  font-size: var(--t-appui); font-weight: 550;
+  transition: border-color 140ms, background 140ms;
+}
+.bord-raccourci:hover { border-color: var(--trait-fort); background: var(--fond); }
+.bord-raccourci svg { color: var(--primaire); flex-shrink: 0; }
 @media (max-width: 560px) {
   .bord-actions { flex-direction: column; align-items: stretch; }
   .bord-actions .bouton { width: 100%; min-width: 0; }
