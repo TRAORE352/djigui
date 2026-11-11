@@ -1029,48 +1029,53 @@ a { color: var(--primaire); text-decoration: none; }
 .bord-entete {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: var(--e4); flex-wrap: wrap;
+  background: linear-gradient(135deg, var(--primaire) 0%, var(--primaire-fonce) 100%);
+  color: #fff;
+  padding: var(--e6);
+  border-radius: var(--rayon);
+  box-shadow: var(--ombre-forte);
 }
 .bord-entete__gauche { display: flex; flex-direction: column; gap: var(--e3); min-width: 0; }
 .bord-entete__titre {
   font-size: var(--t-grand); font-weight: 700;
-  letter-spacing: -0.015em; line-height: 1.15;
+  letter-spacing: -0.015em; line-height: 1.15; color: #fff;
 }
 .bord-entete__contexte { display: flex; align-items: center; gap: var(--e2); flex-wrap: wrap; }
-.bord-entete__sep { width: 4px; height: 4px; border-radius: 50%; background: var(--trait-fort); }
-.bord-entete__date { font-size: var(--t-appui); color: var(--encre-2); }
-.bord-entete__resume { color: var(--primaire-fonce); font-weight: 600; }
+.bord-entete__sep { width: 4px; height: 4px; border-radius: 50%; background: rgba(255,255,255,0.4); }
+.bord-entete__date { font-size: var(--t-appui); color: rgba(255,255,255,0.92); }
+.bord-entete__resume { color: #fff; font-weight: 700; }
 .bord-entete__droite { display: flex; align-items: center; gap: var(--e2); }
 
-/* Jeton de contexte : rôle, centre. Information, pas action. */
+/* Jeton de contexte : rôle, centre. Sur fond coloré, translucide. */
 .bord-jeton {
   display: inline-flex; align-items: center;
   padding: 3px var(--e3); border-radius: 999px;
-  background: var(--primaire-clair); color: var(--primaire-fonce);
+  background: rgba(255,255,255,0.16); color: #fff;
   font-size: var(--t-petit); font-weight: 600; white-space: nowrap;
 }
 .bord-jeton--sobre {
-  background: var(--surface); color: var(--encre-2);
-  border: 1px solid var(--trait-fort);
+  background: rgba(255,255,255,0.08); color: #fff;
+  border: 1px solid rgba(255,255,255,0.28);
 }
 
 /* Statut de session et horloge : discrets, en haut à droite. */
 .bord-statut {
   display: inline-flex; align-items: center; gap: var(--e2);
   padding: 5px var(--e3); border-radius: 999px;
-  background: var(--seve-clair); color: #066B48;
+  background: rgba(255,255,255,0.16); color: #fff;
   font-size: var(--t-petit); font-weight: 600; white-space: nowrap;
 }
 .bord-statut__point {
   width: 7px; height: 7px; border-radius: 50%;
-  background: var(--seve); box-shadow: 0 0 0 3px rgba(11, 138, 93, 0.16);
+  background: #7BE6B8; box-shadow: 0 0 0 3px rgba(123, 230, 184, 0.3);
 }
 .bord-horloge {
   display: inline-flex; align-items: center; gap: var(--e2);
   padding: 5px var(--e3); border-radius: 999px;
-  background: var(--surface); border: 1px solid var(--trait);
-  color: var(--encre-2); font-size: var(--t-petit); font-weight: 600;
+  background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22);
+  color: #fff; font-size: var(--t-petit); font-weight: 600;
 }
-.bord-horloge svg { color: var(--encre-2); }
+.bord-horloge svg { color: #fff; }
 
 /* ---------------------------------------------------------------------
    Cartes du tableau de bord. Chiffre cliquable : la carte EST le
