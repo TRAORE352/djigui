@@ -93,11 +93,15 @@ export default function TableauDeBord() {
 
   return (
     <>
-      <EnTetePage
-        titre="Tableau de bord"
-        chapeau="L'état du réseau, actualisé chaque minute."
-        actions={<Bouton variante="secondaire" onClick={() => void recharger()}>Actualiser</Bouton>}
-      />
+      <header className="bord-entete">
+        <div className="bord-entete__gauche">
+          <h1 className="bord-entete__titre">Tableau de bord du CNTS</h1>
+          <p className="bord-entete__date">L&apos;état du réseau, actualisé chaque minute.</p>
+        </div>
+        <div className="bord-entete__droite">
+          <Bouton variante="secondaire" onClick={() => void recharger()}>Actualiser</Bouton>
+        </div>
+      </header>
 
       <Groupe titre="Activité du jour" cartes={activite} />
       <Groupe titre="En attente d'une action" cartes={aTraiter} />
