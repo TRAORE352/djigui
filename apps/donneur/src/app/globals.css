@@ -203,8 +203,14 @@ select.champ__saisie { appearance: none; cursor: pointer; }
 .champ--erreur .champ__aide-erreur { color: var(--sang); font-size: var(--t-petit); font-weight: 500; }
 .champ__coche { color: var(--seve); display: flex; }
 
-/* Date de naissance en trois cases */
-.date-cases { display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: var(--e2); }
+/* Date de naissance en trois cases.
+   minmax(0, …) est indispensable : une piste « 1fr » ne descend pas sous la
+   largeur intrinsèque de son contenu, et un <input> en réclame ~20 caractères.
+   Sans lui, les trois cases débordent de l'écran sur téléphone. */
+.date-cases { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.5fr); gap: var(--e2); }
+.date-cases > label { min-width: 0; }
+.date-cases .champ__groupe { min-width: 0; }
+.date-cases .champ__saisie { width: 100%; min-width: 0; }
 
 /* Touche à bascule (sexe, canaux, motifs, créneaux) */
 .touche {
@@ -233,10 +239,11 @@ select.champ__saisie { appearance: none; cursor: pointer; }
 .case { display: flex; align-items: flex-start; gap: var(--e3); cursor: pointer; font-size: var(--t-appui); }
 .case input { width: 22px; height: 22px; margin: 1px 0 0; flex-shrink: 0; accent-color: var(--primaire); }
 
-/* Code à six chiffres (D4, D7) */
-.code-cases { display: grid; grid-template-columns: repeat(6, 1fr); gap: var(--e2); }
+/* Code à six chiffres (D4, D7) — même piège que la date : sans minmax(0, …),
+   les six cases prennent la largeur intrinsèque d'un <input> et débordent. */
+.code-cases { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--e2); }
 .code-case {
-  height: 60px; width: 100%;
+  height: 60px; width: 100%; min-width: 0;
   text-align: center;
   font-family: var(--police-chiffres); font-size: var(--t-titre); font-weight: 600;
   background: var(--surface); border: 1px solid var(--trait-fort); border-radius: var(--rayon-petit);
