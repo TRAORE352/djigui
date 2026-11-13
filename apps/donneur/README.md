@@ -31,6 +31,27 @@ Avec `NEXT_PUBLIC_UTILISER_EXEMPLES=true`, l'application n'appelle aucun serveur
 `NEXT_PUBLIC_UTILISER_EXEMPLES=false` et `NEXT_PUBLIC_API_URL=<adresse du backend>`. Aucun écran ne change :
 toutes les routes sont dans `src/lib/api.ts` et suivent le contrat `packages/contrat-api`.
 
+### Compte fictif de démonstration (vrai backend)
+
+Le simulateur ne sert plus en ligne : le code de vérification part par WhatsApp et n'arrive
+jamais sur un numéro fictif. Pour tester ou démontrer l'application déployée, utilisez le
+compte ci-dessous — il existe dans la base, déjà vérifié, avec un historique et des alertes.
+
+| Adresse | Téléphone | Mot de passe |
+|---|---|---|
+| https://mydjigui.vercel.app | `70 00 00 01` | `donneur2026` |
+
+Ce que le compte contient : 5 dons « apte » + 1 ajournement (Mes dons), éligibilité en cours
+(Ma carte), 1 alerte ouverte à laquelle répondre et 1 alerte close déjà répondue, 3
+notifications dont 1 non lue.
+
+Le compte est décrit par `supabase/seed/demo-donneur.sql`. Le script est rejouable : il remet
+le compte dans son état de départ sans toucher aux autres lignes de la base.
+
+```bash
+node backend/scripts/appliquer-sql.mjs supabase/seed/demo-donneur.sql
+```
+
 ### Tester l'installation (PWA)
 
 L'agent de service n'est actif qu'en production : `npm run build -w @dds/donneur` puis `npm run start -w @dds/donneur`.
